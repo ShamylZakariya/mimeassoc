@@ -1,0 +1,19 @@
+[Added Associations]
+application/vnd.appimage=appimagelauncher.desktop;
+application/epub+zip=com.github.johnfactotum.Foliate.desktop;
+x-scheme-handler/http=org.mozilla.firefox.desktop;google-chrome.desktop;
+text/html=org.mozilla.firefox.desktop;google-chrome.desktop;
+application/xhtml+xml=org.mozilla.firefox.desktop;google-chrome.desktop;
+x-scheme-handler/https=org.mozilla.firefox.desktop;google-chrome.desktop;
+image/png=org.gimp.GIMP.desktop;
+inode/directory=code.desktop;
+image/pdf=org.gnome.Evince.desktop;
+
+[Default Applications]
+x-scheme-handler/http=org.mozilla.firefox.desktop
+text/html=org.mozilla.firefox.desktop
+application/xhtml+xml=org.mozilla.firefox.desktop
+x-scheme-handler/https=org.mozilla.firefox.desktop
+image/pdf=org.gnome.Evince.desktop
+x-scheme-handler/jetbrains=jetbrains-toolbox.desktop
+x-scheme-handler/fleet=jetbrains-fleet.desktop
