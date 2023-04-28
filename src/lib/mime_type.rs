@@ -64,7 +64,7 @@ impl MimeAssociationsSection {
 pub struct MimeAssociations {
     file: PathBuf,
     is_writable: bool,
-    added_associations: HashMap<MimeType, AppId>,
+    added_associations: HashMap<MimeType, Vec<AppId>>,
     default_applications: HashMap<MimeType, AppId>,
 }
 
@@ -79,31 +79,33 @@ impl MimeAssociations {
         let mut default_applications = HashMap::new();
         let mut current_section: Option<MimeAssociationsSection> = None;
 
-        for line in line_buffer {
-            if let Ok(line) = line {
-                if let Some(section) = MimeAssociationsSection::try_parse(&line) {
-                    // catch [Section] directives in the list
-                    current_section = Some(section);
-                } else if let Some(current_section) = &current_section {
-                    // if we have a current section, we can add associations to it.
-                    let trimmed_line = line.trim();
+        for line in line_buffer.flatten() {
+            if let Some(section) = MimeAssociationsSection::try_parse(&line) {
+                // catch [Section] directives in the list
+                current_section = Some(section);
+            } else if let Some(current_section) = &current_section {
+                // if we have a current section, we can add associations to it.
+                let trimmed_line = line.trim();
 
-                    if let Ok((mime_type, app_id)) = Self::parse_line(&trimmed_line) {
-                        match current_section {
-                            MimeAssociationsSection::AddedAssociations => {
-                                added_associations.insert(mime_type, app_id)
+                if let Ok((mime_type, app_ids)) = Self::parse_line(trimmed_line) {
+                    match current_section {
+                        MimeAssociationsSection::AddedAssociations => {
+                            added_associations.insert(mime_type, app_ids);
+                        }
+                        MimeAssociationsSection::DefaultApplications => {
+                            if let Some(app_id) = app_ids.first() {
+                                default_applications.insert(mime_type, app_id.clone());
+                            } else {
+                                anyhow::bail!("Line \"{}\" specified 0 AppIds", trimmed_line);
                             }
-                            MimeAssociationsSection::DefaultApplications => {
-                                default_applications.insert(mime_type, app_id)
-                            }
-                        };
-                    } else if !trimmed_line.starts_with("#") && !trimmed_line.is_empty() {
-                        // this line is not a section directive, MimeAssociation, or comment
-                        anyhow::bail!(
-                            "Unable to parse MimeAssociation from line: \"{}\"",
-                            trimmed_line
-                        );
-                    }
+                        }
+                    };
+                } else if !trimmed_line.starts_with('#') && !trimmed_line.is_empty() {
+                    // this line is not a section directive, MimeAssociation, or comment
+                    anyhow::bail!(
+                        "Unable to parse MimeAssociation from line: \"{}\"",
+                        trimmed_line
+                    );
                 }
             }
         }
@@ -116,7 +118,7 @@ impl MimeAssociations {
         })
     }
 
-    fn parse_line(line: &str) -> anyhow::Result<(MimeType, AppId)> {
+    fn parse_line(line: &str) -> anyhow::Result<(MimeType, Vec<AppId>)> {
         let components = line.split('=').collect::<Vec<_>>();
         if components.len() != 2 {
             anyhow::bail!("A line from mimeapps.lst is expected to be in form \"mime/type=app.desktop\". Line \"{}\" was invalid", line);
@@ -127,21 +129,29 @@ impl MimeAssociations {
 
         let mime_type = MimeType::parse(mime_type_component)?;
 
-        let app_id = if app_component.ends_with(';') {
-            AppId::parse(&app_component[0..app_component.len() - 1])
-        } else {
-            AppId::parse(app_component)
-        }?;
+        if !app_component.contains(';') {
+            return Ok((mime_type, vec![AppId::parse(app_component)?]));
+        }
 
-        Ok((mime_type, app_id))
+        let mut app_ids = Vec::new();
+        for app_id_component in app_component.split(';') {
+            let trimmed_app_id_component = app_id_component.trim();
+            if !trimmed_app_id_component.is_empty() {
+                app_ids.push(AppId::parse(trimmed_app_id_component)?);
+            }
+        }
+
+        Ok((mime_type, app_ids))
     }
 }
 
-struct MimeAssociationsStore {
+struct MimeAssociationsCascade {
     associations: Vec<MimeAssociations>,
 }
 
-impl MimeAssociationsStore {
+impl MimeAssociationsCascade {
+    /// Load MimeAssocations in order of the provided paths. MimeAssocations later in
+    /// the list will override ones earlier in the list.
     pub fn new<P>(mimeapps_file_paths: &[(P, bool)]) -> anyhow::Result<Self>
     where
         P: AsRef<Path>,
@@ -163,6 +173,24 @@ impl MimeAssociationsStore {
         }
 
         mime_types
+    }
+
+    pub fn default_application_for(&self, mime_type: &MimeType) -> Option<&AppId> {
+        for association in self.associations.iter().rev() {
+            if let Some(app_id) = association.default_applications.get(mime_type) {
+                return Some(app_id);
+            }
+        }
+        None
+    }
+
+    pub fn added_associations_for(&self, mime_type: &MimeType) -> Option<&Vec<AppId>> {
+        for association in self.associations.iter().rev() {
+            if let Some(app_id) = association.added_associations.get(mime_type) {
+                return Some(app_id);
+            }
+        }
+        None
     }
 }
 
@@ -215,23 +243,78 @@ mod tests {
 
         let png = MimeType::parse("image/png")?;
         let gimp = AppId::parse("org.gimp.GIMP.desktop")?;
-        assert_eq!(&associations.added_associations[&png], &gimp);
+        assert_eq!(&associations.added_associations[&png], &vec![gimp]);
 
         Ok(())
     }
 
     #[test]
     fn mime_associations_line_parser() -> anyhow::Result<()> {
+        let baz_desktop = AppId::parse("baz.desktop")?;
+        let qux_desktop = AppId::parse("qux.desktop")?;
+        let zim_desktop = AppId::parse("zim.desktop")?;
+
+        // single value with trailing semicolon
         let result = MimeAssociations::parse_line("foo/bar=baz.desktop;")?;
         assert_eq!(result.0, MimeType::parse("foo/bar")?);
-        assert_eq!(result.1, AppId::parse("baz.desktop")?);
+        assert_eq!(result.1, vec![baz_desktop.clone()]);
 
+        // whitespace
         let result = MimeAssociations::parse_line("   foo/bar=baz.desktop\n  ")?;
         assert_eq!(result.0, MimeType::parse("foo/bar")?);
-        assert_eq!(result.1, AppId::parse("baz.desktop")?);
+        assert_eq!(result.1, vec![baz_desktop.clone()]);
+
+        // multiple values
+        let result = MimeAssociations::parse_line("foo/bar=baz.desktop;qux.desktop;zim.desktop;")?;
+        assert_eq!(result.0, MimeType::parse("foo/bar")?);
+        assert_eq!(result.1, vec![baz_desktop, qux_desktop, zim_desktop]);
 
         assert!(MimeAssociations::parse_line("foo/bar=baz").is_err());
         assert!(MimeAssociations::parse_line("foobar=baz.desktop;").is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn mime_assocations_cascade_loads() -> anyhow::Result<()> {
+        let _ = MimeAssociationsCascade::new(&[
+            (test_sys_mimeapps_list(), false),
+            (test_gnome_mimeapps_list(), false),
+            (test_user_mimeapps_list(), false),
+        ])?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn mime_assocations_cascade_prefers_user_default_application_over_system_associations(
+    ) -> anyhow::Result<()> {
+        let cascade = MimeAssociationsCascade::new(&[
+            (test_sys_mimeapps_list(), false),
+            (test_gnome_mimeapps_list(), false),
+            (test_user_mimeapps_list(), false),
+        ])?;
+
+        let html = MimeType::parse("text/html")?;
+        let firefox = AppId::parse("org.mozilla.firefox.desktop")?;
+        assert_eq!(cascade.default_application_for(&html), Some(&firefox));
+
+        Ok(())
+    }
+
+    #[test]
+    fn mime_assocations_cascade_loads_expected_added_associations() -> anyhow::Result<()> {
+        let cascade = MimeAssociationsCascade::new(&[
+            (test_sys_mimeapps_list(), false),
+            (test_gnome_mimeapps_list(), false),
+            (test_user_mimeapps_list(), false),
+        ])?;
+
+        let html = MimeType::parse("text/html")?;
+        let firefox = AppId::parse("org.mozilla.firefox.desktop")?;
+        let chrome = AppId::parse("google-chrome.desktop")?;
+        let result = cascade.added_associations_for(&html);
+        assert_eq!(result, Some(&vec![firefox, chrome]));
 
         Ok(())
     }

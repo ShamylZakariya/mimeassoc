@@ -18,7 +18,7 @@ impl AppId {
     }
 
     pub fn id(&self) -> &str {
-        let desktop_idx = self.desktop_entry.find(&".desktop").unwrap();
+        let desktop_idx = self.desktop_entry.find(".desktop").unwrap();
         &self.desktop_entry[0..desktop_idx]
     }
 }
