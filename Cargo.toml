@@ -7,3 +7,5 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
+is_executable = "1.0"
+which = "4"

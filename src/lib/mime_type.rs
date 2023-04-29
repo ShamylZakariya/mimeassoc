@@ -42,18 +42,18 @@ impl Display for MimeType {
     }
 }
 
-enum MimeAssociationsSection {
+enum MimeAssociationsSections {
     AddedAssociations,
     DefaultApplications,
 }
 
-impl MimeAssociationsSection {
+impl MimeAssociationsSections {
     fn try_parse(desc: &str) -> Option<Self> {
         let desc = desc.trim();
         if desc == "[Added Associations]" {
-            Some(MimeAssociationsSection::AddedAssociations)
+            Some(Self::AddedAssociations)
         } else if desc == "[Default Applications]" {
-            Some(MimeAssociationsSection::DefaultApplications)
+            Some(Self::DefaultApplications)
         } else {
             None
         }
@@ -77,10 +77,10 @@ impl MimeAssociations {
         let line_buffer = io::BufReader::new(mimeapps_file).lines();
         let mut added_associations = HashMap::new();
         let mut default_applications = HashMap::new();
-        let mut current_section: Option<MimeAssociationsSection> = None;
+        let mut current_section: Option<MimeAssociationsSections> = None;
 
         for line in line_buffer.flatten() {
-            if let Some(section) = MimeAssociationsSection::try_parse(&line) {
+            if let Some(section) = MimeAssociationsSections::try_parse(&line) {
                 // catch [Section] directives in the list
                 current_section = Some(section);
             } else if let Some(current_section) = &current_section {
@@ -89,10 +89,10 @@ impl MimeAssociations {
 
                 if let Ok((mime_type, app_ids)) = Self::parse_line(trimmed_line) {
                     match current_section {
-                        MimeAssociationsSection::AddedAssociations => {
+                        MimeAssociationsSections::AddedAssociations => {
                             added_associations.insert(mime_type, app_ids);
                         }
-                        MimeAssociationsSection::DefaultApplications => {
+                        MimeAssociationsSections::DefaultApplications => {
                             if let Some(app_id) = app_ids.first() {
                                 default_applications.insert(mime_type, app_id.clone());
                             } else {

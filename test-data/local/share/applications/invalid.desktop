@@ -1,0 +1,8 @@
+Version=1.0
+Terminal=false
+Type=Application
+Name=Photopea
+MimeType=image/ai;image/bmp;image/cdr;image/eps;image/gif;image/jp2;image/jpeg;image/jpx;image/pdf;image/png;image/psb;image/psd;image/pxd;image/sketch;image/svg+xml;image/tiff;image/webp;image/x-icon;image/x-tga;image/xcf;image/xd
+Exec=/opt/google/chrome/google-chrome --profile-directory=Default --app-id=jdklklfpinionkgpmghaghehojplfjio %U
+Icon=chrome-jdklklfpinionkgpmghaghehojplfjio-Default
+StartupWMClass=crx_jdklklfpinionkgpmghaghehojplfjio
