@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::lib::app_id::*;
+use super::desktop_entry::DesktopEntryId;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct MimeType {
@@ -64,8 +64,8 @@ impl MimeAssociationsSections {
 pub struct MimeAssociations {
     file: PathBuf,
     is_writable: bool,
-    added_associations: HashMap<MimeType, Vec<AppId>>,
-    default_applications: HashMap<MimeType, AppId>,
+    added_associations: HashMap<MimeType, Vec<DesktopEntryId>>,
+    default_applications: HashMap<MimeType, DesktopEntryId>,
 }
 
 impl MimeAssociations {
@@ -87,16 +87,19 @@ impl MimeAssociations {
                 // if we have a current section, we can add associations to it.
                 let trimmed_line = line.trim();
 
-                if let Ok((mime_type, app_ids)) = Self::parse_line(trimmed_line) {
+                if let Ok((mime_type, id)) = Self::parse_line(trimmed_line) {
                     match current_section {
                         MimeAssociationsSections::AddedAssociations => {
-                            added_associations.insert(mime_type, app_ids);
+                            added_associations.insert(mime_type, id);
                         }
                         MimeAssociationsSections::DefaultApplications => {
-                            if let Some(app_id) = app_ids.first() {
-                                default_applications.insert(mime_type, app_id.clone());
+                            if let Some(id) = id.first() {
+                                default_applications.insert(mime_type, id.clone());
                             } else {
-                                anyhow::bail!("Line \"{}\" specified 0 AppIds", trimmed_line);
+                                anyhow::bail!(
+                                    "Line \"{}\" specified 0 DesktopEntryIds",
+                                    trimmed_line
+                                );
                             }
                         }
                     };
@@ -118,30 +121,30 @@ impl MimeAssociations {
         })
     }
 
-    fn parse_line(line: &str) -> anyhow::Result<(MimeType, Vec<AppId>)> {
+    fn parse_line(line: &str) -> anyhow::Result<(MimeType, Vec<DesktopEntryId>)> {
         let components = line.split('=').collect::<Vec<_>>();
         if components.len() != 2 {
             anyhow::bail!("A line from mimeapps.lst is expected to be in form \"mime/type=app.desktop\". Line \"{}\" was invalid", line);
         }
 
         let mime_type_component = components[0].trim();
-        let app_component = components[1].trim();
+        let id_components = components[1].trim();
 
         let mime_type = MimeType::parse(mime_type_component)?;
 
-        if !app_component.contains(';') {
-            return Ok((mime_type, vec![AppId::parse(app_component)?]));
+        if !id_components.contains(';') {
+            return Ok((mime_type, vec![DesktopEntryId::parse(id_components)?]));
         }
 
-        let mut app_ids = Vec::new();
-        for app_id_component in app_component.split(';') {
-            let trimmed_app_id_component = app_id_component.trim();
-            if !trimmed_app_id_component.is_empty() {
-                app_ids.push(AppId::parse(trimmed_app_id_component)?);
+        let mut ids = Vec::new();
+        for id in id_components.split(';') {
+            let id = id.trim();
+            if !id.is_empty() {
+                ids.push(DesktopEntryId::parse(id)?);
             }
         }
 
-        Ok((mime_type, app_ids))
+        Ok((mime_type, ids))
     }
 }
 
@@ -175,19 +178,19 @@ impl MimeAssociationsCascade {
         mime_types
     }
 
-    pub fn default_application_for(&self, mime_type: &MimeType) -> Option<&AppId> {
+    pub fn default_application_for(&self, mime_type: &MimeType) -> Option<&DesktopEntryId> {
         for association in self.associations.iter().rev() {
-            if let Some(app_id) = association.default_applications.get(mime_type) {
-                return Some(app_id);
+            if let Some(id) = association.default_applications.get(mime_type) {
+                return Some(id);
             }
         }
         None
     }
 
-    pub fn added_associations_for(&self, mime_type: &MimeType) -> Option<&Vec<AppId>> {
+    pub fn added_associations_for(&self, mime_type: &MimeType) -> Option<&Vec<DesktopEntryId>> {
         for association in self.associations.iter().rev() {
-            if let Some(app_id) = association.added_associations.get(mime_type) {
-                return Some(app_id);
+            if let Some(id) = association.added_associations.get(mime_type) {
+                return Some(id);
             }
         }
         None
@@ -242,7 +245,7 @@ mod tests {
         let associations = MimeAssociations::new(test_user_mimeapps_list(), false)?;
 
         let png = MimeType::parse("image/png")?;
-        let gimp = AppId::parse("org.gimp.GIMP.desktop")?;
+        let gimp = DesktopEntryId::parse("org.gimp.GIMP.desktop")?;
         assert_eq!(&associations.added_associations[&png], &vec![gimp]);
 
         Ok(())
@@ -250,9 +253,9 @@ mod tests {
 
     #[test]
     fn mime_associations_line_parser() -> anyhow::Result<()> {
-        let baz_desktop = AppId::parse("baz.desktop")?;
-        let qux_desktop = AppId::parse("qux.desktop")?;
-        let zim_desktop = AppId::parse("zim.desktop")?;
+        let baz_desktop = DesktopEntryId::parse("baz.desktop")?;
+        let qux_desktop = DesktopEntryId::parse("qux.desktop")?;
+        let zim_desktop = DesktopEntryId::parse("zim.desktop")?;
 
         // single value with trailing semicolon
         let result = MimeAssociations::parse_line("foo/bar=baz.desktop;")?;
@@ -296,7 +299,7 @@ mod tests {
         ])?;
 
         let html = MimeType::parse("text/html")?;
-        let firefox = AppId::parse("org.mozilla.firefox.desktop")?;
+        let firefox = DesktopEntryId::parse("org.mozilla.firefox.desktop")?;
         assert_eq!(cascade.default_application_for(&html), Some(&firefox));
 
         Ok(())
@@ -311,8 +314,8 @@ mod tests {
         ])?;
 
         let html = MimeType::parse("text/html")?;
-        let firefox = AppId::parse("org.mozilla.firefox.desktop")?;
-        let chrome = AppId::parse("google-chrome.desktop")?;
+        let firefox = DesktopEntryId::parse("org.mozilla.firefox.desktop")?;
+        let chrome = DesktopEntryId::parse("google-chrome.desktop")?;
         let result = cascade.added_associations_for(&html);
         assert_eq!(result, Some(&vec![firefox, chrome]));
 

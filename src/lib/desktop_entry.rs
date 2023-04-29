@@ -9,6 +9,31 @@ use is_executable::IsExecutable;
 
 use super::mime_type::MimeType;
 
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct DesktopEntryId {
+    desktop_entry: String,
+}
+
+impl DesktopEntryId {
+    pub fn parse(desktop_entry: &str) -> anyhow::Result<DesktopEntryId> {
+        if desktop_entry.ends_with(".desktop") {
+            Ok(DesktopEntryId {
+                desktop_entry: desktop_entry.to_string(),
+            })
+        } else {
+            anyhow::bail!(
+                "id: \"{}\" not a valid Gnome .desktop file name",
+                desktop_entry
+            )
+        }
+    }
+
+    pub fn id(&self) -> &str {
+        let desktop_idx = self.desktop_entry.find(".desktop").unwrap();
+        &self.desktop_entry[0..desktop_idx]
+    }
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum DesktopEntryType {
     Application,
@@ -23,13 +48,6 @@ impl DesktopEntryType {
             _ => Self::Other,
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct DesktopEntry {
-    path: PathBuf,
-    fields: HashMap<String, String>,
-    mime_types: Vec<MimeType>,
 }
 
 enum DesktopEntrySections {
@@ -51,6 +69,14 @@ impl DesktopEntrySections {
             None
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DesktopEntry {
+    path: PathBuf,
+    fields: HashMap<String, String>,
+    mime_types: Vec<MimeType>,
+    id: DesktopEntryId,
 }
 
 impl DesktopEntry {
@@ -100,15 +126,36 @@ impl DesktopEntry {
             );
         }
 
+        let id = if let Some(file_name) = path.file_name() {
+            if let Some(file_name) = file_name.to_str() {
+                DesktopEntryId::parse(file_name)?
+            } else {
+                anyhow::bail!(
+                    "Unable to extract DesktopEntryId from desktop entry \"{:?}\"",
+                    path
+                )
+            }
+        } else {
+            anyhow::bail!(
+                "Unable to extract DesktopEntryId from desktop entry \"{:?}\"",
+                path
+            )
+        };
+
         Ok(Self {
             path: PathBuf::from(path),
             fields,
             mime_types,
+            id,
         })
     }
 
     fn name(&self) -> Option<&str> {
         self.fields.get("Name").map(|v| v.as_str())
+    }
+
+    fn id(&self) -> &DesktopEntryId {
+        &self.id
     }
 
     fn localised_name(&self, locale: &str) -> Option<&str> {
@@ -175,6 +222,12 @@ impl DesktopEntry {
     }
 }
 
+struct DesktopEntryScope {
+    entries: HashMap<DesktopEntryId, DesktopEntry>,
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -198,6 +251,29 @@ mod tests {
 
     fn test_user_invalid() -> PathBuf {
         path("test-data/local/share/applications/invalid.desktop")
+    }
+
+    #[test]
+    fn parses_valid_desktop_entry_ids() {
+        assert!(DesktopEntryId::parse("org.foo.Bar.desktop").is_ok());
+        assert!(DesktopEntryId::parse("Baz.desktop").is_ok());
+    }
+
+    #[test]
+    fn rejects_invalid_desktop_entry_ids() {
+        assert!(DesktopEntryId::parse("org.foo.Bar").is_err());
+        assert!(DesktopEntryId::parse("Baz").is_err());
+    }
+
+    #[test]
+    fn parses_desktop_entry_id() -> anyhow::Result<()> {
+        assert_eq!(
+            DesktopEntryId::parse("org.foo.Bar.desktop")?.id(),
+            "org.foo.Bar"
+        );
+        assert_eq!(DesktopEntryId::parse("Baz.desktop")?.id(), "Baz");
+
+        Ok(())
     }
 
     #[test]
