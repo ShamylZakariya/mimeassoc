@@ -61,14 +61,14 @@ impl MimeAssociationsSections {
 }
 
 #[derive(Default)]
-pub struct MimeAssociations {
+pub struct MimeAssociationScope {
     file: PathBuf,
     is_writable: bool,
     added_associations: HashMap<MimeType, Vec<DesktopEntryId>>,
     default_applications: HashMap<MimeType, DesktopEntryId>,
 }
 
-impl MimeAssociations {
+impl MimeAssociationScope {
     fn new<P>(mimeapps_file_path: P, is_writable: bool) -> anyhow::Result<Self>
     where
         P: AsRef<Path>,
@@ -113,7 +113,7 @@ impl MimeAssociations {
             }
         }
 
-        Ok(MimeAssociations {
+        Ok(MimeAssociationScope {
             file: PathBuf::from(mimeapps_file_path.as_ref()),
             is_writable,
             added_associations,
@@ -149,7 +149,7 @@ impl MimeAssociations {
 }
 
 struct MimeAssociationsCascade {
-    associations: Vec<MimeAssociations>,
+    scopes: Vec<MimeAssociationScope>,
 }
 
 impl MimeAssociationsCascade {
@@ -159,18 +159,18 @@ impl MimeAssociationsCascade {
     where
         P: AsRef<Path>,
     {
-        let mut associations = Vec::new();
+        let mut scopes = Vec::new();
         for (file_path, is_writable) in mimeapps_file_paths.iter() {
-            associations.push(MimeAssociations::new(file_path, *is_writable)?);
+            scopes.push(MimeAssociationScope::new(file_path, *is_writable)?);
         }
 
-        Ok(Self { associations })
+        Ok(Self { scopes })
     }
 
     pub fn mime_types(&self) -> Vec<&MimeType> {
         let mut mime_types = Vec::new();
-        for associations in self.associations.iter() {
-            for (mime_type, _) in associations.default_applications.iter() {
+        for scope in self.scopes.iter() {
+            for (mime_type, _) in scope.default_applications.iter() {
                 mime_types.push(mime_type);
             }
         }
@@ -179,8 +179,8 @@ impl MimeAssociationsCascade {
     }
 
     pub fn default_application_for(&self, mime_type: &MimeType) -> Option<&DesktopEntryId> {
-        for association in self.associations.iter().rev() {
-            if let Some(id) = association.default_applications.get(mime_type) {
+        for scope in self.scopes.iter().rev() {
+            if let Some(id) = scope.default_applications.get(mime_type) {
                 return Some(id);
             }
         }
@@ -188,8 +188,8 @@ impl MimeAssociationsCascade {
     }
 
     pub fn added_associations_for(&self, mime_type: &MimeType) -> Option<&Vec<DesktopEntryId>> {
-        for association in self.associations.iter().rev() {
-            if let Some(id) = association.added_associations.get(mime_type) {
+        for scope in self.scopes.iter().rev() {
+            if let Some(id) = scope.added_associations.get(mime_type) {
                 return Some(id);
             }
         }
@@ -235,14 +235,14 @@ mod tests {
 
     #[test]
     fn mime_associations_load() {
-        assert!(MimeAssociations::new(test_sys_mimeapps_list(), false).is_ok());
-        assert!(MimeAssociations::new(test_gnome_mimeapps_list(), false).is_ok());
-        assert!(MimeAssociations::new(test_user_mimeapps_list(), false).is_ok());
+        assert!(MimeAssociationScope::new(test_sys_mimeapps_list(), false).is_ok());
+        assert!(MimeAssociationScope::new(test_gnome_mimeapps_list(), false).is_ok());
+        assert!(MimeAssociationScope::new(test_user_mimeapps_list(), false).is_ok());
     }
 
     #[test]
     fn mime_associations_load_expected_data() -> anyhow::Result<()> {
-        let associations = MimeAssociations::new(test_user_mimeapps_list(), false)?;
+        let associations = MimeAssociationScope::new(test_user_mimeapps_list(), false)?;
 
         let png = MimeType::parse("image/png")?;
         let gimp = DesktopEntryId::parse("org.gimp.GIMP.desktop")?;
@@ -258,22 +258,22 @@ mod tests {
         let zim_desktop = DesktopEntryId::parse("zim.desktop")?;
 
         // single value with trailing semicolon
-        let result = MimeAssociations::parse_line("foo/bar=baz.desktop;")?;
+        let result = MimeAssociationScope::parse_line("foo/bar=baz.desktop;")?;
         assert_eq!(result.0, MimeType::parse("foo/bar")?);
         assert_eq!(result.1, vec![baz_desktop.clone()]);
 
         // whitespace
-        let result = MimeAssociations::parse_line("   foo/bar=baz.desktop\n  ")?;
+        let result = MimeAssociationScope::parse_line("   foo/bar=baz.desktop\n  ")?;
         assert_eq!(result.0, MimeType::parse("foo/bar")?);
         assert_eq!(result.1, vec![baz_desktop.clone()]);
 
         // multiple values
-        let result = MimeAssociations::parse_line("foo/bar=baz.desktop;qux.desktop;zim.desktop;")?;
+        let result = MimeAssociationScope::parse_line("foo/bar=baz.desktop;qux.desktop;zim.desktop;")?;
         assert_eq!(result.0, MimeType::parse("foo/bar")?);
         assert_eq!(result.1, vec![baz_desktop, qux_desktop, zim_desktop]);
 
-        assert!(MimeAssociations::parse_line("foo/bar=baz").is_err());
-        assert!(MimeAssociations::parse_line("foobar=baz.desktop;").is_err());
+        assert!(MimeAssociationScope::parse_line("foo/bar=baz").is_err());
+        assert!(MimeAssociationScope::parse_line("foobar=baz.desktop;").is_err());
 
         Ok(())
     }

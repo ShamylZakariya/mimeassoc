@@ -80,7 +80,7 @@ struct DesktopEntry {
 }
 
 impl DesktopEntry {
-    fn parse<P>(path: P) -> anyhow::Result<DesktopEntry>
+    fn load<P>(path: P) -> anyhow::Result<DesktopEntry>
     where
         P: AsRef<Path>,
     {
@@ -222,8 +222,58 @@ impl DesktopEntry {
     }
 }
 
+/// Return a vector of paths to the application dirs for the user.
+pub fn desktop_entry_dirs() -> anyhow::Result<Vec<PathBuf>> {
+    let xdg_data_dirs = std::env::var("XDG_DATA_DIRS")?
+        .split(':')
+        .map(|d| PathBuf::from(d))
+        .collect::<Vec<_>>();
+    let user_data_dir = PathBuf::from(std::env::var("HOME")?).join(".local/share");
+    let mut data_dirs = vec![user_data_dir];
+    data_dirs.extend(xdg_data_dirs);
+
+    Ok(data_dirs
+        .iter()
+        .filter(|d| d.exists() && d.is_dir())
+        .map(|d| d.join("applications"))
+        .collect::<Vec<_>>())
+}
+
+/// Represents all the desktop entries in a particular scope, or specifically,
+/// a location on the filesystem such as /usr/share/applications
 struct DesktopEntryScope {
-    entries: HashMap<DesktopEntryId, DesktopEntry>,
+    application_entries: HashMap<DesktopEntryId, DesktopEntry>,
+}
+
+impl DesktopEntryScope {
+    fn load<P>(dir: P) -> anyhow::Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        let mut application_entries = HashMap::new();
+        let contents = std::fs::read_dir(dir)?;
+        for file in contents.flatten() {
+            let file_path = file.path();
+            if let Some(extension) = file_path.extension() {
+                let extension = extension.to_str().unwrap();
+                if extension == "desktop" {
+                    if let Ok(desktop_entry) = DesktopEntry::load(file_path) {
+                        match desktop_entry.entry_type() {
+                            Some(DesktopEntryType::Application) => {
+                                application_entries
+                                    .insert(desktop_entry.id().clone(), desktop_entry.clone());
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(Self {
+            application_entries,
+        })
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -253,6 +303,14 @@ mod tests {
         path("test-data/local/share/applications/invalid.desktop")
     }
 
+    fn test_user_applications() -> PathBuf {
+        path("test-data/local/share/applications")
+    }
+
+    fn test_sys_applications() -> PathBuf {
+        path("test-data/usr/share/applications")
+    }
+
     #[test]
     fn parses_valid_desktop_entry_ids() {
         assert!(DesktopEntryId::parse("org.foo.Bar.desktop").is_ok());
@@ -278,22 +336,22 @@ mod tests {
 
     #[test]
     fn desktop_entry_parses_valid_files() -> anyhow::Result<()> {
-        DesktopEntry::parse(test_sys_gedit())?;
-        DesktopEntry::parse(test_sys_weather())?;
-        DesktopEntry::parse(test_user_photopea())?;
+        DesktopEntry::load(test_sys_gedit())?;
+        DesktopEntry::load(test_sys_weather())?;
+        DesktopEntry::load(test_user_photopea())?;
 
         Ok(())
     }
 
     #[test]
     fn desktop_entry_rejects_invalid_files() {
-        assert!(DesktopEntry::parse(test_user_invalid()).is_err());
-        assert!(DesktopEntry::parse(path("not/a/valid/path/to/a/desktop/file.desktop")).is_err());
+        assert!(DesktopEntry::load(test_user_invalid()).is_err());
+        assert!(DesktopEntry::load(path("not/a/valid/path/to/a/desktop/file.desktop")).is_err());
     }
 
     #[test]
     fn desktop_entry_parses_correctly() -> anyhow::Result<()> {
-        let gedit = DesktopEntry::parse(test_sys_gedit())?;
+        let gedit = DesktopEntry::load(test_sys_gedit())?;
 
         assert_eq!(gedit.name(), Some("gedit"));
         assert_eq!(gedit.localised_name("es"), Some("gedit"));
@@ -302,6 +360,47 @@ mod tests {
         assert_eq!(gedit.executable_command(), Some("gedit %U"));
         assert_eq!(gedit.icon(), Some("org.gnome.gedit"));
         assert!(gedit.appears_valid_application());
+        Ok(())
+    }
+
+    #[test]
+    fn data_dirs_returns_nonempty_vec() -> anyhow::Result<()> {
+        let dirs = desktop_entry_dirs()?;
+        assert!(!dirs.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn data_dirs_contain_desktop_entries() -> anyhow::Result<()> {
+        let mut count = 0;
+        for dir in desktop_entry_dirs()? {
+            let contents = std::fs::read_dir(dir)?;
+            for file in contents.flatten() {
+                let file_path = file.path();
+                if let Some(extension) = file_path.extension() {
+                    let extension = extension.to_str().unwrap();
+                    if extension == "desktop" {
+                        count += 1;
+                    }
+                }
+            }
+        }
+
+        if count > 0 {
+            Ok(())
+        } else {
+            anyhow::bail!("desktop_entry_dirs() had no desktop entries.")
+        }
+    }
+
+    #[test]
+    fn desktop_entry_scope_loads_desktop_entries() -> anyhow::Result<()> {
+        let sys_scope = DesktopEntryScope::load(test_sys_applications())?;
+        assert!(!sys_scope.application_entries.is_empty());
+
+        let user_scope = DesktopEntryScope::load(test_user_applications())?;
+        assert!(!user_scope.application_entries.is_empty());
+
         Ok(())
     }
 }
