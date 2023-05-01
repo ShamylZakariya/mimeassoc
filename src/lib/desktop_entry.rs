@@ -34,6 +34,18 @@ impl DesktopEntryId {
     }
 }
 
+impl PartialOrd for DesktopEntryId {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.desktop_entry.partial_cmp(&other.desktop_entry)
+    }
+}
+
+impl Ord for DesktopEntryId {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.desktop_entry.cmp(&other.desktop_entry)
+    }
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum DesktopEntryType {
     Application,
@@ -222,11 +234,23 @@ impl DesktopEntry {
     }
 }
 
+impl Ord for DesktopEntry {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.id.cmp(&other.id)
+    }
+}
+
+impl PartialOrd for DesktopEntry {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 /// Return a vector of paths to the application dirs for the user.
 pub fn desktop_entry_dirs() -> anyhow::Result<Vec<PathBuf>> {
     let xdg_data_dirs = std::env::var("XDG_DATA_DIRS")?
         .split(':')
-        .map(|d| PathBuf::from(d))
+        .map(PathBuf::from)
         .collect::<Vec<_>>();
     let user_data_dir = PathBuf::from(std::env::var("HOME")?).join(".local/share");
     let mut data_dirs = vec![user_data_dir];
@@ -258,12 +282,9 @@ impl DesktopEntryScope {
                 let extension = extension.to_str().unwrap();
                 if extension == "desktop" {
                     if let Ok(desktop_entry) = DesktopEntry::load(file_path) {
-                        match desktop_entry.entry_type() {
-                            Some(DesktopEntryType::Application) => {
-                                application_entries
-                                    .insert(desktop_entry.id().clone(), desktop_entry.clone());
-                            }
-                            _ => {}
+                        if let Some(DesktopEntryType::Application) = desktop_entry.entry_type() {
+                            application_entries
+                                .insert(desktop_entry.id().clone(), desktop_entry.clone());
                         }
                     }
                 }
@@ -273,6 +294,66 @@ impl DesktopEntryScope {
         Ok(Self {
             application_entries,
         })
+    }
+
+    fn application_entry(&self, id: &DesktopEntryId) -> Option<&DesktopEntry> {
+        self.application_entries.get(id)
+    }
+}
+
+struct DesktopEntries {
+    scopes: Vec<DesktopEntryScope>,
+}
+
+impl DesktopEntries {
+    pub fn load<P>(scope_paths: &[P]) -> anyhow::Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        let mut scopes = Vec::new();
+        for path in scope_paths {
+            scopes.push(DesktopEntryScope::load(path)?);
+        }
+
+        Ok(Self { scopes })
+    }
+
+    /// Returns all desktop entries, with later scopes overriding earlier ones.
+    /// E.g., if a user has a desktop entry which overrides a system one, the user
+    /// one will override the system one
+    pub fn desktop_entries(&self) -> Vec<&DesktopEntry> {
+        let mut table: HashMap<&DesktopEntryId, &DesktopEntry> = HashMap::new();
+
+        for scope in self.scopes.iter() {
+            for application in scope.application_entries.iter() {
+                table.insert(application.0, application.1);
+            }
+        }
+
+        let mut values = table.values().copied().collect::<Vec<_>>();
+        values.sort();
+        values
+    }
+
+    /// Return all unique desktop entry identifiers.
+    pub fn desktop_entry_ids(&self) -> Vec<&DesktopEntryId> {
+        self.desktop_entries()
+            .iter()
+            .map(|de| de.id())
+            .collect::<Vec<_>>()
+    }
+
+    /// Lookup the DesktopEntry with the specified identifier, returning the one
+    /// latest in the list provided at construction time, e.g., with user entries
+    /// overriding system.
+    pub fn get_desktop_entry(&self, id: &DesktopEntryId) -> Option<&DesktopEntry> {
+        for scope in self.scopes.iter().rev() {
+            if let Some(desktop_entry) = scope.application_entry(id) {
+                return Some(desktop_entry);
+            }
+        }
+
+        None
     }
 }
 
@@ -400,6 +481,42 @@ mod tests {
 
         let user_scope = DesktopEntryScope::load(test_user_applications())?;
         assert!(!user_scope.application_entries.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn desktop_entries_loads_single_scopes() -> anyhow::Result<()> {
+        assert!(!DesktopEntries::load(&[test_sys_applications()])?
+            .desktop_entries()
+            .is_empty());
+        assert!(!DesktopEntries::load(&[test_user_applications()])?
+            .desktop_entries()
+            .is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn desktop_entries_loads_multiple_scopes() -> anyhow::Result<()> {
+        assert!(
+            !DesktopEntries::load(&[test_sys_applications(), test_user_applications()])?
+                .desktop_entries()
+                .is_empty()
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn desktop_entries_later_scopes_shadow_earlier() -> anyhow::Result<()> {
+        let entries = DesktopEntries::load(&[test_sys_applications(), test_user_applications()])?;
+
+        let weather_id = DesktopEntryId::parse("org.gnome.Weather.desktop")?;
+        let weather = entries.get_desktop_entry(&weather_id);
+        assert!(weather.is_some());
+        let weather = weather.unwrap();
+        assert_eq!(weather.icon(), Some("OverriddenWeatherIconId"));
 
         Ok(())
     }

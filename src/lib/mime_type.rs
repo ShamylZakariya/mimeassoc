@@ -148,11 +148,11 @@ impl MimeAssociationScope {
     }
 }
 
-struct MimeAssociationsCascade {
+struct MimeAssociations {
     scopes: Vec<MimeAssociationScope>,
 }
 
-impl MimeAssociationsCascade {
+impl MimeAssociations {
     /// Load MimeAssocations in order of the provided paths. MimeAssocations later in
     /// the list will override ones earlier in the list.
     pub fn new<P>(mimeapps_file_paths: &[(P, bool)]) -> anyhow::Result<Self>
@@ -268,7 +268,8 @@ mod tests {
         assert_eq!(result.1, vec![baz_desktop.clone()]);
 
         // multiple values
-        let result = MimeAssociationScope::parse_line("foo/bar=baz.desktop;qux.desktop;zim.desktop;")?;
+        let result =
+            MimeAssociationScope::parse_line("foo/bar=baz.desktop;qux.desktop;zim.desktop;")?;
         assert_eq!(result.0, MimeType::parse("foo/bar")?);
         assert_eq!(result.1, vec![baz_desktop, qux_desktop, zim_desktop]);
 
@@ -279,8 +280,8 @@ mod tests {
     }
 
     #[test]
-    fn mime_assocations_cascade_loads() -> anyhow::Result<()> {
-        let _ = MimeAssociationsCascade::new(&[
+    fn mime_assocations_loads() -> anyhow::Result<()> {
+        let _ = MimeAssociations::new(&[
             (test_sys_mimeapps_list(), false),
             (test_gnome_mimeapps_list(), false),
             (test_user_mimeapps_list(), false),
@@ -290,9 +291,9 @@ mod tests {
     }
 
     #[test]
-    fn mime_assocations_cascade_prefers_user_default_application_over_system_associations(
+    fn mime_assocations_prefers_user_default_application_over_system_associations(
     ) -> anyhow::Result<()> {
-        let cascade = MimeAssociationsCascade::new(&[
+        let associations = MimeAssociations::new(&[
             (test_sys_mimeapps_list(), false),
             (test_gnome_mimeapps_list(), false),
             (test_user_mimeapps_list(), false),
@@ -300,14 +301,14 @@ mod tests {
 
         let html = MimeType::parse("text/html")?;
         let firefox = DesktopEntryId::parse("org.mozilla.firefox.desktop")?;
-        assert_eq!(cascade.default_application_for(&html), Some(&firefox));
+        assert_eq!(associations.default_application_for(&html), Some(&firefox));
 
         Ok(())
     }
 
     #[test]
-    fn mime_assocations_cascade_loads_expected_added_associations() -> anyhow::Result<()> {
-        let cascade = MimeAssociationsCascade::new(&[
+    fn mime_assocations_loads_expected_added_associations() -> anyhow::Result<()> {
+        let associations = MimeAssociations::new(&[
             (test_sys_mimeapps_list(), false),
             (test_gnome_mimeapps_list(), false),
             (test_user_mimeapps_list(), false),
@@ -316,7 +317,7 @@ mod tests {
         let html = MimeType::parse("text/html")?;
         let firefox = DesktopEntryId::parse("org.mozilla.firefox.desktop")?;
         let chrome = DesktopEntryId::parse("google-chrome.desktop")?;
-        let result = cascade.added_associations_for(&html);
+        let result = associations.added_associations_for(&html);
         assert_eq!(result, Some(&vec![firefox, chrome]));
 
         Ok(())
