@@ -7,7 +7,7 @@ use std::{
 
 use is_executable::IsExecutable;
 
-use super::mime_type::MimeType;
+use super::{has_extension, mime_type::MimeType};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct DesktopEntryId {
@@ -246,23 +246,6 @@ impl PartialOrd for DesktopEntry {
     }
 }
 
-/// Return a vector of paths to the application dirs for the user.
-pub fn desktop_entry_dirs() -> anyhow::Result<Vec<PathBuf>> {
-    let xdg_data_dirs = std::env::var("XDG_DATA_DIRS")?
-        .split(':')
-        .map(PathBuf::from)
-        .collect::<Vec<_>>();
-    let user_data_dir = PathBuf::from(std::env::var("HOME")?).join(".local/share");
-    let mut data_dirs = vec![user_data_dir];
-    data_dirs.extend(xdg_data_dirs);
-
-    Ok(data_dirs
-        .iter()
-        .filter(|d| d.exists() && d.is_dir())
-        .map(|d| d.join("applications"))
-        .collect::<Vec<_>>())
-}
-
 /// Represents all the desktop entries in a particular scope, or specifically,
 /// a location on the filesystem such as /usr/share/applications
 struct DesktopEntryScope {
@@ -278,14 +261,11 @@ impl DesktopEntryScope {
         let contents = std::fs::read_dir(dir)?;
         for file in contents.flatten() {
             let file_path = file.path();
-            if let Some(extension) = file_path.extension() {
-                let extension = extension.to_str().unwrap();
-                if extension == "desktop" {
-                    if let Ok(desktop_entry) = DesktopEntry::load(file_path) {
-                        if let Some(DesktopEntryType::Application) = desktop_entry.entry_type() {
-                            application_entries
-                                .insert(desktop_entry.id().clone(), desktop_entry.clone());
-                        }
+            if has_extension(&file_path, "desktop") {
+                if let Ok(desktop_entry) = DesktopEntry::load(&file_path) {
+                    if let Some(DesktopEntryType::Application) = desktop_entry.entry_type() {
+                        application_entries
+                            .insert(desktop_entry.id().clone(), desktop_entry.clone());
                     }
                 }
             }
@@ -361,6 +341,8 @@ impl DesktopEntries {
 
 #[cfg(test)]
 mod tests {
+    use crate::mime_assoc::desktop_entry_dirs;
+
     use super::*;
 
     fn path(p: &str) -> PathBuf {
@@ -441,13 +423,6 @@ mod tests {
         assert_eq!(gedit.executable_command(), Some("gedit %U"));
         assert_eq!(gedit.icon(), Some("org.gnome.gedit"));
         assert!(gedit.appears_valid_application());
-        Ok(())
-    }
-
-    #[test]
-    fn data_dirs_returns_nonempty_vec() -> anyhow::Result<()> {
-        let dirs = desktop_entry_dirs()?;
-        assert!(!dirs.is_empty());
         Ok(())
     }
 
