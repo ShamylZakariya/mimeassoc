@@ -148,14 +148,14 @@ impl MimeAssociationScope {
     }
 }
 
-struct MimeAssociations {
+pub struct MimeAssociations {
     scopes: Vec<MimeAssociationScope>,
 }
 
 impl MimeAssociations {
     /// Load MimeAssocations in order of the provided paths. MimeAssocations later in
     /// the list will override ones earlier in the list.
-    pub fn new<P>(mimeapps_file_paths: &[(P, bool)]) -> anyhow::Result<Self>
+    pub fn load<P>(mimeapps_file_paths: &[(P, bool)]) -> anyhow::Result<Self>
     where
         P: AsRef<Path>,
     {
@@ -281,7 +281,7 @@ mod tests {
 
     #[test]
     fn mime_assocations_loads() -> anyhow::Result<()> {
-        let _ = MimeAssociations::new(&[
+        let _ = MimeAssociations::load(&[
             (test_sys_mimeapps_list(), false),
             (test_gnome_mimeapps_list(), false),
             (test_user_mimeapps_list(), false),
@@ -293,7 +293,7 @@ mod tests {
     #[test]
     fn mime_assocations_prefers_user_default_application_over_system_associations(
     ) -> anyhow::Result<()> {
-        let associations = MimeAssociations::new(&[
+        let associations = MimeAssociations::load(&[
             (test_sys_mimeapps_list(), false),
             (test_gnome_mimeapps_list(), false),
             (test_user_mimeapps_list(), false),
@@ -308,7 +308,7 @@ mod tests {
 
     #[test]
     fn mime_assocations_loads_expected_added_associations() -> anyhow::Result<()> {
-        let associations = MimeAssociations::new(&[
+        let associations = MimeAssociations::load(&[
             (test_sys_mimeapps_list(), false),
             (test_gnome_mimeapps_list(), false),
             (test_user_mimeapps_list(), false),

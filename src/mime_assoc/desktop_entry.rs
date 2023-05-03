@@ -47,7 +47,7 @@ impl Ord for DesktopEntryId {
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-enum DesktopEntryType {
+pub enum DesktopEntryType {
     Application,
     Other,
 }
@@ -84,7 +84,7 @@ impl DesktopEntrySections {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct DesktopEntry {
+pub struct DesktopEntry {
     path: PathBuf,
     fields: HashMap<String, String>,
     mime_types: Vec<MimeType>,
@@ -162,34 +162,34 @@ impl DesktopEntry {
         })
     }
 
-    fn name(&self) -> Option<&str> {
+    pub fn name(&self) -> Option<&str> {
         self.fields.get("Name").map(|v| v.as_str())
     }
 
-    fn id(&self) -> &DesktopEntryId {
+    pub fn id(&self) -> &DesktopEntryId {
         &self.id
     }
 
-    fn localised_name(&self, locale: &str) -> Option<&str> {
+    pub fn localised_name(&self, locale: &str) -> Option<&str> {
         let field_name = format!("Name[{}]", locale);
         self.fields.get(&field_name).map(|v| v.as_str())
     }
 
-    fn mime_types(&self) -> &Vec<MimeType> {
+    pub fn mime_types(&self) -> &Vec<MimeType> {
         &self.mime_types
     }
 
-    fn icon(&self) -> Option<&str> {
+    pub fn icon(&self) -> Option<&str> {
         self.fields.get("Icon").map(|v| v.as_str())
     }
 
-    fn executable_command(&self) -> Option<&str> {
+    pub fn executable_command(&self) -> Option<&str> {
         self.fields.get("Exec").map(|v| v.as_str())
     }
 
     /// Return the full path to the executable launched by executable_command(), or
     /// an error if the executable is missing, or exists, but is not executable.
-    fn executable(&self) -> anyhow::Result<PathBuf> {
+    pub fn executable(&self) -> anyhow::Result<PathBuf> {
         if let Some(executable) = self.executable_command() {
             let executable = if let Some(first_space_idx) = executable.find(' ') {
                 &executable[0..first_space_idx]
@@ -220,14 +220,14 @@ impl DesktopEntry {
         }
     }
 
-    fn entry_type(&self) -> Option<DesktopEntryType> {
+    pub fn entry_type(&self) -> Option<DesktopEntryType> {
         self.fields.get("Type").map(|t| DesktopEntryType::parse(t))
     }
 
     /// Returns true if this appears to be a valid desktop entry,
     /// e.g., has Name/Type/Exec/Icon fields, and the exec refers
     /// to some kind of executable
-    fn appears_valid_application(&self) -> bool {
+    pub fn appears_valid_application(&self) -> bool {
         self.name().is_some()
             && self.entry_type() == Some(DesktopEntryType::Application)
             && self.executable().is_ok()
@@ -281,7 +281,7 @@ impl DesktopEntryScope {
     }
 }
 
-struct DesktopEntries {
+pub struct DesktopEntries {
     scopes: Vec<DesktopEntryScope>,
 }
 
