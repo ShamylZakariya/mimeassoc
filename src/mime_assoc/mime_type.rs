@@ -153,8 +153,8 @@ pub struct MimeAssociations {
 }
 
 impl MimeAssociations {
-    /// Load MimeAssocations in order of the provided paths. MimeAssocations later in
-    /// the list will override ones earlier in the list.
+    /// Load MimeAssocations in order of the provided paths. MimeAssocations earlier in
+    /// the list will override ones later in the list.
     pub fn load<P>(mimeapps_file_paths: &[(P, bool)]) -> anyhow::Result<Self>
     where
         P: AsRef<Path>,
@@ -169,7 +169,7 @@ impl MimeAssociations {
 
     pub fn mime_types(&self) -> Vec<&MimeType> {
         let mut mime_types = Vec::new();
-        for scope in self.scopes.iter() {
+        for scope in self.scopes.iter().rev() {
             for (mime_type, _) in scope.default_applications.iter() {
                 mime_types.push(mime_type);
             }
@@ -179,7 +179,7 @@ impl MimeAssociations {
     }
 
     pub fn default_application_for(&self, mime_type: &MimeType) -> Option<&DesktopEntryId> {
-        for scope in self.scopes.iter().rev() {
+        for scope in self.scopes.iter() {
             if let Some(id) = scope.default_applications.get(mime_type) {
                 return Some(id);
             }
@@ -188,7 +188,7 @@ impl MimeAssociations {
     }
 
     pub fn added_associations_for(&self, mime_type: &MimeType) -> Option<&Vec<DesktopEntryId>> {
-        for scope in self.scopes.iter().rev() {
+        for scope in self.scopes.iter() {
             if let Some(id) = scope.added_associations.get(mime_type) {
                 return Some(id);
             }
@@ -294,9 +294,9 @@ mod tests {
     fn mime_assocations_prefers_user_default_application_over_system_associations(
     ) -> anyhow::Result<()> {
         let associations = MimeAssociations::load(&[
-            (test_sys_mimeapps_list(), false),
-            (test_gnome_mimeapps_list(), false),
             (test_user_mimeapps_list(), false),
+            (test_gnome_mimeapps_list(), false),
+            (test_sys_mimeapps_list(), false),
         ])?;
 
         let html = MimeType::parse("text/html")?;
@@ -309,9 +309,9 @@ mod tests {
     #[test]
     fn mime_assocations_loads_expected_added_associations() -> anyhow::Result<()> {
         let associations = MimeAssociations::load(&[
-            (test_sys_mimeapps_list(), false),
-            (test_gnome_mimeapps_list(), false),
             (test_user_mimeapps_list(), false),
+            (test_gnome_mimeapps_list(), false),
+            (test_sys_mimeapps_list(), false),
         ])?;
 
         let html = MimeType::parse("text/html")?;

@@ -77,7 +77,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{
+        desktop_entry::{DesktopEntries, DesktopEntry, DesktopEntryId},
+        mime_type::{MimeAssociations, MimeType},
+        *,
+    };
 
     #[test]
     fn desktop_entry_dirs_returns_nonempty_vec() -> anyhow::Result<()> {
@@ -115,6 +119,123 @@ mod tests {
             assert!(path.is_file());
             assert!(!path.is_dir());
         }
+
+        Ok(())
+    }
+
+    fn path(p: &str) -> PathBuf {
+        let cwd = std::env::current_dir().unwrap();
+        cwd.join(p)
+    }
+
+    fn test_mimeapps_lists_paths() -> Vec<(PathBuf, bool)> {
+        vec![
+            (path("test-data/config/mimeapps.list"), true),
+            (
+                path("test-data/usr/share/applications/gnome-mimeapps.list"),
+                false,
+            ),
+            (
+                path("test-data/usr/share/applications/mimeapps.list"),
+                false,
+            ),
+        ]
+    }
+
+    fn test_desktop_entry_dirs() -> Vec<PathBuf> {
+        vec![
+            path("test-data/local/share/applications"),
+            path("test-data/usr/share/applications"),
+        ]
+    }
+
+    fn default_application_for_mime_type<'a>(
+        mime_type: &MimeType,
+        mime_associations: &'a MimeAssociations,
+        desktop_entries: &'a DesktopEntries,
+    ) -> Option<&'a DesktopEntry> {
+        if let Some(desktop_entry_id) = mime_associations.default_application_for(&mime_type) {
+            if let Some(desktop_entry) = desktop_entries.get_desktop_entry(desktop_entry_id) {
+                return Some(desktop_entry);
+            }
+        }
+        None
+    }
+
+    #[test]
+    fn makes_correct_mime_to_desktop_associations() -> anyhow::Result<()> {
+        let mime_associations = MimeAssociations::load(&test_mimeapps_lists_paths())?;
+        let desktop_entries = DesktopEntries::load(&test_desktop_entry_dirs())?;
+
+        let text_plain = MimeType::parse("text/plain")?;
+        let audio_m4a = MimeType::parse("audio/m4a")?;
+        let image_bmp = MimeType::parse("image/bmp")?;
+        let image_tiff = MimeType::parse("image/tiff")?;
+        let image_pdf = MimeType::parse("image/pdf")?;
+
+        // totem is assigned to audio/m4a in /usr/share/applications/mimeapps.list
+        let totem_id = DesktopEntryId::parse("org.gnome.Totem.desktop")?;
+        // text editor is assigned to text/plain in /usr/share/applications/gnome-mimeapps.list, overriding inherited
+        let text_editor = DesktopEntryId::parse("org.gnome.TextEditor.desktop")?;
+        // photopea is assigned in config/mimeapps.list overriding inherited
+        let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
+        // evince is assigned to image/tiff in /usr/share/applications/mimeapps.list, and image/pdf in config/mimeapps.list
+        let evince_id = DesktopEntryId::parse("org.gnome.Evince.desktop")?;
+
+        // assert mime -> desktop entry ids work as expected
+        assert_eq!(
+            mime_associations.default_application_for(&text_plain),
+            Some(&text_editor)
+        );
+        assert_eq!(
+            mime_associations.default_application_for(&image_bmp),
+            Some(&photopea_id)
+        );
+        assert_eq!(
+            mime_associations.default_application_for(&audio_m4a),
+            Some(&totem_id)
+        );
+        assert_eq!(
+            mime_associations.default_application_for(&image_tiff),
+            Some(&evince_id)
+        );
+
+        assert_eq!(
+            mime_associations.default_application_for(&image_pdf),
+            Some(&evince_id)
+        );
+
+        // now look these up in desktop entries and verify
+        assert_eq!(
+            default_application_for_mime_type(&text_plain, &mime_associations, &desktop_entries)
+                .unwrap()
+                .id(),
+            &text_editor
+        );
+        assert_eq!(
+            default_application_for_mime_type(&image_bmp, &mime_associations, &desktop_entries)
+                .unwrap()
+                .id(),
+            &photopea_id
+        );
+        assert_eq!(
+            default_application_for_mime_type(&audio_m4a, &mime_associations, &desktop_entries)
+                .unwrap()
+                .id(),
+            &totem_id
+        );
+        assert_eq!(
+            default_application_for_mime_type(&image_tiff, &mime_associations, &desktop_entries)
+                .unwrap()
+                .id(),
+            &evince_id
+        );
+        assert_eq!(
+            default_application_for_mime_type(&image_pdf, &mime_associations, &desktop_entries)
+                .unwrap()
+                .id(),
+            &evince_id
+        );
 
         Ok(())
     }

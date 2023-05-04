@@ -286,6 +286,8 @@ pub struct DesktopEntries {
 }
 
 impl DesktopEntries {
+    /// Load desktop entries from the directory paths provided, with desktop entries in
+    /// earlier dirs overriding those in later.
     pub fn load<P>(scope_paths: &[P]) -> anyhow::Result<Self>
     where
         P: AsRef<Path>,
@@ -298,13 +300,13 @@ impl DesktopEntries {
         Ok(Self { scopes })
     }
 
-    /// Returns all desktop entries, with later scopes overriding earlier ones.
+    /// Returns all desktop entries, with earlier scopes overriding later ones.
     /// E.g., if a user has a desktop entry which overrides a system one, the user
     /// one will override the system one
     pub fn desktop_entries(&self) -> Vec<&DesktopEntry> {
         let mut table: HashMap<&DesktopEntryId, &DesktopEntry> = HashMap::new();
 
-        for scope in self.scopes.iter() {
+        for scope in self.scopes.iter().rev() {
             for application in scope.application_entries.iter() {
                 table.insert(application.0, application.1);
             }
@@ -324,10 +326,10 @@ impl DesktopEntries {
     }
 
     /// Lookup the DesktopEntry with the specified identifier, returning the one
-    /// latest in the list provided at construction time, e.g., with user entries
+    /// earliest in the list provided at construction time, e.g., with user entries
     /// overriding system.
     pub fn get_desktop_entry(&self, id: &DesktopEntryId) -> Option<&DesktopEntry> {
-        for scope in self.scopes.iter().rev() {
+        for scope in self.scopes.iter() {
             if let Some(desktop_entry) = scope.application_entry(id) {
                 return Some(desktop_entry);
             }
@@ -475,7 +477,7 @@ mod tests {
     #[test]
     fn desktop_entries_loads_multiple_scopes() -> anyhow::Result<()> {
         assert!(
-            !DesktopEntries::load(&[test_sys_applications(), test_user_applications()])?
+            !DesktopEntries::load(&[test_user_applications(), test_sys_applications()])?
                 .desktop_entries()
                 .is_empty()
         );
@@ -485,7 +487,7 @@ mod tests {
 
     #[test]
     fn desktop_entries_later_scopes_shadow_earlier() -> anyhow::Result<()> {
-        let entries = DesktopEntries::load(&[test_sys_applications(), test_user_applications()])?;
+        let entries = DesktopEntries::load(&[test_user_applications(), test_sys_applications()])?;
 
         let weather_id = DesktopEntryId::parse("org.gnome.Weather.desktop")?;
         let weather = entries.get_desktop_entry(&weather_id);

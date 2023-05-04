@@ -17,3 +17,5 @@ x-scheme-handler/https=org.mozilla.firefox.desktop
 image/pdf=org.gnome.Evince.desktop
 x-scheme-handler/jetbrains=jetbrains-toolbox.desktop
 x-scheme-handler/fleet=jetbrains-fleet.desktop
+image/png=org.gimp.GIMP.desktop;
+image/bmp=photopea.desktop
