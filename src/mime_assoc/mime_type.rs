@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     fmt::Display,
     fs::File,
-    io::{self, BufRead},
+    io::{self, BufRead, Write},
     path::{Path, PathBuf},
 };
 
@@ -42,6 +42,7 @@ impl Display for MimeType {
     }
 }
 
+#[derive(PartialEq, Eq)]
 enum MimeAssociationsSections {
     AddedAssociations,
     DefaultApplications,
@@ -58,9 +59,16 @@ impl MimeAssociationsSections {
             None
         }
     }
+
+    fn to_string(&self) -> &'static str {
+        match self {
+            MimeAssociationsSections::AddedAssociations => "[Added Associations]",
+            MimeAssociationsSections::DefaultApplications => "[Default Applications]",
+        }
+    }
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq, Eq)]
 pub struct MimeAssociationScope {
     file: PathBuf,
     is_writable: bool,
@@ -69,7 +77,7 @@ pub struct MimeAssociationScope {
 }
 
 impl MimeAssociationScope {
-    fn new<P>(mimeapps_file_path: P, is_writable: bool) -> anyhow::Result<Self>
+    fn load<P>(mimeapps_file_path: P, is_writable: bool) -> anyhow::Result<Self>
     where
         P: AsRef<Path>,
     {
@@ -146,6 +154,67 @@ impl MimeAssociationScope {
 
         Ok((mime_type, ids))
     }
+
+    fn generate_added_associations_line(
+        mime_type: &MimeType,
+        desktop_entries: &[DesktopEntryId],
+    ) -> String {
+        let desktop_entry_strings = desktop_entries
+            .iter()
+            .map(|d| d.to_string())
+            .collect::<Vec<_>>()
+            .join(";");
+        format!("{}={};", mime_type, desktop_entry_strings)
+    }
+
+    fn generate_default_application_line(
+        mime_type: &MimeType,
+        desktop_entry: &DesktopEntryId,
+    ) -> String {
+        format!("{}={}", mime_type, desktop_entry)
+    }
+
+    fn write<P>(&self, path: P) -> anyhow::Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        let output_file = File::create(path)?;
+
+        // write the added associations
+        if !self.added_associations.is_empty() {
+            writeln!(
+                &output_file,
+                "{}",
+                MimeAssociationsSections::AddedAssociations.to_string()
+            )?;
+            for (mime_type, desktop_entries) in self.added_associations.iter() {
+                writeln!(
+                    &output_file,
+                    "{};",
+                    Self::generate_added_associations_line(mime_type, desktop_entries)
+                )?;
+            }
+            writeln!(&output_file)?;
+        }
+
+        // write the default applications
+        if !self.default_applications.is_empty() {
+            writeln!(
+                &output_file,
+                "{}",
+                MimeAssociationsSections::DefaultApplications.to_string()
+            )?;
+            for (mime_type, desktop_entry) in self.default_applications.iter() {
+                writeln!(
+                    &output_file,
+                    "{}",
+                    Self::generate_default_application_line(mime_type, desktop_entry)
+                )?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 pub struct MimeAssociations {
@@ -161,7 +230,7 @@ impl MimeAssociations {
     {
         let mut scopes = Vec::new();
         for (file_path, is_writable) in mimeapps_file_paths.iter() {
-            scopes.push(MimeAssociationScope::new(file_path, *is_writable)?);
+            scopes.push(MimeAssociationScope::load(file_path, *is_writable)?);
         }
 
         Ok(Self { scopes })
@@ -220,6 +289,16 @@ mod tests {
         cwd.join(p)
     }
 
+    fn delete_file<P>(path: P)
+    where
+        P: AsRef<Path>,
+    {
+        let path = path.as_ref();
+        if path.exists() {
+            let _ = std::fs::remove_file(&path);
+        }
+    }
+
     #[test]
     fn mime_type_parse() -> anyhow::Result<()> {
         assert!(MimeType::parse("foo/bar").is_ok());
@@ -235,14 +314,14 @@ mod tests {
 
     #[test]
     fn mime_associations_load() {
-        assert!(MimeAssociationScope::new(test_sys_mimeapps_list(), false).is_ok());
-        assert!(MimeAssociationScope::new(test_gnome_mimeapps_list(), false).is_ok());
-        assert!(MimeAssociationScope::new(test_user_mimeapps_list(), false).is_ok());
+        assert!(MimeAssociationScope::load(test_sys_mimeapps_list(), false).is_ok());
+        assert!(MimeAssociationScope::load(test_gnome_mimeapps_list(), false).is_ok());
+        assert!(MimeAssociationScope::load(test_user_mimeapps_list(), false).is_ok());
     }
 
     #[test]
     fn mime_associations_load_expected_data() -> anyhow::Result<()> {
-        let associations = MimeAssociationScope::new(test_user_mimeapps_list(), false)?;
+        let associations = MimeAssociationScope::load(test_user_mimeapps_list(), false)?;
 
         let png = MimeType::parse("image/png")?;
         let gimp = DesktopEntryId::parse("org.gimp.GIMP.desktop")?;
@@ -319,6 +398,61 @@ mod tests {
         let chrome = DesktopEntryId::parse("google-chrome.desktop")?;
         let result = associations.added_associations_for(&html);
         assert_eq!(result, Some(&vec![firefox, chrome]));
+
+        Ok(())
+    }
+
+    // serialization test
+
+    #[test]
+    fn added_associations_line_roundtrip_works() -> anyhow::Result<()> {
+        let input = "image/png=org.gimp.GIMP.desktop;";
+        let (mime_type, desktop_entries) = MimeAssociationScope::parse_line(&input)?;
+        let output =
+            MimeAssociationScope::generate_added_associations_line(&mime_type, &desktop_entries);
+        assert_eq!(input, &output);
+
+        let input = "x-scheme-handler/https=org.mozilla.firefox.desktop;google-chrome.desktop;";
+        let (mime_type, desktop_entries) = MimeAssociationScope::parse_line(&input)?;
+        let output =
+            MimeAssociationScope::generate_added_associations_line(&mime_type, &desktop_entries);
+        assert_eq!(input, &output);
+        Ok(())
+    }
+
+    #[test]
+    fn default_applications_line_roundtrip_works() -> anyhow::Result<()> {
+        let input = "text/html=org.mozilla.firefox.desktop";
+        let (mime_type, desktop_entries) = MimeAssociationScope::parse_line(&input)?;
+        let output = MimeAssociationScope::generate_default_application_line(
+            &mime_type,
+            &desktop_entries[0],
+        );
+        assert_eq!(input, &output);
+        Ok(())
+    }
+
+    #[test]
+    fn mimeassociationscope_roundtrip_works() -> anyhow::Result<()> {
+        let input_path = path("test-data/config/mimeapps.list");
+        let output_path = path("test-data/config/mimeapps.list.copy");
+        delete_file(&output_path);
+
+        let input_mimeassociations = MimeAssociationScope::load(&input_path, true)?;
+        input_mimeassociations.write(&output_path)?;
+
+        let copy_mimeassociations = MimeAssociationScope::load(&output_path, true)?;
+
+        assert_eq!(
+            input_mimeassociations.added_associations,
+            copy_mimeassociations.added_associations
+        );
+        assert_eq!(
+            input_mimeassociations.default_applications,
+            copy_mimeassociations.default_applications
+        );
+
+        delete_file(&output_path);
 
         Ok(())
     }

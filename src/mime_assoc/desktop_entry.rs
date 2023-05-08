@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    fmt::Display,
     fs::File,
     io::{self, BufRead},
     path::{Path, PathBuf},
@@ -43,6 +44,12 @@ impl PartialOrd for DesktopEntryId {
 impl Ord for DesktopEntryId {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.desktop_entry.cmp(&other.desktop_entry)
+    }
+}
+
+impl Display for DesktopEntryId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.desktop_entry)
     }
 }
 

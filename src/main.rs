@@ -45,8 +45,8 @@ fn main() {
     println!("\n\nEnumerating default applications for registered mime types:\n");
     // Now, a sanity check in lieu of proper testing
     for mime_type in mime_assoc.mime_types() {
-        if let Some(desktop_entry_id) = mime_assoc.default_application_for(&mime_type) {
-            if let Some(desktop_entry) = desktop_entries.get_desktop_entry(&desktop_entry_id) {
+        if let Some(desktop_entry_id) = mime_assoc.default_application_for(mime_type) {
+            if let Some(desktop_entry) = desktop_entries.get_desktop_entry(desktop_entry_id) {
                 println!(
                     "\tDefault application for MimeType: {} is {}",
                     &mime_type,
