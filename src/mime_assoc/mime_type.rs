@@ -71,6 +71,7 @@ impl MimeAssociationsSections {
 #[derive(Default, PartialEq, Eq)]
 pub struct MimeAssociationScope {
     file: PathBuf,
+    is_user_customizable: bool,
     added_associations: HashMap<MimeType, Vec<DesktopEntryId>>,
     default_applications: HashMap<MimeType, DesktopEntryId>,
 }
@@ -80,7 +81,8 @@ impl MimeAssociationScope {
     where
         P: AsRef<Path>,
     {
-        let mimeapps_file = File::open(mimeapps_file_path.as_ref())?;
+        let mimeapps_file_path = mimeapps_file_path.as_ref();
+        let mimeapps_file = File::open(mimeapps_file_path)?;
         let line_buffer = io::BufReader::new(mimeapps_file).lines();
         let mut added_associations = HashMap::new();
         let mut default_applications = HashMap::new();
@@ -120,8 +122,11 @@ impl MimeAssociationScope {
             }
         }
 
+        let is_user_customizable = mimeapps_file_path == super::user_mimeapps_list_path()?;
+
         Ok(MimeAssociationScope {
-            file: PathBuf::from(mimeapps_file_path.as_ref()),
+            file: PathBuf::from(mimeapps_file_path),
+            is_user_customizable,
             added_associations,
             default_applications,
         })

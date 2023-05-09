@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    fs::File,
+    path::{Path, PathBuf},
+};
 
 #[allow(dead_code)]
 pub mod desktop_entry;
@@ -40,6 +43,16 @@ where
     }
 
     false
+}
+
+/// Returns the path to the user mimeapps.list file. If none exists, it will be created.
+pub fn user_mimeapps_list_path() -> anyhow::Result<PathBuf> {
+    let path = PathBuf::from(std::env::var("HOME")?).join(".config/mimeapps.list");
+    if !path.exists() {
+        File::create(&path)?;
+    }
+
+    Ok(path)
 }
 
 /// Return a vector of paths to the mimeapps.list files for the user
