@@ -186,6 +186,15 @@ impl DesktopEntry {
         &self.mime_types
     }
 
+    pub fn can_open_mime_type(&self, mime_type: &MimeType) -> bool {
+        for mt in self.mime_types.iter() {
+            if mt == mime_type {
+                return true;
+            }
+        }
+        false
+    }
+
     pub fn icon(&self) -> Option<&str> {
         self.fields.get("Icon").map(|v| v.as_str())
     }
@@ -344,6 +353,18 @@ impl DesktopEntries {
 
         None
     }
+
+    /// Look up the desktop entries which can open a specific mimetype
+    pub fn get_desktop_entries_for_mimetype(&self, mime_type: &MimeType) -> Vec<&DesktopEntry> {
+        let mut entries = vec![];
+        for desktop_entry in self.desktop_entries() {
+            if desktop_entry.can_open_mime_type(mime_type) {
+                entries.push(desktop_entry);
+            }
+        }
+
+        entries
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -424,11 +445,13 @@ mod tests {
     #[test]
     fn desktop_entry_parses_correctly() -> anyhow::Result<()> {
         let gedit = DesktopEntry::load(test_sys_gedit())?;
+        let text_plain = MimeType::parse("text/plain")?;
 
         assert_eq!(gedit.name(), Some("gedit"));
         assert_eq!(gedit.localised_name("es"), Some("gedit"));
         assert_eq!(gedit.localised_name("pa"), Some("ਜੀ-ਸੰਪਾਦਕ"));
-        assert_eq!(gedit.mime_types(), &vec![MimeType::parse("text/plain")?]);
+        assert!(gedit.can_open_mime_type(&text_plain));
+        assert_eq!(gedit.mime_types(), &vec![text_plain]);
         assert_eq!(gedit.executable_command(), Some("gedit %U"));
         assert_eq!(gedit.icon(), Some("org.gnome.gedit"));
         assert!(gedit.appears_valid_application());
@@ -501,6 +524,50 @@ mod tests {
         assert!(weather.is_some());
         let weather = weather.unwrap();
         assert_eq!(weather.icon(), Some("OverriddenWeatherIconId"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn desktop_entries_looks_up_correct_openers_for_mime_type() -> anyhow::Result<()> {
+        let entries = DesktopEntries::load(&[test_user_applications(), test_sys_applications()])?;
+
+        let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
+        let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
+        let image_bmp = MimeType::parse("image/bmp")?;
+        let image_jpeg = MimeType::parse("image/jpeg")?;
+        assert_eq!(
+            entries.get_desktop_entries_for_mimetype(&image_bmp),
+            vec![photopea]
+        );
+
+        assert_eq!(
+            entries.get_desktop_entries_for_mimetype(&image_jpeg),
+            vec![photopea]
+        );
+
+        // evince comes from sys applications, and it ALSO handles tiff
+        let evince_id = DesktopEntryId::parse("org.gnome.Evince.desktop")?;
+        let evince = entries.get_desktop_entry(&evince_id).unwrap();
+        let image_tiff = MimeType::parse("image/tiff")?;
+        assert!(entries
+            .get_desktop_entries_for_mimetype(&image_tiff)
+            .contains(&photopea));
+        assert!(entries
+            .get_desktop_entries_for_mimetype(&image_tiff)
+            .contains(&evince));
+
+        let gedit_id = DesktopEntryId::parse("org.gnome.gedit.desktop")?;
+        let gedit = entries.get_desktop_entry(&gedit_id).unwrap();
+        let texteditor_id = DesktopEntryId::parse("org.gnome.TextEditor.desktop")?;
+        let texteditor = entries.get_desktop_entry(&texteditor_id).unwrap();
+        let text_plain = MimeType::parse("text/plain")?;
+        assert!(entries
+            .get_desktop_entries_for_mimetype(&text_plain)
+            .contains(&gedit),);
+        assert!(entries
+            .get_desktop_entries_for_mimetype(&text_plain)
+            .contains(&texteditor),);
 
         Ok(())
     }
