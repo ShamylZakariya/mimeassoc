@@ -71,13 +71,12 @@ impl MimeAssociationsSections {
 #[derive(Default, PartialEq, Eq)]
 pub struct MimeAssociationScope {
     file: PathBuf,
-    is_writable: bool,
     added_associations: HashMap<MimeType, Vec<DesktopEntryId>>,
     default_applications: HashMap<MimeType, DesktopEntryId>,
 }
 
 impl MimeAssociationScope {
-    fn load<P>(mimeapps_file_path: P, is_writable: bool) -> anyhow::Result<Self>
+    fn load<P>(mimeapps_file_path: P) -> anyhow::Result<Self>
     where
         P: AsRef<Path>,
     {
@@ -123,7 +122,6 @@ impl MimeAssociationScope {
 
         Ok(MimeAssociationScope {
             file: PathBuf::from(mimeapps_file_path.as_ref()),
-            is_writable,
             added_associations,
             default_applications,
         })
@@ -224,13 +222,13 @@ pub struct MimeAssociations {
 impl MimeAssociations {
     /// Load MimeAssocations in order of the provided paths. MimeAssocations earlier in
     /// the list will override ones later in the list.
-    pub fn load<P>(mimeapps_file_paths: &[(P, bool)]) -> anyhow::Result<Self>
+    pub fn load<P>(mimeapps_file_paths: &[P]) -> anyhow::Result<Self>
     where
         P: AsRef<Path>,
     {
         let mut scopes = Vec::new();
-        for (file_path, is_writable) in mimeapps_file_paths.iter() {
-            scopes.push(MimeAssociationScope::load(file_path, *is_writable)?);
+        for file_path in mimeapps_file_paths.iter() {
+            scopes.push(MimeAssociationScope::load(file_path)?);
         }
 
         Ok(Self { scopes })
@@ -314,14 +312,14 @@ mod tests {
 
     #[test]
     fn mime_associations_load() {
-        assert!(MimeAssociationScope::load(test_sys_mimeapps_list(), false).is_ok());
-        assert!(MimeAssociationScope::load(test_gnome_mimeapps_list(), false).is_ok());
-        assert!(MimeAssociationScope::load(test_user_mimeapps_list(), false).is_ok());
+        assert!(MimeAssociationScope::load(test_sys_mimeapps_list()).is_ok());
+        assert!(MimeAssociationScope::load(test_gnome_mimeapps_list()).is_ok());
+        assert!(MimeAssociationScope::load(test_user_mimeapps_list()).is_ok());
     }
 
     #[test]
     fn mime_associations_load_expected_data() -> anyhow::Result<()> {
-        let associations = MimeAssociationScope::load(test_user_mimeapps_list(), false)?;
+        let associations = MimeAssociationScope::load(test_user_mimeapps_list())?;
 
         let png = MimeType::parse("image/png")?;
         let gimp = DesktopEntryId::parse("org.gimp.GIMP.desktop")?;
@@ -361,9 +359,9 @@ mod tests {
     #[test]
     fn mime_assocations_loads() -> anyhow::Result<()> {
         let _ = MimeAssociations::load(&[
-            (test_sys_mimeapps_list(), false),
-            (test_gnome_mimeapps_list(), false),
-            (test_user_mimeapps_list(), false),
+            test_sys_mimeapps_list(),
+            test_gnome_mimeapps_list(),
+            test_user_mimeapps_list(),
         ])?;
 
         Ok(())
@@ -373,9 +371,9 @@ mod tests {
     fn mime_assocations_prefers_user_default_application_over_system_associations(
     ) -> anyhow::Result<()> {
         let associations = MimeAssociations::load(&[
-            (test_user_mimeapps_list(), false),
-            (test_gnome_mimeapps_list(), false),
-            (test_sys_mimeapps_list(), false),
+            test_user_mimeapps_list(),
+            test_gnome_mimeapps_list(),
+            test_sys_mimeapps_list(),
         ])?;
 
         let html = MimeType::parse("text/html")?;
@@ -388,9 +386,9 @@ mod tests {
     #[test]
     fn mime_assocations_loads_expected_added_associations() -> anyhow::Result<()> {
         let associations = MimeAssociations::load(&[
-            (test_user_mimeapps_list(), false),
-            (test_gnome_mimeapps_list(), false),
-            (test_sys_mimeapps_list(), false),
+            test_user_mimeapps_list(),
+            test_gnome_mimeapps_list(),
+            test_sys_mimeapps_list(),
         ])?;
 
         let html = MimeType::parse("text/html")?;
@@ -438,10 +436,10 @@ mod tests {
         let output_path = path("test-data/config/mimeapps.list.copy");
         delete_file(&output_path);
 
-        let input_mimeassociations = MimeAssociationScope::load(&input_path, true)?;
+        let input_mimeassociations = MimeAssociationScope::load(&input_path)?;
         input_mimeassociations.write(&output_path)?;
 
-        let copy_mimeassociations = MimeAssociationScope::load(&output_path, true)?;
+        let copy_mimeassociations = MimeAssociationScope::load(&output_path)?;
 
         assert_eq!(
             input_mimeassociations.added_associations,

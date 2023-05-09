@@ -128,17 +128,11 @@ mod tests {
         cwd.join(p)
     }
 
-    fn test_mimeapps_lists_paths() -> Vec<(PathBuf, bool)> {
+    fn test_mimeapps_lists_paths() -> Vec<PathBuf> {
         vec![
-            (path("test-data/config/mimeapps.list"), true),
-            (
-                path("test-data/usr/share/applications/gnome-mimeapps.list"),
-                false,
-            ),
-            (
-                path("test-data/usr/share/applications/mimeapps.list"),
-                false,
-            ),
+            path("test-data/config/mimeapps.list"),
+            path("test-data/usr/share/applications/gnome-mimeapps.list"),
+            path("test-data/usr/share/applications/mimeapps.list"),
         ]
     }
 

@@ -15,13 +15,7 @@ fn main() {
         Err(e) => panic!("Unable to load mimeapps_lists_paths: {:?}", e),
     };
 
-    // Right now we're loading all MimeAssociations as read-only
-    let mime_assoc_load_info = mimeapps_lists
-        .iter()
-        .map(|p| (p, false))
-        .collect::<Vec<_>>();
-
-    let mime_assoc = match MimeAssociations::load(&mime_assoc_load_info) {
+    let mime_assoc = match MimeAssociations::load(&mimeapps_lists) {
         Ok(mime_assoc) => mime_assoc,
         Err(e) => panic!("Unable to load MimeAssociations: {:?}", e),
     };
