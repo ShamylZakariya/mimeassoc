@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use super::desktop_entry::DesktopEntryId;
+use super::desktop_entry::{DesktopEntry, DesktopEntryId};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct MimeType {
@@ -267,12 +267,64 @@ impl MimeAssociations {
         }
         None
     }
+
+    /// Make the provided DesktopEntry the default handler for the given mime type.
+    /// Will return an error if the DesktopEntry isn't a valid application, or if it doesn't
+    /// handle the specified mime type, or if there are no user customizable MimeAssociationScopes
+    /// in the chain.
+    pub fn set_default_handler_for_mime_type(
+        &mut self,
+        mime_type: &MimeType,
+        desktop_entry: &DesktopEntry,
+    ) -> anyhow::Result<()> {
+        if !desktop_entry.appears_valid_application() {
+            anyhow::bail!(
+                "DesktopEntry \"{}\" does not appear to be a valid launchable application",
+                desktop_entry.id()
+            );
+        }
+
+        if !desktop_entry.can_open_mime_type(mime_type) {
+            anyhow::bail!(
+                "DesktopEntry \"{}\" does not support mime type \"{}\"",
+                desktop_entry.id(),
+                mime_type
+            );
+        }
+
+        for scope in self.scopes.iter_mut() {
+            if scope.is_user_customizable {
+                scope
+                    .default_applications
+                    .insert(mime_type.clone(), desktop_entry.id().clone());
+
+                return Ok(());
+            }
+        }
+
+        anyhow::bail!("No user customizable scopes in MimeAssociation scope chain");
+    }
+
+    /// Make the provided DesktopEnrtry the default handler for all its supported mimetypes.
+    /// Will return an error if the desktop entry isn't a valid application, or if there are
+    /// no user customizable scoped in the MimeAssociationScope chain
+    pub fn make_desktop_entry_default_handler_of_its_supported_mime_types(
+        &mut self,
+        desktop_entry: &DesktopEntry,
+    ) -> anyhow::Result<()> {
+        for mime_type in desktop_entry.mime_types() {
+            self.set_default_handler_for_mime_type(mime_type, desktop_entry)?;
+        }
+        Ok(())
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
+    use crate::mime_assoc::desktop_entry::DesktopEntries;
+
     use super::*;
 
     fn test_sys_mimeapps_list() -> PathBuf {
@@ -285,6 +337,14 @@ mod tests {
 
     fn test_user_mimeapps_list() -> PathBuf {
         path("test-data/config/mimeapps.list")
+    }
+
+    fn test_user_applications() -> PathBuf {
+        path("test-data/local/share/applications")
+    }
+
+    fn test_sys_applications() -> PathBuf {
+        path("test-data/usr/share/applications")
     }
 
     fn path(p: &str) -> PathBuf {
@@ -300,6 +360,18 @@ mod tests {
         if path.exists() {
             let _ = std::fs::remove_file(&path);
         }
+    }
+
+    fn create_test_entries_and_associations() -> anyhow::Result<(DesktopEntries, MimeAssociations)>
+    {
+        let entries = DesktopEntries::load(&[test_user_applications(), test_sys_applications()])?;
+
+        let associations = MimeAssociations::load(&[
+            test_user_mimeapps_list(),
+            test_gnome_mimeapps_list(),
+            test_sys_mimeapps_list(),
+        ])?;
+        Ok((entries, associations))
     }
 
     #[test]
@@ -456,6 +528,70 @@ mod tests {
         );
 
         delete_file(&output_path);
+
+        Ok(())
+    }
+
+    #[test]
+    fn make_default_handler_works_for_valid_usecases() -> anyhow::Result<()> {
+        let (entries, mut associations) = create_test_entries_and_associations()?;
+
+        // we need to make first scope user writable for testing
+        associations.scopes[0].is_user_customizable = true;
+
+        let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
+        let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
+        let evince_id = DesktopEntryId::parse("org.gnome.Evince.desktop")?;
+        let image_tiff = MimeType::parse("image/tiff")?;
+
+        // we're going to verify Evince is set to image/tiff
+        assert_eq!(
+            associations.default_application_for(&image_tiff),
+            Some(&evince_id)
+        );
+
+        // assign photopea
+        associations.set_default_handler_for_mime_type(&image_tiff, &photopea)?;
+        assert_eq!(
+            associations.default_application_for(&image_tiff),
+            Some(&photopea_id)
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn make_default_handler_errors_for_unsupported_mimetypes() -> anyhow::Result<()> {
+        let (entries, mut associations) = create_test_entries_and_associations()?;
+
+        // we need to make first scope user writable for testing
+        associations.scopes[0].is_user_customizable = true;
+
+        let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
+        let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
+
+        // photopea doesn't support inode/directory
+        let inode_directory = MimeType::parse("inode/directory")?;
+
+        assert!(associations
+            .set_default_handler_for_mime_type(&inode_directory, &photopea)
+            .is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn make_default_handler_errors_without_writeable_scope() -> anyhow::Result<()> {
+        let (entries, mut associations) = create_test_entries_and_associations()?;
+
+        let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
+        let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
+        let image_tiff = MimeType::parse("image/tiff")?;
+
+        // assignment should fail since no writable scope is set
+        assert!(associations
+            .set_default_handler_for_mime_type(&image_tiff, &photopea)
+            .is_err());
 
         Ok(())
     }
