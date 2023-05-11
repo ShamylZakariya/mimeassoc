@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 
 mod mime_assoc;
 use mime_assoc::*;
@@ -17,23 +17,27 @@ fn display_mime_types(mime_db: &MimeAssociations) {
     }
 }
 
-fn display_mime_type(mime_db: &MimeAssociations, desktop_db: &DesktopEntries, id: &str) {
-    if let Ok(mime_type) = MimeType::parse(id) {
-        let desktop_entries = desktop_db.get_desktop_entries_for_mimetype(&mime_type);
-        let default_handler = mime_db.default_application_for(&mime_type);
-        if !desktop_entries.is_empty() {
-            for desktop_entry in desktop_entries {
-                if Some(desktop_entry.id()) == default_handler {
-                    println!("*{}", desktop_entry.id());
-                } else {
-                    println!(" {}", desktop_entry.id());
-                }
+fn display_mime_type(mime_db: &MimeAssociations, desktop_db: &DesktopEntries, id: Option<&str>) {
+    let Some(id) = id else {
+        panic!("No mime type provded.");
+    };
+
+    let Ok(mime_type) = MimeType::parse(id) else {
+        panic!("\"{}\" is not a valid mime type identifier", id);
+    };
+
+    let desktop_entries = desktop_db.get_desktop_entries_for_mimetype(&mime_type);
+    let default_handler = mime_db.default_application_for(&mime_type);
+    if !desktop_entries.is_empty() {
+        for desktop_entry in desktop_entries {
+            if Some(desktop_entry.id()) == default_handler {
+                println!("*{}", desktop_entry.id());
+            } else {
+                println!(" {}", desktop_entry.id());
             }
-        } else {
-            println!("No installed applications support \"{}\"", mime_type);
         }
     } else {
-        panic!("\"{}\" is not a valid mime type identifier", id);
+        println!("No installed applications support \"{}\"", mime_type);
     }
 }
 
@@ -56,26 +60,29 @@ fn display_applications(mime_db: &MimeAssociations, desktop_db: &DesktopEntries)
     }
 }
 
-fn display_application(mime_db: &MimeAssociations, desktop_db: &DesktopEntries, id: &str) {
-    if let Ok(desktop_entry_id) = DesktopEntryId::parse(id) {
-        if let Some(desktop_entry) = desktop_db.get_desktop_entry(&desktop_entry_id) {
-            println!("{}:", desktop_entry.id());
-            let mut mime_types = desktop_entry.mime_types().clone();
-            mime_types.sort();
-            for mime_type in mime_types.iter() {
-                let is_handler =
-                    mime_db.default_application_for(mime_type) == Some(desktop_entry.id());
-                if is_handler {
-                    println!("\t*{}", mime_type);
-                } else {
-                    println!("\t {}", mime_type);
-                }
-            }
-        } else {
-            panic!("\"{}\" does not appear to be an installed application", id);
-        }
-    } else {
+fn display_application(mime_db: &MimeAssociations, desktop_db: &DesktopEntries, id: Option<&str>) {
+    let Some(id) = id else {
+        panic!("No desktop entry id provded.");
+    };
+
+    let Ok(desktop_entry_id) = DesktopEntryId::parse(id) else {
         panic!("\"{}\" is not a valid desktop entry id", id);
+    };
+
+    let Some(desktop_entry) = desktop_db.get_desktop_entry(&desktop_entry_id) else {
+        panic!("\"{}\" does not appear to be an installed application", id);
+    };
+
+    println!("{}:", desktop_entry.id());
+    let mut mime_types = desktop_entry.mime_types().clone();
+    mime_types.sort();
+    for mime_type in mime_types.iter() {
+        let is_handler = mime_db.default_application_for(mime_type) == Some(desktop_entry.id());
+        if is_handler {
+            println!("\t*{}", mime_type);
+        } else {
+            println!("\t {}", mime_type);
+        }
     }
 }
 
@@ -94,17 +101,21 @@ enum Commands {
     /// Print registered mime types
     MimeTypes,
     /// Prints all applications which support the specified mime type, and which is currently assigned as default handler
-    MimeType {
-        #[arg(short, long)]
-        id: String,
-    },
+    MimeType(MimeTypeArgs),
     /// Display all applications and their supported mime types, with an asterisk indicating which are registered to that application
     Applications,
     /// Display a specific application and the mimetypes it supports, with an asterisk indicating which are registered to that application
-    Application {
-        #[arg(short, long)]
-        id: String,
-    },
+    Application(ApplicationArgs),
+}
+
+#[derive(Args)]
+struct MimeTypeArgs {
+    id: Option<String>,
+}
+
+#[derive(Args)]
+struct ApplicationArgs {
+    id: Option<String>,
 }
 
 fn main() {
@@ -132,9 +143,13 @@ fn main() {
 
     match &cli.command {
         Some(Commands::MimeTypes) => display_mime_types(&mime_db),
-        Some(Commands::MimeType { id }) => display_mime_type(&mime_db, &desktop_db, id),
+        Some(Commands::MimeType(args)) => {
+            display_mime_type(&mime_db, &desktop_db, args.id.as_deref())
+        }
         Some(Commands::Applications) => display_applications(&mime_db, &desktop_db),
-        Some(Commands::Application { id }) => display_application(&mime_db, &desktop_db, id),
+        Some(Commands::Application(args)) => {
+            display_application(&mime_db, &desktop_db, args.id.as_deref())
+        }
         None => {}
     }
 }
