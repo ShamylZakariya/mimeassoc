@@ -7,5 +7,6 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
+clap = { version = "4.2", features = ["derive"] }
 is_executable = "1.0"
 which = "4"

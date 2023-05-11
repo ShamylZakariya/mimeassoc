@@ -10,6 +10,7 @@ pub mod desktop_entry;
 pub mod mime_type;
 
 /// Return a vector of paths to the application dirs for the user.
+#[allow(dead_code)]
 pub fn desktop_entry_dirs() -> anyhow::Result<Vec<PathBuf>> {
     let xdg_data_dirs = std::env::var("XDG_DATA_DIRS")?
         .split(':')
@@ -57,6 +58,7 @@ pub fn user_mimeapps_list_path() -> anyhow::Result<PathBuf> {
 
 /// Return a vector of paths to the mimeapps.list files for the user
 /// in system order
+#[allow(dead_code)]
 pub fn mimeapps_lists_paths() -> anyhow::Result<Vec<PathBuf>> {
     // ~/.config/mimeapps.list followed by the desktop_entry_dirs (with mimeapps.list appended), adding
     // each that exists.
