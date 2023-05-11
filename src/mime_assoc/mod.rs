@@ -72,6 +72,10 @@ pub fn mimeapps_lists_paths() -> anyhow::Result<Vec<PathBuf>> {
         if mimeapps_list_path.exists() && mimeapps_list_path.is_file() {
             mimeapps_list_paths.push(mimeapps_list_path);
         }
+        let defaults_list_path = dir.join("defaults.list");
+        if defaults_list_path.exists() && defaults_list_path.is_file() {
+            mimeapps_list_paths.push(defaults_list_path);
+        }
     }
 
     Ok(mimeapps_list_paths)

@@ -60,12 +60,24 @@ fn display_applications(mime_db: &MimeAssociations, desktop_db: &DesktopEntries)
     }
 }
 
+fn get_desktop_entry_id(desktop_db: &DesktopEntries, id: &str) -> Option<DesktopEntryId> {
+    if let Ok(desktop_entry_id) = DesktopEntryId::parse(id) {
+        return Some(desktop_entry_id);
+    }
+
+    if let Some(desktop_entry) = desktop_db.find_desktop_entry_named(id) {
+        return Some(desktop_entry.id().clone());
+    }
+
+    None
+}
+
 fn display_application(mime_db: &MimeAssociations, desktop_db: &DesktopEntries, id: Option<&str>) {
     let Some(id) = id else {
         panic!("No desktop entry id provded.");
     };
 
-    let Ok(desktop_entry_id) = DesktopEntryId::parse(id) else {
+    let Some(desktop_entry_id) = get_desktop_entry_id(desktop_db, id) else {
         panic!("\"{}\" is not a valid desktop entry id", id);
     };
 
@@ -119,8 +131,6 @@ struct ApplicationArgs {
 }
 
 fn main() {
-    let cli = Cli::parse();
-
     let desktop_entry_dirs = match desktop_entry_dirs() {
         Ok(desktop_entry_dirs) => desktop_entry_dirs,
         Err(e) => panic!("Unable to load desktop_entry_dirs: {:?}", e),
@@ -141,6 +151,7 @@ fn main() {
         Err(e) => panic!("Unable to load DesktopEntries: {:?}", e),
     };
 
+    let cli = Cli::parse();
     match &cli.command {
         Some(Commands::MimeTypes) => display_mime_types(&mime_db),
         Some(Commands::MimeType(args)) => {

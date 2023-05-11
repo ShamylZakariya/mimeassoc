@@ -354,6 +354,17 @@ impl DesktopEntries {
         None
     }
 
+    /// Find the first desktop entry in scope chain with the provided name. Note,
+    /// this is less "precise" than using a DesktopEntryId but is useful for CLI.
+    pub fn find_desktop_entry_named(&self, name: &str) -> Option<&DesktopEntry> {
+        for entry in self.desktop_entries() {
+            if entry.name() == Some(name) {
+                return Some(entry);
+            }
+        }
+        None
+    }
+
     /// Look up the desktop entries which can open a specific mimetype
     pub fn get_desktop_entries_for_mimetype(&self, mime_type: &MimeType) -> Vec<&DesktopEntry> {
         let mut entries = vec![];
@@ -524,6 +535,23 @@ mod tests {
         assert!(weather.is_some());
         let weather = weather.unwrap();
         assert_eq!(weather.icon(), Some("OverriddenWeatherIconId"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn desktop_entries_find_apps_by_name() -> anyhow::Result<()> {
+        let entries = DesktopEntries::load(&[test_user_applications(), test_sys_applications()])?;
+
+        let weather_id = DesktopEntryId::parse("org.gnome.Weather.desktop")?;
+        let weather = entries.get_desktop_entry(&weather_id);
+        assert!(weather.is_some());
+        let weather = weather.unwrap();
+
+        let weather_by_name = entries.find_desktop_entry_named(weather.name().unwrap());
+        assert!(weather_by_name.is_some());
+        let weather_by_name = weather_by_name.unwrap();
+        assert_eq!(weather, weather_by_name);
 
         Ok(())
     }
