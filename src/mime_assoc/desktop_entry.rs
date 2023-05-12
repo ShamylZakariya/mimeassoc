@@ -354,17 +354,6 @@ impl DesktopEntries {
         None
     }
 
-    /// Find the first desktop entry in scope chain with the provided name. Note,
-    /// this is less "precise" than using a DesktopEntryId but is useful for CLI.
-    pub fn find_desktop_entry_named(&self, name: &str) -> Option<&DesktopEntry> {
-        for entry in self.desktop_entries() {
-            if entry.name() == Some(name) {
-                return Some(entry);
-            }
-        }
-        None
-    }
-
     /// Look up the desktop entries which can open a specific mimetype
     pub fn get_desktop_entries_for_mimetype(&self, mime_type: &MimeType) -> Vec<&DesktopEntry> {
         let mut entries = vec![];
@@ -376,6 +365,53 @@ impl DesktopEntries {
 
         entries
     }
+}
+
+/// Covnenience function to "fuzzily" search for a DesktopEntry by name or id.
+/// First, if `identifier` is a valid DesktopEntryId and in `entries`, returns it. CASE-SENSITIVE.
+/// Second, if `identifier` can be turned into a DesktopEntryId by appending `.desktop`, and is in `entries`, returns it. CASE SENSITIVE.
+/// Third, performs a CASE-INSENSITIVE search for the first DesktopEntry with a matching name.
+/// Finally, attempts to CASE-INSENSITIVE match the name to the id of each registered DesktopEntry, such that, e.g.,
+/// org.gnome.Evince.desktop` would match "Evince", by using the token preceding ".desktop".
+pub fn lookup_desktop_entry<'a>(
+    entries: &'a DesktopEntries,
+    identifier: &str,
+) -> Option<&'a DesktopEntry> {
+    if let Ok(desktop_entry_id) = DesktopEntryId::parse(identifier) {
+        return entries.get_desktop_entry(&desktop_entry_id);
+    }
+
+    if !identifier.ends_with(".desktop") {
+        if let Ok(desktop_entry_id) = DesktopEntryId::parse(&format!("{}.desktop", identifier)) {
+            let desktop_entry = entries.get_desktop_entry(&desktop_entry_id);
+            if desktop_entry.is_some() {
+                return desktop_entry;
+            }
+        }
+    }
+
+    let desktop_entries = entries.desktop_entries();
+    for entry in desktop_entries.iter() {
+        if let Some(entry_name) = entry.name() {
+            if entry_name.eq_ignore_ascii_case(identifier) {
+                return Some(entry);
+            }
+        }
+    }
+
+    for desktop_entry in desktop_entries {
+        let components = desktop_entry
+            .id()
+            .desktop_entry
+            .split('.')
+            .collect::<Vec<_>>();
+        let count = components.len();
+        if count >= 2 && components[count - 2].eq_ignore_ascii_case(identifier) {
+            return Some(desktop_entry);
+        }
+    }
+
+    None
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -540,23 +576,6 @@ mod tests {
     }
 
     #[test]
-    fn desktop_entries_find_apps_by_name() -> anyhow::Result<()> {
-        let entries = DesktopEntries::load(&[test_user_applications(), test_sys_applications()])?;
-
-        let weather_id = DesktopEntryId::parse("org.gnome.Weather.desktop")?;
-        let weather = entries.get_desktop_entry(&weather_id);
-        assert!(weather.is_some());
-        let weather = weather.unwrap();
-
-        let weather_by_name = entries.find_desktop_entry_named(weather.name().unwrap());
-        assert!(weather_by_name.is_some());
-        let weather_by_name = weather_by_name.unwrap();
-        assert_eq!(weather, weather_by_name);
-
-        Ok(())
-    }
-
-    #[test]
     fn desktop_entries_looks_up_correct_openers_for_mime_type() -> anyhow::Result<()> {
         let entries = DesktopEntries::load(&[test_user_applications(), test_sys_applications()])?;
 
@@ -596,6 +615,41 @@ mod tests {
         assert!(entries
             .get_desktop_entries_for_mimetype(&text_plain)
             .contains(&texteditor),);
+
+        Ok(())
+    }
+
+    #[test]
+    fn fuzzy_lookup_works() -> anyhow::Result<()> {
+        let entries = DesktopEntries::load(&[test_user_applications(), test_sys_applications()])?;
+
+        // reference
+        let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
+        let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
+        let evince_id = DesktopEntryId::parse("org.gnome.Evince.desktop")?;
+        let evince = entries.get_desktop_entry(&evince_id).unwrap();
+
+        assert_eq!(
+            lookup_desktop_entry(&entries, "photopea.desktop"),
+            Some(photopea)
+        );
+        assert_eq!(lookup_desktop_entry(&entries, "Photopea"), Some(photopea));
+        assert_eq!(lookup_desktop_entry(&entries, "pHOToPea"), Some(photopea));
+
+        assert_eq!(
+            lookup_desktop_entry(&entries, "org.gnome.Evince.desktop"),
+            Some(evince)
+        );
+        assert_eq!(lookup_desktop_entry(&entries, "Evince"), Some(evince));
+        assert_eq!(lookup_desktop_entry(&entries, "evince"), Some(evince));
+        assert_eq!(
+            lookup_desktop_entry(&entries, "Document Viewer"),
+            Some(evince)
+        );
+        assert_eq!(
+            lookup_desktop_entry(&entries, "document VIEWER"),
+            Some(evince)
+        );
 
         Ok(())
     }

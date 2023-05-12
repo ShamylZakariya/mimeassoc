@@ -17,7 +17,11 @@ fn display_mime_types(mime_db: &MimeAssociations) {
     }
 }
 
-fn display_mime_type(mime_db: &MimeAssociations, desktop_db: &DesktopEntries, id: Option<&str>) {
+fn display_mime_type(
+    mime_db: &MimeAssociations,
+    desktop_entry_db: &DesktopEntries,
+    id: Option<&str>,
+) {
     let Some(id) = id else {
         panic!("No mime type provded.");
     };
@@ -26,7 +30,7 @@ fn display_mime_type(mime_db: &MimeAssociations, desktop_db: &DesktopEntries, id
         panic!("\"{}\" is not a valid mime type identifier", id);
     };
 
-    let desktop_entries = desktop_db.get_desktop_entries_for_mimetype(&mime_type);
+    let desktop_entries = desktop_entry_db.get_desktop_entries_for_mimetype(&mime_type);
     let default_handler = mime_db.default_application_for(&mime_type);
     if !desktop_entries.is_empty() {
         for desktop_entry in desktop_entries {
@@ -41,9 +45,13 @@ fn display_mime_type(mime_db: &MimeAssociations, desktop_db: &DesktopEntries, id
     }
 }
 
-fn display_applications(mime_db: &MimeAssociations, desktop_db: &DesktopEntries) {
-    for desktop_entry in desktop_db.desktop_entries() {
-        println!("{}:", desktop_entry.id());
+fn display_applications(mime_db: &MimeAssociations, desktop_entry_db: &DesktopEntries) {
+    for desktop_entry in desktop_entry_db.desktop_entries() {
+        println!(
+            "{} ({}):",
+            desktop_entry.id(),
+            desktop_entry.name().unwrap_or("<Unnamed>")
+        );
         let mut mime_types = desktop_entry.mime_types().clone();
         mime_types.sort();
         for mime_type in mime_types.iter() {
@@ -60,32 +68,24 @@ fn display_applications(mime_db: &MimeAssociations, desktop_db: &DesktopEntries)
     }
 }
 
-fn get_desktop_entry_id(desktop_db: &DesktopEntries, id: &str) -> Option<DesktopEntryId> {
-    if let Ok(desktop_entry_id) = DesktopEntryId::parse(id) {
-        return Some(desktop_entry_id);
-    }
-
-    if let Some(desktop_entry) = desktop_db.find_desktop_entry_named(id) {
-        return Some(desktop_entry.id().clone());
-    }
-
-    None
-}
-
-fn display_application(mime_db: &MimeAssociations, desktop_db: &DesktopEntries, id: Option<&str>) {
+fn display_application(
+    mime_db: &MimeAssociations,
+    desktop_entry_db: &DesktopEntries,
+    id: Option<&str>,
+) {
     let Some(id) = id else {
         panic!("No desktop entry id provded.");
     };
 
-    let Some(desktop_entry_id) = get_desktop_entry_id(desktop_db, id) else {
-        panic!("\"{}\" is not a valid desktop entry id", id);
-    };
-
-    let Some(desktop_entry) = desktop_db.get_desktop_entry(&desktop_entry_id) else {
+    let Some(desktop_entry) = lookup_desktop_entry(desktop_entry_db, id) else {
         panic!("\"{}\" does not appear to be an installed application", id);
     };
 
-    println!("{}:", desktop_entry.id());
+    println!(
+        "{} ({}):",
+        desktop_entry.id(),
+        desktop_entry.name().unwrap_or("<Unnamed>")
+    );
     let mut mime_types = desktop_entry.mime_types().clone();
     mime_types.sort();
     for mime_type in mime_types.iter() {
@@ -146,7 +146,7 @@ fn main() {
         Err(e) => panic!("Unable to load MimeAssociations: {:?}", e),
     };
 
-    let desktop_db = match DesktopEntries::load(&desktop_entry_dirs) {
+    let desktop_entry_db = match DesktopEntries::load(&desktop_entry_dirs) {
         Ok(desktop_entries) => desktop_entries,
         Err(e) => panic!("Unable to load DesktopEntries: {:?}", e),
     };
@@ -155,11 +155,11 @@ fn main() {
     match &cli.command {
         Some(Commands::MimeTypes) => display_mime_types(&mime_db),
         Some(Commands::MimeType(args)) => {
-            display_mime_type(&mime_db, &desktop_db, args.id.as_deref())
+            display_mime_type(&mime_db, &desktop_entry_db, args.id.as_deref())
         }
-        Some(Commands::Applications) => display_applications(&mime_db, &desktop_db),
+        Some(Commands::Applications) => display_applications(&mime_db, &desktop_entry_db),
         Some(Commands::Application(args)) => {
-            display_application(&mime_db, &desktop_db, args.id.as_deref())
+            display_application(&mime_db, &desktop_entry_db, args.id.as_deref())
         }
         None => {}
     }
