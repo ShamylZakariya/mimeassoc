@@ -3,6 +3,7 @@ use std::{
     fmt::Display,
     fs::File,
     io::{self, BufRead, Write},
+    ops::Deref,
     path::{Path, PathBuf},
 };
 
@@ -239,6 +240,7 @@ impl MimeAssociations {
         Ok(Self { scopes })
     }
 
+    /// Return all mimetypes represented, in no particular order.
     pub fn mime_types(&self) -> Vec<&MimeType> {
         let mut mime_types = Vec::new();
         for scope in self.scopes.iter().rev() {
@@ -248,6 +250,11 @@ impl MimeAssociations {
         }
 
         mime_types
+    }
+
+    /// Return the sources used to create this store, in preferential chain order, e.g., user entries before system.
+    pub fn sources(&self) -> Vec<&Path> {
+        self.scopes.iter().map(|s| s.file.deref()).collect()
     }
 
     pub fn default_application_for(&self, mime_type: &MimeType) -> Option<&DesktopEntryId> {

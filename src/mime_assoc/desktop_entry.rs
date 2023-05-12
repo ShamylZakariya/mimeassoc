@@ -3,6 +3,7 @@ use std::{
     fmt::Display,
     fs::File,
     io::{self, BufRead},
+    ops::Deref,
     path::{Path, PathBuf},
 };
 
@@ -265,6 +266,7 @@ impl PartialOrd for DesktopEntry {
 /// Represents all the desktop entries in a particular scope, or specifically,
 /// a location on the filesystem such as /usr/share/applications
 struct DesktopEntryScope {
+    directory: PathBuf,
     application_entries: HashMap<DesktopEntryId, DesktopEntry>,
 }
 
@@ -273,8 +275,9 @@ impl DesktopEntryScope {
     where
         P: AsRef<Path>,
     {
+        let directory = dir.as_ref();
         let mut application_entries = HashMap::new();
-        let contents = std::fs::read_dir(dir)?;
+        let contents = std::fs::read_dir(directory)?;
         for file in contents.flatten() {
             let file_path = file.path();
             if has_extension(&file_path, "desktop") {
@@ -288,6 +291,7 @@ impl DesktopEntryScope {
         }
 
         Ok(Self {
+            directory: PathBuf::from(&directory),
             application_entries,
         })
     }
@@ -314,6 +318,11 @@ impl DesktopEntries {
         }
 
         Ok(Self { scopes })
+    }
+
+    /// Return the directories used to populate each scope in this store, in preferential chain order
+    pub fn sources(&self) -> Vec<&Path> {
+        self.scopes.iter().map(|s| s.directory.deref()).collect()
     }
 
     /// Returns all desktop entries, with earlier scopes overriding later ones.
