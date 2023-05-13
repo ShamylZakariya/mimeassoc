@@ -221,7 +221,10 @@ impl Commands {
             }
         }
 
-        // now we need to persist the changes...
+        // persist the changes...
+        if let Err(e) = mime_db.save_changes() {
+            panic!("Unable to save changes: {:?}", e);
+        }
     }
 }
 

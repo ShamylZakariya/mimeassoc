@@ -71,8 +71,9 @@ impl MimeAssociationsSections {
 
 #[derive(Default, PartialEq, Eq)]
 pub struct MimeAssociationScope {
-    file: PathBuf,
+    file_path: PathBuf,
     is_user_customizable: bool,
+    is_dirty: bool,
     added_associations: HashMap<MimeType, Vec<DesktopEntryId>>,
     default_applications: HashMap<MimeType, DesktopEntryId>,
 }
@@ -126,11 +127,33 @@ impl MimeAssociationScope {
         let is_user_customizable = mimeapps_file_path == super::user_mimeapps_list_path()?;
 
         Ok(MimeAssociationScope {
-            file: PathBuf::from(mimeapps_file_path),
+            file_path: PathBuf::from(mimeapps_file_path),
             is_user_customizable,
+            is_dirty: false,
             added_associations,
             default_applications,
         })
+    }
+
+    /// Persist changes to this MimeAsociationScope.
+    fn save(&mut self) -> anyhow::Result<()> {
+        if !self.is_user_customizable {
+            anyhow::bail!("MimeAssociationScope[{:?}] is not user customizable.", &self.file_path);
+        }
+
+        if self.is_dirty {
+            // create a temp output file
+            let temp_dir = self.file_path.parent().unwrap();
+            let temp_file_path = temp_dir.join("mimeassoc.temp.list");
+            println!("temp_file_path: {:?}", temp_file_path);
+            self.write_to_path(&temp_file_path)?;
+
+            // rename this file to our original
+            std::fs::rename(&temp_file_path, &self.file_path)?;
+
+            self.is_dirty = false;
+        }
+        Ok(())
     }
 
     fn parse_line(line: &str) -> anyhow::Result<(MimeType, Vec<DesktopEntryId>)> {
@@ -178,46 +201,62 @@ impl MimeAssociationScope {
         format!("{}={}", mime_type, desktop_entry)
     }
 
-    fn write<P>(&self, path: P) -> anyhow::Result<()>
-    where
-        P: AsRef<Path>,
-    {
-        let output_file = File::create(path)?;
-
+    fn write(&self, output_file: &mut File) -> anyhow::Result<()> {
         // write the added associations
         if !self.added_associations.is_empty() {
             writeln!(
-                &output_file,
+                output_file,
                 "{}",
                 MimeAssociationsSections::AddedAssociations.to_string()
             )?;
-            for (mime_type, desktop_entries) in self.added_associations.iter() {
-                writeln!(
-                    &output_file,
-                    "{};",
-                    Self::generate_added_associations_line(mime_type, desktop_entries)
-                )?;
+
+            let mut mime_types = self.added_associations.keys().collect::<Vec<_>>();
+            mime_types.sort();
+
+            for mime_type in mime_types {
+                if let Some(desktop_entries) = self.added_associations.get(mime_type) {
+                    writeln!(
+                        output_file,
+                        "{};",
+                        Self::generate_added_associations_line(mime_type, desktop_entries)
+                    )?;
+                }
             }
-            writeln!(&output_file)?;
+
+            writeln!(output_file)?;
         }
 
         // write the default applications
         if !self.default_applications.is_empty() {
             writeln!(
-                &output_file,
+                output_file,
                 "{}",
                 MimeAssociationsSections::DefaultApplications.to_string()
             )?;
-            for (mime_type, desktop_entry) in self.default_applications.iter() {
-                writeln!(
-                    &output_file,
-                    "{}",
-                    Self::generate_default_application_line(mime_type, desktop_entry)
-                )?;
+
+            let mut mime_types = self.default_applications.keys().collect::<Vec<_>>();
+            mime_types.sort();
+
+            for mime_type in mime_types {
+                if let Some(desktop_entry) = self.default_applications.get(mime_type) {
+                    writeln!(
+                        output_file,
+                        "{}",
+                        Self::generate_default_application_line(mime_type, desktop_entry)
+                    )?;
+                }
             }
         }
 
         Ok(())
+    }
+
+    fn write_to_path<P>(&self, path: P) -> anyhow::Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        let mut output_file = File::create(path)?;
+        self.write(&mut output_file)
     }
 }
 
@@ -254,7 +293,7 @@ impl MimeAssociations {
 
     /// Return the sources used to create this store, in preferential chain order, e.g., user entries before system.
     pub fn sources(&self) -> Vec<&Path> {
-        self.scopes.iter().map(|s| s.file.deref()).collect()
+        self.scopes.iter().map(|s| s.file_path.deref()).collect()
     }
 
     pub fn default_application_for(&self, mime_type: &MimeType) -> Option<&DesktopEntryId> {
@@ -304,12 +343,22 @@ impl MimeAssociations {
                 scope
                     .default_applications
                     .insert(mime_type.clone(), desktop_entry.id().clone());
-
+                scope.is_dirty = true;
                 return Ok(());
             }
         }
 
         anyhow::bail!("No user customizable scopes in MimeAssociation scope chain");
+    }
+
+    pub fn save_changes(&mut self) -> anyhow::Result<()> {
+        for scope in self.scopes.iter_mut() {
+            if scope.is_user_customizable && scope.is_dirty {
+                scope.save()?;
+            }
+        }
+
+        Ok(())
     }
 
     /// Make the provided DesktopEnrtry the default handler for all its supported mimetypes.
@@ -521,7 +570,7 @@ mod tests {
         delete_file(&output_path);
 
         let input_mimeassociations = MimeAssociationScope::load(&input_path)?;
-        input_mimeassociations.write(&output_path)?;
+        input_mimeassociations.write_to_path(&output_path)?;
 
         let copy_mimeassociations = MimeAssociationScope::load(&output_path)?;
 
