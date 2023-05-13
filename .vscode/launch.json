@@ -7,15 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'mimeassoc'",
+            "name": "Debug executable 'mimeassoc_cli'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=mimeassoc",
-                    "--package=mimeassoc"
+                    "--bin=mimeassoc_cli",
+                    "--package=mimeassoc_cli"
                 ],
                 "filter": {
-                    "name": "mimeassoc",
+                    "name": "mimeassoc_cli",
                     "kind": "bin"
                 }
             },
@@ -25,16 +25,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'mimeassoc'",
+            "name": "Debug unit tests in executable 'mimeassoc_cli'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=mimeassoc",
-                    "--package=mimeassoc"
+                    "--bin=mimeassoc_cli",
+                    "--package=mimeassoc_cli"
                 ],
                 "filter": {
-                    "name": "mimeassoc",
+                    "name": "mimeassoc_cli",
                     "kind": "bin"
                 }
             },

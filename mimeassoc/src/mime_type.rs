@@ -3,12 +3,13 @@ use std::{
     fmt::Display,
     fs::File,
     io::{self, BufRead, Write},
+    ops::Deref,
     path::{Path, PathBuf},
 };
 
-use super::desktop_entry::DesktopEntryId;
+use super::desktop_entry::{DesktopEntry, DesktopEntryId};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct MimeType {
     pub id: String,
 }
@@ -70,8 +71,9 @@ impl MimeAssociationsSections {
 
 #[derive(Default, PartialEq, Eq)]
 pub struct MimeAssociationScope {
-    file: PathBuf,
+    file_path: PathBuf,
     is_user_customizable: bool,
+    is_dirty: bool,
     added_associations: HashMap<MimeType, Vec<DesktopEntryId>>,
     default_applications: HashMap<MimeType, DesktopEntryId>,
 }
@@ -125,11 +127,35 @@ impl MimeAssociationScope {
         let is_user_customizable = mimeapps_file_path == super::user_mimeapps_list_path()?;
 
         Ok(MimeAssociationScope {
-            file: PathBuf::from(mimeapps_file_path),
+            file_path: PathBuf::from(mimeapps_file_path),
             is_user_customizable,
+            is_dirty: false,
             added_associations,
             default_applications,
         })
+    }
+
+    /// Persist changes to this MimeAsociationScope.
+    fn save(&mut self) -> anyhow::Result<()> {
+        if !self.is_user_customizable {
+            anyhow::bail!(
+                "MimeAssociationScope[{:?}] is not user customizable.",
+                &self.file_path
+            );
+        }
+
+        if self.is_dirty {
+            // create a temp output file
+            let temp_dir = self.file_path.parent().unwrap();
+            let temp_file_path = temp_dir.join("mimeassoc.temp.list");
+            self.write_to_path(&temp_file_path)?;
+
+            // rename this file to our original
+            std::fs::rename(&temp_file_path, &self.file_path)?;
+
+            self.is_dirty = false;
+        }
+        Ok(())
     }
 
     fn parse_line(line: &str) -> anyhow::Result<(MimeType, Vec<DesktopEntryId>)> {
@@ -177,46 +203,62 @@ impl MimeAssociationScope {
         format!("{}={}", mime_type, desktop_entry)
     }
 
-    fn write<P>(&self, path: P) -> anyhow::Result<()>
-    where
-        P: AsRef<Path>,
-    {
-        let output_file = File::create(path)?;
-
+    fn write(&self, output_file: &mut File) -> anyhow::Result<()> {
         // write the added associations
         if !self.added_associations.is_empty() {
             writeln!(
-                &output_file,
+                output_file,
                 "{}",
                 MimeAssociationsSections::AddedAssociations.to_string()
             )?;
-            for (mime_type, desktop_entries) in self.added_associations.iter() {
-                writeln!(
-                    &output_file,
-                    "{};",
-                    Self::generate_added_associations_line(mime_type, desktop_entries)
-                )?;
+
+            let mut mime_types = self.added_associations.keys().collect::<Vec<_>>();
+            mime_types.sort();
+
+            for mime_type in mime_types {
+                if let Some(desktop_entries) = self.added_associations.get(mime_type) {
+                    writeln!(
+                        output_file,
+                        "{};",
+                        Self::generate_added_associations_line(mime_type, desktop_entries)
+                    )?;
+                }
             }
-            writeln!(&output_file)?;
+
+            writeln!(output_file)?;
         }
 
         // write the default applications
         if !self.default_applications.is_empty() {
             writeln!(
-                &output_file,
+                output_file,
                 "{}",
                 MimeAssociationsSections::DefaultApplications.to_string()
             )?;
-            for (mime_type, desktop_entry) in self.default_applications.iter() {
-                writeln!(
-                    &output_file,
-                    "{}",
-                    Self::generate_default_application_line(mime_type, desktop_entry)
-                )?;
+
+            let mut mime_types = self.default_applications.keys().collect::<Vec<_>>();
+            mime_types.sort();
+
+            for mime_type in mime_types {
+                if let Some(desktop_entry) = self.default_applications.get(mime_type) {
+                    writeln!(
+                        output_file,
+                        "{}",
+                        Self::generate_default_application_line(mime_type, desktop_entry)
+                    )?;
+                }
             }
         }
 
         Ok(())
+    }
+
+    fn write_to_path<P>(&self, path: P) -> anyhow::Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        let mut output_file = File::create(path)?;
+        self.write(&mut output_file)
     }
 }
 
@@ -239,6 +281,7 @@ impl MimeAssociations {
         Ok(Self { scopes })
     }
 
+    /// Return all mimetypes represented, in no particular order.
     pub fn mime_types(&self) -> Vec<&MimeType> {
         let mut mime_types = Vec::new();
         for scope in self.scopes.iter().rev() {
@@ -248,6 +291,11 @@ impl MimeAssociations {
         }
 
         mime_types
+    }
+
+    /// Return the sources used to create this store, in preferential chain order, e.g., user entries before system.
+    pub fn sources(&self) -> Vec<&Path> {
+        self.scopes.iter().map(|s| s.file_path.deref()).collect()
     }
 
     pub fn default_application_for(&self, mime_type: &MimeType) -> Option<&DesktopEntryId> {
@@ -267,12 +315,75 @@ impl MimeAssociations {
         }
         None
     }
+
+    /// Make the provided DesktopEntry the default handler for the given mime type.
+    /// Will return an error if the DesktopEntry isn't a valid application, or if it doesn't
+    /// handle the specified mime type, or if there are no user customizable MimeAssociationScopes
+    /// in the chain.
+    pub fn set_default_handler_for_mime_type(
+        &mut self,
+        mime_type: &MimeType,
+        desktop_entry: &DesktopEntry,
+    ) -> anyhow::Result<()> {
+        if !desktop_entry.appears_valid_application() {
+            anyhow::bail!(
+                "DesktopEntry \"{}\" does not appear to be a valid launchable application",
+                desktop_entry.id()
+            );
+        }
+
+        if !desktop_entry.can_open_mime_type(mime_type) {
+            anyhow::bail!(
+                "DesktopEntry \"{}\" does not support mime type \"{}\"",
+                desktop_entry.id(),
+                mime_type
+            );
+        }
+
+        for scope in self.scopes.iter_mut() {
+            if scope.is_user_customizable {
+                scope
+                    .default_applications
+                    .insert(mime_type.clone(), desktop_entry.id().clone());
+                scope.is_dirty = true;
+                return Ok(());
+            }
+        }
+
+        anyhow::bail!("No user customizable scopes in MimeAssociation scope chain");
+    }
+
+    /// Make the provided DesktopEnrtry the default handler for all its supported mimetypes.
+    /// Will return an error if the desktop entry isn't a valid application, or if there are
+    /// no user customizable scoped in the MimeAssociationScope chain
+    pub fn make_desktop_entry_default_handler_of_its_supported_mime_types(
+        &mut self,
+        desktop_entry: &DesktopEntry,
+    ) -> anyhow::Result<()> {
+        for mime_type in desktop_entry.mime_types() {
+            self.set_default_handler_for_mime_type(mime_type, desktop_entry)?;
+        }
+        Ok(())
+    }
+
+    /// Save any unpersisted changes to user customizable scopes
+    pub fn save(&mut self) -> anyhow::Result<()> {
+        for scope in self.scopes.iter_mut() {
+            if scope.is_user_customizable && scope.is_dirty {
+                scope.save()?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
+    use crate::desktop_entry::DesktopEntries;
+
     use super::*;
 
     fn test_sys_mimeapps_list() -> PathBuf {
@@ -285,6 +396,14 @@ mod tests {
 
     fn test_user_mimeapps_list() -> PathBuf {
         path("test-data/config/mimeapps.list")
+    }
+
+    fn test_user_applications() -> PathBuf {
+        path("test-data/local/share/applications")
+    }
+
+    fn test_sys_applications() -> PathBuf {
+        path("test-data/usr/share/applications")
     }
 
     fn path(p: &str) -> PathBuf {
@@ -300,6 +419,18 @@ mod tests {
         if path.exists() {
             let _ = std::fs::remove_file(&path);
         }
+    }
+
+    fn create_test_entries_and_associations() -> anyhow::Result<(DesktopEntries, MimeAssociations)>
+    {
+        let entries = DesktopEntries::load(&[test_user_applications(), test_sys_applications()])?;
+
+        let associations = MimeAssociations::load(&[
+            test_user_mimeapps_list(),
+            test_gnome_mimeapps_list(),
+            test_sys_mimeapps_list(),
+        ])?;
+        Ok((entries, associations))
     }
 
     #[test]
@@ -442,7 +573,7 @@ mod tests {
         delete_file(&output_path);
 
         let input_mimeassociations = MimeAssociationScope::load(&input_path)?;
-        input_mimeassociations.write(&output_path)?;
+        input_mimeassociations.write_to_path(&output_path)?;
 
         let copy_mimeassociations = MimeAssociationScope::load(&output_path)?;
 
@@ -456,6 +587,70 @@ mod tests {
         );
 
         delete_file(&output_path);
+
+        Ok(())
+    }
+
+    #[test]
+    fn make_default_handler_works_for_valid_usecases() -> anyhow::Result<()> {
+        let (entries, mut associations) = create_test_entries_and_associations()?;
+
+        // we need to make first scope user writable for testing
+        associations.scopes[0].is_user_customizable = true;
+
+        let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
+        let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
+        let evince_id = DesktopEntryId::parse("org.gnome.Evince.desktop")?;
+        let image_tiff = MimeType::parse("image/tiff")?;
+
+        // we're going to verify Evince is set to image/tiff
+        assert_eq!(
+            associations.default_application_for(&image_tiff),
+            Some(&evince_id)
+        );
+
+        // assign photopea
+        associations.set_default_handler_for_mime_type(&image_tiff, &photopea)?;
+        assert_eq!(
+            associations.default_application_for(&image_tiff),
+            Some(&photopea_id)
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn make_default_handler_errors_for_unsupported_mimetypes() -> anyhow::Result<()> {
+        let (entries, mut associations) = create_test_entries_and_associations()?;
+
+        // we need to make first scope user writable for testing
+        associations.scopes[0].is_user_customizable = true;
+
+        let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
+        let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
+
+        // photopea doesn't support inode/directory
+        let inode_directory = MimeType::parse("inode/directory")?;
+
+        assert!(associations
+            .set_default_handler_for_mime_type(&inode_directory, &photopea)
+            .is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn make_default_handler_errors_without_writeable_scope() -> anyhow::Result<()> {
+        let (entries, mut associations) = create_test_entries_and_associations()?;
+
+        let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
+        let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
+        let image_tiff = MimeType::parse("image/tiff")?;
+
+        // assignment should fail since no writable scope is set
+        assert!(associations
+            .set_default_handler_for_mime_type(&image_tiff, &photopea)
+            .is_err());
 
         Ok(())
     }

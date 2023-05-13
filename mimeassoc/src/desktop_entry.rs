@@ -3,6 +3,7 @@ use std::{
     fmt::Display,
     fs::File,
     io::{self, BufRead},
+    ops::Deref,
     path::{Path, PathBuf},
 };
 
@@ -265,6 +266,7 @@ impl PartialOrd for DesktopEntry {
 /// Represents all the desktop entries in a particular scope, or specifically,
 /// a location on the filesystem such as /usr/share/applications
 struct DesktopEntryScope {
+    directory: PathBuf,
     application_entries: HashMap<DesktopEntryId, DesktopEntry>,
 }
 
@@ -273,8 +275,9 @@ impl DesktopEntryScope {
     where
         P: AsRef<Path>,
     {
+        let directory = dir.as_ref();
         let mut application_entries = HashMap::new();
-        let contents = std::fs::read_dir(dir)?;
+        let contents = std::fs::read_dir(directory)?;
         for file in contents.flatten() {
             let file_path = file.path();
             if has_extension(&file_path, "desktop") {
@@ -288,6 +291,7 @@ impl DesktopEntryScope {
         }
 
         Ok(Self {
+            directory: PathBuf::from(&directory),
             application_entries,
         })
     }
@@ -314,6 +318,11 @@ impl DesktopEntries {
         }
 
         Ok(Self { scopes })
+    }
+
+    /// Return the directories used to populate each scope in this store, in preferential chain order
+    pub fn sources(&self) -> Vec<&Path> {
+        self.scopes.iter().map(|s| s.directory.deref()).collect()
     }
 
     /// Returns all desktop entries, with earlier scopes overriding later ones.
@@ -367,11 +376,58 @@ impl DesktopEntries {
     }
 }
 
+/// Covnenience function to "fuzzily" search for a DesktopEntry by name or id.
+/// First, if `identifier` is a valid DesktopEntryId and in `entries`, returns it. CASE-SENSITIVE.
+/// Second, if `identifier` can be turned into a DesktopEntryId by appending `.desktop`, and is in `entries`, returns it. CASE SENSITIVE.
+/// Third, performs a CASE-INSENSITIVE search for the first DesktopEntry with a matching name.
+/// Finally, attempts to CASE-INSENSITIVE match the name to the id of each registered DesktopEntry, such that, e.g.,
+/// org.gnome.Evince.desktop` would match "Evince", by using the token preceding ".desktop".
+pub fn lookup_desktop_entry<'a>(
+    entries: &'a DesktopEntries,
+    identifier: &str,
+) -> Option<&'a DesktopEntry> {
+    if let Ok(desktop_entry_id) = DesktopEntryId::parse(identifier) {
+        return entries.get_desktop_entry(&desktop_entry_id);
+    }
+
+    if !identifier.ends_with(".desktop") {
+        if let Ok(desktop_entry_id) = DesktopEntryId::parse(&format!("{}.desktop", identifier)) {
+            let desktop_entry = entries.get_desktop_entry(&desktop_entry_id);
+            if desktop_entry.is_some() {
+                return desktop_entry;
+            }
+        }
+    }
+
+    let desktop_entries = entries.desktop_entries();
+    for entry in desktop_entries.iter() {
+        if let Some(entry_name) = entry.name() {
+            if entry_name.eq_ignore_ascii_case(identifier) {
+                return Some(entry);
+            }
+        }
+    }
+
+    for desktop_entry in desktop_entries {
+        let components = desktop_entry
+            .id()
+            .desktop_entry
+            .split('.')
+            .collect::<Vec<_>>();
+        let count = components.len();
+        if count >= 2 && components[count - 2].eq_ignore_ascii_case(identifier) {
+            return Some(desktop_entry);
+        }
+    }
+
+    None
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use crate::mime_assoc::desktop_entry_dirs;
+    use crate::desktop_entry_dirs;
 
     use super::*;
 
@@ -568,6 +624,41 @@ mod tests {
         assert!(entries
             .get_desktop_entries_for_mimetype(&text_plain)
             .contains(&texteditor),);
+
+        Ok(())
+    }
+
+    #[test]
+    fn fuzzy_lookup_works() -> anyhow::Result<()> {
+        let entries = DesktopEntries::load(&[test_user_applications(), test_sys_applications()])?;
+
+        // reference
+        let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
+        let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
+        let evince_id = DesktopEntryId::parse("org.gnome.Evince.desktop")?;
+        let evince = entries.get_desktop_entry(&evince_id).unwrap();
+
+        assert_eq!(
+            lookup_desktop_entry(&entries, "photopea.desktop"),
+            Some(photopea)
+        );
+        assert_eq!(lookup_desktop_entry(&entries, "Photopea"), Some(photopea));
+        assert_eq!(lookup_desktop_entry(&entries, "pHOToPea"), Some(photopea));
+
+        assert_eq!(
+            lookup_desktop_entry(&entries, "org.gnome.Evince.desktop"),
+            Some(evince)
+        );
+        assert_eq!(lookup_desktop_entry(&entries, "Evince"), Some(evince));
+        assert_eq!(lookup_desktop_entry(&entries, "evince"), Some(evince));
+        assert_eq!(
+            lookup_desktop_entry(&entries, "Document Viewer"),
+            Some(evince)
+        );
+        assert_eq!(
+            lookup_desktop_entry(&entries, "document VIEWER"),
+            Some(evince)
+        );
 
         Ok(())
     }
