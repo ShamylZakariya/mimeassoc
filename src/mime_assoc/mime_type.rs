@@ -138,14 +138,16 @@ impl MimeAssociationScope {
     /// Persist changes to this MimeAsociationScope.
     fn save(&mut self) -> anyhow::Result<()> {
         if !self.is_user_customizable {
-            anyhow::bail!("MimeAssociationScope[{:?}] is not user customizable.", &self.file_path);
+            anyhow::bail!(
+                "MimeAssociationScope[{:?}] is not user customizable.",
+                &self.file_path
+            );
         }
 
         if self.is_dirty {
             // create a temp output file
             let temp_dir = self.file_path.parent().unwrap();
             let temp_file_path = temp_dir.join("mimeassoc.temp.list");
-            println!("temp_file_path: {:?}", temp_file_path);
             self.write_to_path(&temp_file_path)?;
 
             // rename this file to our original
@@ -351,16 +353,6 @@ impl MimeAssociations {
         anyhow::bail!("No user customizable scopes in MimeAssociation scope chain");
     }
 
-    pub fn save_changes(&mut self) -> anyhow::Result<()> {
-        for scope in self.scopes.iter_mut() {
-            if scope.is_user_customizable && scope.is_dirty {
-                scope.save()?;
-            }
-        }
-
-        Ok(())
-    }
-
     /// Make the provided DesktopEnrtry the default handler for all its supported mimetypes.
     /// Will return an error if the desktop entry isn't a valid application, or if there are
     /// no user customizable scoped in the MimeAssociationScope chain
@@ -371,6 +363,17 @@ impl MimeAssociations {
         for mime_type in desktop_entry.mime_types() {
             self.set_default_handler_for_mime_type(mime_type, desktop_entry)?;
         }
+        Ok(())
+    }
+
+    /// Save any unpersisted changes to user customizable scopes
+    pub fn save(&mut self) -> anyhow::Result<()> {
+        for scope in self.scopes.iter_mut() {
+            if scope.is_user_customizable && scope.is_dirty {
+                scope.save()?;
+            }
+        }
+
         Ok(())
     }
 }

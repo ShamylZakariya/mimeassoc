@@ -26,6 +26,7 @@ enum Commands {
     Applications,
     /// Display a specific application and the mimetypes it supports, with an asterisk indicating which are registered to that application
     Application(ApplicationCommandArgs),
+    /// Assign an application as default handler for one or more mime types. If no mime types are specified, makes the specified application default handler for ALL it's supported mime types
     Set(SetCommandArgs),
     /// Display the configuration state of `mimeassoc`. Shows the mime association sources, and where desktop entry files were loaded from, in chain order.
     Configuration,
@@ -178,15 +179,15 @@ impl Commands {
             }
         }
 
-        // bail if no mime types were provided
-        if resolved_mime_types.is_empty() {
-            panic!("No mimetypes provided");
-        }
-
         // find the desktop entry
         let Some(desktop_entry) = lookup_desktop_entry(desktop_entry_db, desktop_entry_id) else {
             panic!("\"{}\" does not appear to be an installed application", desktop_entry_id);
         };
+
+        // if no mime types are supported, we will use all the mime types this app claims to handle
+        if resolved_mime_types.is_empty() {
+            resolved_mime_types = desktop_entry.mime_types().clone();
+        }
 
         // verify the desktop entry can handle the provided mime types
         for mime_type in resolved_mime_types.iter() {
@@ -222,7 +223,7 @@ impl Commands {
         }
 
         // persist the changes...
-        if let Err(e) = mime_db.save_changes() {
+        if let Err(e) = mime_db.save() {
             panic!("Unable to save changes: {:?}", e);
         }
     }
