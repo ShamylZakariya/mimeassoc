@@ -1,12 +1,12 @@
 [package]
-name = "mimeassoc"
+name = "mimeassoc_cli"
 version = "0.1.0"
 edition = "2021"
+
+[workspace]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0"
+mimeassoc = { path = "mimeassoc" }
 clap = { version = "4.2", features = ["derive"] }
-is_executable = "1.0"
-which = "4"

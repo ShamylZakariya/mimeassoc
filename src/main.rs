@@ -1,10 +1,8 @@
 use clap::{Args, Parser, Subcommand};
 
-mod mime_assoc;
-use mime_assoc::*;
-
-use crate::mime_assoc::desktop_entry::*;
-use crate::mime_assoc::mime_type::*;
+use mimeassoc::desktop_entry::*;
+use mimeassoc::mime_type::*;
+use mimeassoc::*;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -257,7 +255,7 @@ fn main() {
     };
 
     let mut mime_db = match MimeAssociations::load(&mimeapps_lists) {
-        Ok(mime_assoc) => mime_assoc,
+        Ok(mimeassoc) => mimeassoc,
         Err(e) => panic!("Unable to load MimeAssociations: {:?}", e),
     };
 

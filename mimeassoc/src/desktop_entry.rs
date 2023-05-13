@@ -427,7 +427,7 @@ pub fn lookup_desktop_entry<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::mime_assoc::desktop_entry_dirs;
+    use crate::desktop_entry_dirs;
 
     use super::*;
 

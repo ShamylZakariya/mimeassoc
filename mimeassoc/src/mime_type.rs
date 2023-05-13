@@ -382,7 +382,7 @@ impl MimeAssociations {
 
 #[cfg(test)]
 mod tests {
-    use crate::mime_assoc::desktop_entry::DesktopEntries;
+    use crate::desktop_entry::DesktopEntries;
 
     use super::*;
 
