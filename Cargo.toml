@@ -16,3 +16,4 @@ clap = { version = "4.2", features = ["derive"] }
 anyhow = "1.0"
 is_executable = "1.0"
 which = "4"
+gtk = { version = "0.6.6", package = "gtk4", features = ["v4_8"] }
