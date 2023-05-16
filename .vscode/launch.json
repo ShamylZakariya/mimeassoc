@@ -7,12 +7,31 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Debug unit tests in library 'mimeassoc'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=mimeassoc"
+                ],
+                "filter": {
+                    "name": "mimeassoc",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Debug executable 'mimeassoc_cli'",
             "cargo": {
                 "args": [
                     "build",
                     "--bin=mimeassoc_cli",
-                    "--package=mimeassoc_gui"
+                    "--package=mimeassoc"
                 ],
                 "filter": {
                     "name": "mimeassoc_cli",
@@ -31,10 +50,47 @@
                     "test",
                     "--no-run",
                     "--bin=mimeassoc_cli",
-                    "--package=mimeassoc_gui"
+                    "--package=mimeassoc"
                 ],
                 "filter": {
                     "name": "mimeassoc_cli",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'mimeassoc_gui'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=mimeassoc_gui",
+                    "--package=mimeassoc"
+                ],
+                "filter": {
+                    "name": "mimeassoc_gui",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'mimeassoc_gui'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=mimeassoc_gui",
+                    "--package=mimeassoc"
+                ],
+                "filter": {
+                    "name": "mimeassoc_gui",
                     "kind": "bin"
                 }
             },
