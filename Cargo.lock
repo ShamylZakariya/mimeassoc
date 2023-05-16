@@ -205,16 +205,9 @@ name = "mimeassoc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "clap",
  "is_executable",
  "which",
-]
-
-[[package]]
-name = "mimeassoc_gui"
-version = "0.1.0"
-dependencies = [
- "clap",
- "mimeassoc",
 ]
 
 [[package]]
