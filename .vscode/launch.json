@@ -12,7 +12,7 @@
                 "args": [
                     "build",
                     "--bin=mimeassoc_cli",
-                    "--package=mimeassoc_cli"
+                    "--package=mimeassoc_gui"
                 ],
                 "filter": {
                     "name": "mimeassoc_cli",
@@ -31,7 +31,7 @@
                     "test",
                     "--no-run",
                     "--bin=mimeassoc_cli",
-                    "--package=mimeassoc_cli"
+                    "--package=mimeassoc_gui"
                 ],
                 "filter": {
                     "name": "mimeassoc_cli",

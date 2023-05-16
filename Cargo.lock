@@ -210,17 +210,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "mimeassoc_cli"
-version = "0.1.0"
-dependencies = [
- "clap",
- "mimeassoc",
-]
-
-[[package]]
 name = "mimeassoc_gui"
 version = "0.1.0"
 dependencies = [
+ "clap",
  "mimeassoc",
 ]
 
