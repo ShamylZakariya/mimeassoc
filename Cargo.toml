@@ -2,6 +2,7 @@
 name = "mimeassoc"
 version = "0.1.0"
 edition = "2021"
+default-run = "mimeassoc_gui"
 
 [[bin]]
 name = "mimeassoc_cli"
