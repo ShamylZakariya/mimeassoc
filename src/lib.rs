@@ -167,7 +167,7 @@ mod tests {
         mime_associations: &'a MimeAssociations,
         desktop_entries: &'a DesktopEntries,
     ) -> Option<&'a DesktopEntry> {
-        if let Some(desktop_entry_id) = mime_associations.default_application_for(&mime_type) {
+        if let Some(desktop_entry_id) = mime_associations.assigned_application_for(&mime_type) {
             if let Some(desktop_entry) = desktop_entries.get_desktop_entry(desktop_entry_id) {
                 return Some(desktop_entry);
             }
@@ -197,24 +197,24 @@ mod tests {
 
         // assert mime -> desktop entry ids work as expected
         assert_eq!(
-            mime_associations.default_application_for(&text_plain),
+            mime_associations.assigned_application_for(&text_plain),
             Some(&text_editor)
         );
         assert_eq!(
-            mime_associations.default_application_for(&image_bmp),
+            mime_associations.assigned_application_for(&image_bmp),
             Some(&photopea_id)
         );
         assert_eq!(
-            mime_associations.default_application_for(&audio_m4a),
+            mime_associations.assigned_application_for(&audio_m4a),
             Some(&totem_id)
         );
         assert_eq!(
-            mime_associations.default_application_for(&image_tiff),
+            mime_associations.assigned_application_for(&image_tiff),
             Some(&evince_id)
         );
 
         assert_eq!(
-            mime_associations.default_application_for(&image_pdf),
+            mime_associations.assigned_application_for(&image_pdf),
             Some(&evince_id)
         );
 

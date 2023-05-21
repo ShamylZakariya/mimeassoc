@@ -298,13 +298,46 @@ impl MimeAssociations {
         self.scopes.iter().map(|s| s.file_path.deref()).collect()
     }
 
-    pub fn default_application_for(&self, mime_type: &MimeType) -> Option<&DesktopEntryId> {
+    /// Returns the assigned application to handle a given mime type.
+    pub fn assigned_application_for(&self, mime_type: &MimeType) -> Option<&DesktopEntryId> {
         for scope in self.scopes.iter() {
             if let Some(id) = scope.default_applications.get(mime_type) {
                 return Some(id);
             }
         }
         None
+    }
+
+    /// Returns the default (e.g., not considering the user's assignment) application to handle a given mime type.
+    pub fn default_application_for(&self, mime_type: &MimeType) -> Option<&DesktopEntryId> {
+        for scope in self.scopes.iter().skip(1) {
+            if let Some(id) = scope.default_applications.get(mime_type) {
+                return Some(id);
+            }
+        }
+        None
+    }
+
+    /// Deletes the assigned application assignment for a given mime type. Returns an error
+    /// if no application was assigned to that mime type.
+    pub fn delete_assigned_application_for(&mut self, mime_type: &MimeType) -> anyhow::Result<()> {
+        let Some(scope) = self.scopes.get_mut(0) else {
+            anyhow::bail!("No scopes available");
+        };
+
+        if scope.is_user_customizable {
+            if scope.default_applications.remove(mime_type).is_none() {
+                anyhow::bail!(
+                    "No application assigned to handle mime type \"{}\"",
+                    mime_type
+                );
+            }
+            scope.is_dirty = true;
+        } else {
+            anyhow::bail!("First scope is not user-customizable.")
+        }
+
+        Ok(())
     }
 
     pub fn added_associations_for(&self, mime_type: &MimeType) -> Option<&Vec<DesktopEntryId>> {
@@ -320,6 +353,9 @@ impl MimeAssociations {
     /// Will return an error if the DesktopEntry isn't a valid application, or if it doesn't
     /// handle the specified mime type, or if there are no user customizable MimeAssociationScopes
     /// in the chain.
+    /// Note: If the assigned application is the default application (as specified by the system, minus
+    /// user customization) the entry will be removed from the user scope. E.g., this case is equivalent
+    /// to calling `delete_assigned_application_for` for the mime type.
     pub fn set_default_handler_for_mime_type(
         &mut self,
         mime_type: &MimeType,
@@ -338,6 +374,10 @@ impl MimeAssociations {
                 desktop_entry.id(),
                 mime_type
             );
+        }
+
+        if self.default_application_for(mime_type) == Some(desktop_entry.id()) {
+            return self.delete_assigned_application_for(mime_type);
         }
 
         for scope in self.scopes.iter_mut() {
@@ -504,7 +544,7 @@ mod tests {
     }
 
     #[test]
-    fn mime_assocations_prefers_user_default_application_over_system_associations(
+    fn assigned_application_prefers_user_default_application_over_system_associations(
     ) -> anyhow::Result<()> {
         let associations = MimeAssociations::load(&[
             test_user_mimeapps_list(),
@@ -513,8 +553,90 @@ mod tests {
         ])?;
 
         let html = MimeType::parse("text/html")?;
-        let firefox = DesktopEntryId::parse("org.mozilla.firefox.desktop")?;
-        assert_eq!(associations.default_application_for(&html), Some(&firefox));
+        let firefox_id = DesktopEntryId::parse("org.mozilla.firefox.desktop")?;
+        assert_eq!(
+            associations.assigned_application_for(&html),
+            Some(&firefox_id)
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn default_application_skips_user_associations() -> anyhow::Result<()> {
+        let associations = MimeAssociations::load(&[
+            test_user_mimeapps_list(),
+            test_gnome_mimeapps_list(),
+            test_sys_mimeapps_list(),
+        ])?;
+
+        let image_bmp = MimeType::parse("image/bmp")?;
+        let eog_id = DesktopEntryId::parse("org.gnome.eog.desktop")?;
+        assert_eq!(
+            associations.default_application_for(&image_bmp),
+            Some(&eog_id)
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn delete_assigned_application_works() -> anyhow::Result<()> {
+        let mut associations = MimeAssociations::load(&[
+            test_user_mimeapps_list(),
+            test_gnome_mimeapps_list(),
+            test_sys_mimeapps_list(),
+        ])?;
+
+        // we need to make first scope user writable for testing
+        associations.scopes[0].is_user_customizable = true;
+
+        let image_bmp = MimeType::parse("image/bmp")?;
+        let eog_id = DesktopEntryId::parse("org.gnome.eog.desktop")?;
+        let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
+
+        assert_eq!(
+            associations.assigned_application_for(&image_bmp),
+            Some(&photopea_id)
+        );
+
+        associations.delete_assigned_application_for(&image_bmp)?;
+
+        assert_eq!(
+            associations.assigned_application_for(&image_bmp),
+            Some(&eog_id)
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn assigning_system_default_application_for_mimetype_is_equivalent_to_deleting_from_user_scope(
+    ) -> anyhow::Result<()> {
+        let (entries, mut associations) = create_test_entries_and_associations()?;
+
+        // we need to make first scope user writable for testing
+        associations.scopes[0].is_user_customizable = true;
+
+        let image_bmp = MimeType::parse("image/bmp")?;
+        let eog_id = DesktopEntryId::parse("org.gnome.eog.desktop")?;
+        let eog = entries.get_desktop_entry(&eog_id).unwrap();
+        let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
+
+        assert_eq!(
+            associations.assigned_application_for(&image_bmp),
+            Some(&photopea_id)
+        );
+
+        associations.set_default_handler_for_mime_type(&image_bmp, &eog)?;
+
+        assert_eq!(
+            associations.assigned_application_for(&image_bmp),
+            Some(&eog_id)
+        );
+
+        let first_scope = associations.scopes.get(0).unwrap();
+        assert!(!first_scope.default_applications.contains_key(&image_bmp));
 
         Ok(())
     }
@@ -605,14 +727,14 @@ mod tests {
 
         // we're going to verify Evince is set to image/tiff
         assert_eq!(
-            associations.default_application_for(&image_tiff),
+            associations.assigned_application_for(&image_tiff),
             Some(&evince_id)
         );
 
         // assign photopea
         associations.set_default_handler_for_mime_type(&image_tiff, &photopea)?;
         assert_eq!(
-            associations.default_application_for(&image_tiff),
+            associations.assigned_application_for(&image_tiff),
             Some(&photopea_id)
         );
 

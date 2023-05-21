@@ -78,7 +78,7 @@ impl Commands {
         };
 
         let desktop_entries = desktop_entry_db.get_desktop_entries_for_mimetype(&mime_type);
-        let default_handler = mime_db.default_application_for(&mime_type);
+        let default_handler = mime_db.assigned_application_for(&mime_type);
         if !desktop_entries.is_empty() {
             for desktop_entry in desktop_entries {
                 if Some(desktop_entry.id()) == default_handler {
@@ -105,7 +105,7 @@ impl Commands {
 
             for mime_type in mime_types.iter() {
                 let is_handler =
-                    mime_db.default_application_for(mime_type) == Some(desktop_entry.id());
+                    mime_db.assigned_application_for(mime_type) == Some(desktop_entry.id());
                 if is_handler {
                     println!("\t*{}", mime_type);
                 } else {
@@ -141,7 +141,8 @@ impl Commands {
         mime_types.sort();
 
         for mime_type in mime_types.iter() {
-            let is_handler = mime_db.default_application_for(mime_type) == Some(desktop_entry.id());
+            let is_handler =
+                mime_db.assigned_application_for(mime_type) == Some(desktop_entry.id());
             if is_handler {
                 println!("\t*{}", mime_type);
             } else {
