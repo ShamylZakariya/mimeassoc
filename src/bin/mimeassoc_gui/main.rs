@@ -22,7 +22,7 @@ impl MimeAssocState {
             Err(e) => panic!("Unable to load mimeapps_lists_paths: {:?}", e),
         };
 
-        let mut mime_db = match MimeAssociations::load(&mimeapps_lists) {
+        let mime_db = match MimeAssociations::load(&mimeapps_lists) {
             Ok(mimeassoc) => mimeassoc,
             Err(e) => panic!("Unable to load MimeAssociations: {:?}", e),
         };
@@ -53,7 +53,27 @@ fn build_ui(app: &Application) {
 
     button_increase.connect_clicked(move |_| {
         // We probably need to ... subclass Application and give it a MimeAssocState?
-        println!("For now.... nothing");
+        match MimeAssocState::new() {
+            Ok(mut mimeassoc) => {
+                let Some(photopea) = lookup_desktop_entry(&mimeassoc.app_db, "Photopea") else {
+                    println!("Unable to find Photopea in apps lists");
+                    return;
+                };
+                let image_png = MimeType::parse("image/png").unwrap();
+                if let Err(e) = mimeassoc
+                    .mime_db
+                    .set_default_handler_for_mime_type(&image_png, &photopea)
+                {
+                    println!(
+                        "Unable to assign photopea to handle image/png. Error: {:?}",
+                        e
+                    );
+                }
+            }
+            Err(e) => {
+                println!("Unable to create mimeassoc, error: {:?}", e);
+            }
+        }
     });
 
     let gtk_box = gtk::Box::builder()
