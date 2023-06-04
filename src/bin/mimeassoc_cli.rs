@@ -26,6 +26,8 @@ enum Commands {
     Application(ApplicationCommandArgs),
     /// Assign an application as default handler for one or more mime types. If no mime types are specified, makes the specified application default handler for ALL it's supported mime types
     Set(SetCommandArgs),
+    /// Reset assignments for specified mime types to system default
+    Reset(ResetCommandArgs),
     /// Display the configuration state of `mimeassoc`. Shows the mime association sources, and where desktop entry files were loaded from, in chain order.
     Configuration,
 }
@@ -46,6 +48,13 @@ impl Commands {
                 mime_db,
                 desktop_entry_db,
                 &args.desktop_entry.as_str(),
+                &args
+                    .mime_types
+                    .iter()
+                    .map(AsRef::as_ref)
+                    .collect::<Vec<_>>(),
+            ),
+            Commands::Reset(args) => Self::reset_mime_types(
                 &args
                     .mime_types
                     .iter()
@@ -226,6 +235,26 @@ impl Commands {
             panic!("Unable to save changes: {:?}", e);
         }
     }
+
+    fn reset_mime_types(mime_types: &[&str]) {
+        // map input mime type strings to mime types
+        let mut resolved_mime_types: Vec<MimeType> = vec![];
+        for mime_type in mime_types {
+            if let Ok(mime_type) = MimeType::parse(mime_type) {
+                resolved_mime_types.push(mime_type);
+            } else {
+                panic!("\"{}\" is not a valid mime type identifier", mime_type);
+            }
+        }
+        println!(
+            "Resetting [{}]",
+            resolved_mime_types
+                .iter()
+                .map(|m| m.to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+    }
 }
 
 #[derive(Args)]
@@ -241,6 +270,11 @@ struct ApplicationCommandArgs {
 #[derive(Args)]
 struct SetCommandArgs {
     desktop_entry: String,
+    mime_types: Vec<String>,
+}
+
+#[derive(Args)]
+struct ResetCommandArgs {
     mime_types: Vec<String>,
 }
 
