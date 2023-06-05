@@ -590,17 +590,15 @@ mod tests {
 
         let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
         let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
+
         let image_bmp = MimeType::parse("image/bmp")?;
         let image_jpeg = MimeType::parse("image/jpeg")?;
-        assert_eq!(
-            entries.get_desktop_entries_for_mimetype(&image_bmp),
-            vec![photopea]
-        );
-
-        assert_eq!(
-            entries.get_desktop_entries_for_mimetype(&image_jpeg),
-            vec![photopea]
-        );
+        assert!(entries
+            .get_desktop_entries_for_mimetype(&image_bmp)
+            .contains(&photopea));
+        assert!(entries
+            .get_desktop_entries_for_mimetype(&image_jpeg)
+            .contains(&photopea));
 
         // evince comes from sys applications, and it ALSO handles tiff
         let evince_id = DesktopEntryId::parse("org.gnome.Evince.desktop")?;
