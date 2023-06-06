@@ -62,7 +62,7 @@ fn build_ui(app: &Application) {
                 let image_png = MimeType::parse("image/png").unwrap();
                 if let Err(e) = mimeassoc
                     .mime_db
-                    .set_default_handler_for_mime_type(&image_png, &photopea)
+                    .set_default_handler_for_mime_type(&image_png, photopea)
                 {
                     println!(
                         "Unable to assign photopea to handle image/png. Error: {:?}",

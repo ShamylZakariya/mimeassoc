@@ -281,6 +281,32 @@ pub struct MimeAssociations {
 }
 
 impl MimeAssociations {
+    /// Return zeroth scope; this is normally associated with the scope
+    /// loaded from the user directory.
+    /// TODO: Sanitize this - this is brittle. Having the user scope be zero
+    /// is fine, as a convention, but easily misconfigured.
+    fn get_user_scope(&self) -> Option<&MimeAssociationScope> {
+        if let Some(scope) = self.scopes.get(0) {
+            if scope.is_user_customizable {
+                return Some(scope);
+            }
+        }
+        None
+    }
+
+    /// Return zeroth scope mutably; this is normally associated with the scope
+    /// loaded from the user directory.
+    /// TODO: Sanitize this - this is brittle. Having the user scope be zero
+    /// is fine, as a convention, but easily misconfigured.
+    fn get_user_scope_mut(&mut self) -> Option<&mut MimeAssociationScope> {
+        if let Some(scope) = self.scopes.get_mut(0) {
+            if scope.is_user_customizable {
+                return Some(scope);
+            }
+        }
+        None
+    }
+
     /// Load MimeAssocations in order of the provided paths. MimeAssocations earlier in
     /// the list will override ones later in the list.
     pub fn load<P>(mimeapps_file_paths: &[P]) -> anyhow::Result<Self>
@@ -332,23 +358,28 @@ impl MimeAssociations {
         None
     }
 
-    /// Deletes the assigned application assignment for a given mime type. Returns an error
-    /// if no application was assigned to that mime type.
-    pub fn delete_assigned_application_for(&mut self, mime_type: &MimeType) -> anyhow::Result<()> {
-        let Some(scope) = self.scopes.get_mut(0) else {
-            anyhow::bail!("No scopes available");
+    /// Deletes the application assignment(s) for a given mime type. If the mime_type is a wildcard, will
+    /// delete all matching assignments. E.g., image/* would delete assignment for image/png, image/tif, etc.
+    /// Returns an error if there is no user-customizable scope to edit.
+    pub fn remove_assigned_applications_for(&mut self, mime_type: &MimeType) -> anyhow::Result<()> {
+        let Some(scope) = self.get_user_scope_mut() else {
+            anyhow::bail!("No customizable user scopes available");
         };
 
-        if scope.is_user_customizable {
-            if scope.default_applications.remove(mime_type).is_none() {
-                anyhow::bail!(
-                    "No application assigned to handle mime type \"{}\"",
-                    mime_type
-                );
+        if mime_type.is_minor_type_wildcard() {
+            let mut keys_to_remove = vec![];
+            for key in scope.default_applications.keys() {
+                if mime_type.wildcard_match(key) {
+                    keys_to_remove.push(key.clone());
+                }
+            }
+
+            for key_to_remove in keys_to_remove {
+                scope.default_applications.remove(&key_to_remove);
             }
             scope.is_dirty = true;
-        } else {
-            anyhow::bail!("First scope is not user-customizable.")
+        } else if scope.default_applications.remove(mime_type).is_some() {
+            scope.is_dirty = true;
         }
 
         Ok(())
@@ -391,7 +422,7 @@ impl MimeAssociations {
         }
 
         if self.default_application_for(mime_type) == Some(desktop_entry.id()) {
-            return self.delete_assigned_application_for(mime_type);
+            return self.remove_assigned_applications_for(mime_type);
         }
 
         for scope in self.scopes.iter_mut() {
@@ -613,7 +644,7 @@ mod tests {
     }
 
     #[test]
-    fn delete_assigned_application_works() -> anyhow::Result<()> {
+    fn remove_assigned_application_works() -> anyhow::Result<()> {
         let mut associations = MimeAssociations::load(&[
             test_user_mimeapps_list(),
             test_gnome_mimeapps_list(),
@@ -632,12 +663,62 @@ mod tests {
             Some(&photopea_id)
         );
 
-        associations.delete_assigned_application_for(&image_bmp)?;
+        associations.remove_assigned_applications_for(&image_bmp)?;
 
         assert_eq!(
             associations.assigned_application_for(&image_bmp),
             Some(&eog_id)
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn remove_assigned_application_works_with_wildcard_mimetypes() -> anyhow::Result<()> {
+        let mut associations = MimeAssociations::load(&[
+            test_user_mimeapps_list(),
+            test_gnome_mimeapps_list(),
+            test_sys_mimeapps_list(),
+        ])?;
+
+        // we need to make first scope user writable for testing
+        associations.scopes[0].is_user_customizable = true;
+
+        let image_bmp = MimeType::parse("image/bmp")?;
+        let image_png = MimeType::parse("image/png")?;
+        let image_pdf = MimeType::parse("image/pdf")?;
+        let image_star = MimeType::parse("image/*")?;
+
+        assert_eq!(
+            associations
+                .assigned_application_for(&image_bmp)
+                .unwrap()
+                .id(),
+            "photopea"
+        );
+
+        assert_eq!(
+            associations
+                .assigned_application_for(&image_png)
+                .unwrap()
+                .id(),
+            "org.gimp.GIMP"
+        );
+
+        assert_eq!(
+            associations
+                .assigned_application_for(&image_pdf)
+                .unwrap()
+                .id(),
+            "org.gnome.Evince"
+        );
+
+        associations.remove_assigned_applications_for(&image_star)?;
+
+        let user_scope = associations.get_user_scope().unwrap();
+        assert!(!user_scope.default_applications.contains_key(&image_bmp));
+        assert!(!user_scope.default_applications.contains_key(&image_png));
+        assert!(!user_scope.default_applications.contains_key(&image_pdf));
 
         Ok(())
     }
@@ -667,8 +748,8 @@ mod tests {
             Some(&eog_id)
         );
 
-        let first_scope = associations.scopes.get(0).unwrap();
-        assert!(!first_scope.default_applications.contains_key(&image_bmp));
+        let user_scope = associations.get_user_scope().unwrap();
+        assert!(!user_scope.default_applications.contains_key(&image_bmp));
 
         Ok(())
     }

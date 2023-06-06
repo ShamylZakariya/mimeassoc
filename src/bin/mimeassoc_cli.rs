@@ -47,7 +47,7 @@ impl Commands {
             Commands::Set(args) => Self::set_default_handler(
                 mime_db,
                 desktop_entry_db,
-                &args.desktop_entry.as_str(),
+                args.desktop_entry.as_str(),
                 &args
                     .mime_types
                     .iter()
@@ -55,6 +55,7 @@ impl Commands {
                     .collect::<Vec<_>>(),
             ),
             Commands::Reset(args) => Self::reset_mime_types(
+                mime_db,
                 &args
                     .mime_types
                     .iter()
@@ -236,7 +237,7 @@ impl Commands {
         }
     }
 
-    fn reset_mime_types(mime_types: &[&str]) {
+    fn reset_mime_types(mime_db: &mut MimeAssociations, mime_types: &[&str]) {
         // map input mime type strings to mime types
         let mut resolved_mime_types: Vec<MimeType> = vec![];
         for mime_type in mime_types {
@@ -254,6 +255,20 @@ impl Commands {
                 .collect::<Vec<_>>()
                 .join(", ")
         );
+
+        for mime_type in resolved_mime_types.into_iter() {
+            if let Err(e) = mime_db.remove_assigned_applications_for(&mime_type) {
+                panic!(
+                    "Failed to reset default applicaiton assignment for \"{}\", error: {:?}",
+                    &mime_type, e
+                );
+            }
+        }
+
+        // persist the changes...
+        if let Err(e) = mime_db.save() {
+            panic!("Unable to save changes: {:?}", e);
+        }
     }
 }
 
