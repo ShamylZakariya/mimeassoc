@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fmt::Display,
     fs::File,
     io::{self, BufRead, Write},
@@ -461,6 +461,27 @@ impl MimeAssociations {
 
         Ok(())
     }
+
+    /// Find matching mimetypes for a wildcard. If the passed-in mime-type is
+    /// not a wildcard, find the first match in storage.
+    pub fn find_matching_mimetypes(&self, mime_type: &MimeType) -> Vec<&MimeType> {
+        let mut matches = HashSet::new();
+        if mime_type.is_minor_type_wildcard() {
+            for m in self.mime_types() {
+                if mime_type.wildcard_match(m) {
+                    matches.insert(m);
+                }
+            }
+        } else {
+            for m in self.mime_types() {
+                if m == mime_type {
+                    matches.insert(m);
+                    break;
+                }
+            }
+        }
+        matches.into_iter().collect()
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -719,6 +740,30 @@ mod tests {
         assert!(!user_scope.default_applications.contains_key(&image_bmp));
         assert!(!user_scope.default_applications.contains_key(&image_png));
         assert!(!user_scope.default_applications.contains_key(&image_pdf));
+
+        Ok(())
+    }
+
+    #[test]
+    fn mimeassocations_wildcard_lookup_works() -> anyhow::Result<()> {
+        let associations = MimeAssociations::load(&[
+            test_user_mimeapps_list(),
+            test_gnome_mimeapps_list(),
+            test_sys_mimeapps_list(),
+        ])?;
+
+        let image_star = MimeType::parse("image/*")?;
+        let image_bmp = MimeType::parse("image/bmp")?;
+        let image_png = MimeType::parse("image/png")?;
+
+        let results = associations.find_matching_mimetypes(&image_star);
+        assert!(results.len() > 0);
+        assert!(results.contains(&&image_bmp));
+        assert!(results.contains(&&image_png));
+
+        let non_wildcard_results = associations.find_matching_mimetypes(&image_bmp);
+        assert!(non_wildcard_results.len() == 1);
+        assert!(non_wildcard_results.contains(&&image_bmp));
 
         Ok(())
     }
