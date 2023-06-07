@@ -1,12 +1,35 @@
-mod cli;
 mod command_output;
+mod commands;
 
 use clap::Parser;
 
-use cli::*;
+use command_output::*;
+use commands::*;
 use mimeassoc::desktop_entry::*;
 use mimeassoc::mime_type::*;
 use mimeassoc::*;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Display system mime type and default applications info
+#[derive(Parser)]
+#[command(author, version, about, long_about = None, arg_required_else_help = true)]
+pub struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+impl Cli {
+    pub fn process(&self, mime_db: &mut MimeAssociations, desktop_entry_db: &DesktopEntries) {
+        if let Some(command) = &self.command {
+            let command_output = command.process(mime_db, desktop_entry_db);
+            let output_consumer = Box::new(DefaultCommandOutputConsumer {});
+            if let Err(e) = output_consumer.process(&command_output) {
+                panic!("Error processing command output: {}", e);
+            }
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

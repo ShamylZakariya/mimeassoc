@@ -1,33 +1,13 @@
 use std::path::PathBuf;
 
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Subcommand};
 
 use super::command_output::*;
 use mimeassoc::desktop_entry::*;
 use mimeassoc::mime_type::*;
 
-/// Display system mime type and default applications info
-#[derive(Parser)]
-#[command(author, version, about, long_about = None, arg_required_else_help = true)]
-pub struct Cli {
-    #[command(subcommand)]
-    command: Option<Commands>,
-}
-
-impl Cli {
-    pub fn process(&self, mime_db: &mut MimeAssociations, desktop_entry_db: &DesktopEntries) {
-        if let Some(command) = &self.command {
-            let command_output = command.process(mime_db, desktop_entry_db);
-            let output_consumer = Box::new(DefaultCommandOutputConsumer {});
-            if let Err(e) = output_consumer.process(&command_output) {
-                panic!("Error processing command output: {}", e);
-            }
-        }
-    }
-}
-
 #[derive(Subcommand)]
-enum Commands {
+pub enum Commands {
     /// Display all registered mime types
     MimeTypes,
     /// Display all applications which support the specified mime type, and which is currently assigned as default handler
@@ -340,17 +320,17 @@ impl Commands {
 }
 
 #[derive(Args)]
-struct MimeTypeCommandArgs {
+pub struct MimeTypeCommandArgs {
     id: Option<String>,
 }
 
 #[derive(Args)]
-struct ApplicationCommandArgs {
+pub struct ApplicationCommandArgs {
     id: Option<String>,
 }
 
 #[derive(Args)]
-struct SetCommandArgs {
+pub struct SetCommandArgs {
     /// If set, make no changes, just display what would be assigned
     #[arg(short, long)]
     dry_run: bool,
@@ -359,7 +339,7 @@ struct SetCommandArgs {
 }
 
 #[derive(Args)]
-struct ResetCommandArgs {
+pub struct ResetCommandArgs {
     /// If set, make no changes, just display what would be reset
     #[arg(short, long)]
     dry_run: bool,
