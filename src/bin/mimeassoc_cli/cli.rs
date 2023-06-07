@@ -58,6 +58,7 @@ impl Commands {
                     .iter()
                     .map(AsRef::as_ref)
                     .collect::<Vec<_>>(),
+                args.dry_run,
             ),
             Commands::Reset(args) => Self::reset_mime_types(
                 mime_db,
@@ -66,6 +67,7 @@ impl Commands {
                     .iter()
                     .map(AsRef::as_ref)
                     .collect::<Vec<_>>(),
+                args.dry_run,
             ),
         }
     }
@@ -182,6 +184,7 @@ impl Commands {
         desktop_entry_db: &DesktopEntries,
         desktop_entry_id: &str,
         mime_types: &[&str],
+        dry_run: bool,
     ) {
         // map input mime type strings to mime types
         let mut resolved_mime_types: Vec<MimeType> = vec![];
@@ -237,12 +240,14 @@ impl Commands {
         }
 
         // persist the changes...
-        if let Err(e) = mime_db.save() {
-            panic!("Unable to save changes: {:?}", e);
+        if !dry_run {
+            if let Err(e) = mime_db.save() {
+                panic!("Unable to save changes: {:?}", e);
+            }
         }
     }
 
-    fn reset_mime_types(mime_db: &mut MimeAssociations, mime_types: &[&str]) {
+    fn reset_mime_types(mime_db: &mut MimeAssociations, mime_types: &[&str], dry_run: bool) {
         // map input mime type strings to mime types
         let mut resolved_mime_types: Vec<MimeType> = vec![];
         for mime_type in mime_types {
@@ -271,8 +276,10 @@ impl Commands {
         }
 
         // persist the changes...
-        if let Err(e) = mime_db.save() {
-            panic!("Unable to save changes: {:?}", e);
+        if !dry_run {
+            if let Err(e) = mime_db.save() {
+                panic!("Unable to save changes: {:?}", e);
+            }
         }
     }
 }
@@ -289,11 +296,17 @@ struct ApplicationCommandArgs {
 
 #[derive(Args)]
 struct SetCommandArgs {
+    /// If set, make no changes, just display what would be assigned
+    #[arg(short, long)]
+    dry_run: bool,
     desktop_entry: String,
     mime_types: Vec<String>,
 }
 
 #[derive(Args)]
 struct ResetCommandArgs {
+    /// If set, make no changes, just display what would be reset
+    #[arg(short, long)]
+    dry_run: bool,
     mime_types: Vec<String>,
 }
