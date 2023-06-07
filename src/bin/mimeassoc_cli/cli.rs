@@ -120,6 +120,8 @@ impl Commands {
             ));
         }
 
+        output.sort_by(|a, b| a.mime_type.cmp(&b.mime_type));
+
         CommandOutput::MimeType(output)
     }
 
