@@ -6,6 +6,35 @@ use super::command_output::*;
 use mimeassoc::desktop_entry::*;
 use mimeassoc::mime_type::*;
 
+#[derive(Args)]
+pub struct MimeTypeCommandArgs {
+    id: Option<String>,
+}
+
+#[derive(Args)]
+pub struct ApplicationCommandArgs {
+    id: Option<String>,
+}
+
+#[derive(Args)]
+pub struct SetCommandArgs {
+    /// If set, make no changes, just display what would be assigned
+    #[arg(short, long)]
+    dry_run: bool,
+    desktop_entry: String,
+    mime_types: Vec<String>,
+}
+
+#[derive(Args)]
+pub struct ResetCommandArgs {
+    /// If set, make no changes, just display what would be reset
+    #[arg(short, long)]
+    dry_run: bool,
+    mime_types: Vec<String>,
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #[derive(Subcommand)]
 pub enum Commands {
     /// Display all registered mime types
@@ -319,31 +348,4 @@ impl Commands {
             desktop_entry_scope_paths,
         })
     }
-}
-
-#[derive(Args)]
-pub struct MimeTypeCommandArgs {
-    id: Option<String>,
-}
-
-#[derive(Args)]
-pub struct ApplicationCommandArgs {
-    id: Option<String>,
-}
-
-#[derive(Args)]
-pub struct SetCommandArgs {
-    /// If set, make no changes, just display what would be assigned
-    #[arg(short, long)]
-    dry_run: bool,
-    desktop_entry: String,
-    mime_types: Vec<String>,
-}
-
-#[derive(Args)]
-pub struct ResetCommandArgs {
-    /// If set, make no changes, just display what would be reset
-    #[arg(short, long)]
-    dry_run: bool,
-    mime_types: Vec<String>,
 }

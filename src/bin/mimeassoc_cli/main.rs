@@ -15,6 +15,9 @@ use mimeassoc::*;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help = true)]
 pub struct Cli {
+    #[arg(short, long)]
+    json: bool,
+
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -23,10 +26,17 @@ impl Cli {
     pub fn process(&self, mime_db: &mut MimeAssociations, desktop_entry_db: &DesktopEntries) {
         if let Some(command) = &self.command {
             let command_output = command.process(mime_db, desktop_entry_db);
-            let output_consumer = Box::new(JsonCommandOutputConsumer::default());
-            if let Err(e) = output_consumer.process(&command_output) {
+            if let Err(e) = self.command_output_consumer().process(&command_output) {
                 panic!("Error processing command output: {}", e);
             }
+        }
+    }
+
+    fn command_output_consumer(&self) -> Box<dyn CommandOutputConsumer> {
+        if self.json {
+            Box::<JsonCommandOutputConsumer>::default()
+        } else {
+            Box::<DefaultCommandOutputConsumer>::default()
         }
     }
 }
