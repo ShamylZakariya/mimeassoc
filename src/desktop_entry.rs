@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::{
     collections::HashMap,
     fmt::Display,
@@ -11,16 +12,16 @@ use is_executable::IsExecutable;
 
 use super::{has_extension, mime_type::MimeType};
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize)]
 pub struct DesktopEntryId {
-    desktop_entry: String,
+    id: String,
 }
 
 impl DesktopEntryId {
     pub fn parse(desktop_entry: &str) -> anyhow::Result<DesktopEntryId> {
         if desktop_entry.ends_with(".desktop") {
             Ok(DesktopEntryId {
-                desktop_entry: desktop_entry.to_string(),
+                id: desktop_entry.to_string(),
             })
         } else {
             anyhow::bail!(
@@ -31,26 +32,26 @@ impl DesktopEntryId {
     }
 
     pub fn id(&self) -> &str {
-        let desktop_idx = self.desktop_entry.find(".desktop").unwrap();
-        &self.desktop_entry[0..desktop_idx]
+        let desktop_idx = self.id.find(".desktop").unwrap();
+        &self.id[0..desktop_idx]
     }
 }
 
 impl PartialOrd for DesktopEntryId {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.desktop_entry.partial_cmp(&other.desktop_entry)
+        self.id.partial_cmp(&other.id)
     }
 }
 
 impl Ord for DesktopEntryId {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.desktop_entry.cmp(&other.desktop_entry)
+        self.id.cmp(&other.id)
     }
 }
 
 impl Display for DesktopEntryId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.desktop_entry)
+        write!(f, "{}", self.id)
     }
 }
 
@@ -409,11 +410,7 @@ pub fn lookup_desktop_entry<'a>(
     }
 
     for desktop_entry in desktop_entries {
-        let components = desktop_entry
-            .id()
-            .desktop_entry
-            .split('.')
-            .collect::<Vec<_>>();
+        let components = desktop_entry.id().id.split('.').collect::<Vec<_>>();
         let count = components.len();
         if count >= 2 && components[count - 2].eq_ignore_ascii_case(identifier) {
             return Some(desktop_entry);

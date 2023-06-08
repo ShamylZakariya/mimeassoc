@@ -23,7 +23,7 @@ impl Cli {
     pub fn process(&self, mime_db: &mut MimeAssociations, desktop_entry_db: &DesktopEntries) {
         if let Some(command) = &self.command {
             let command_output = command.process(mime_db, desktop_entry_db);
-            let output_consumer = Box::new(DefaultCommandOutputConsumer {});
+            let output_consumer = Box::new(JsonCommandOutputConsumer::default());
             if let Err(e) = output_consumer.process(&command_output) {
                 panic!("Error processing command output: {}", e);
             }

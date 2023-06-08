@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
@@ -9,7 +10,7 @@ use std::{
 
 use super::desktop_entry::{DesktopEntry, DesktopEntryId};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
 pub struct MimeType {
     pub id: String,
 }

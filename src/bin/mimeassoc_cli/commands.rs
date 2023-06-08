@@ -275,11 +275,13 @@ impl Commands {
             }
         }
 
-        let mut output = ResetDefaultHandlerCommandOutput { mime_types: vec![] };
+        let mut output = ResetDefaultHandlerCommandOutput {
+            reset_mime_types: vec![],
+        };
 
         for mime_type in resolved_mime_types.into_iter() {
             match mime_db.remove_assigned_applications_for(&mime_type) {
-                Ok(_) => output.mime_types.push(mime_type),
+                Ok(_) => output.reset_mime_types.push(mime_type),
                 Err(e) => panic!(
                     "Failed to reset default applicaiton assignment for \"{}\", error: {:?}",
                     &mime_type, e

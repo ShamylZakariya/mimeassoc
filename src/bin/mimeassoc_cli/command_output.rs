@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::path::PathBuf;
 
 use mimeassoc::{desktop_entry::DesktopEntryId, mime_type::*};
@@ -13,49 +14,63 @@ pub enum CommandOutput {
     Configuration(ConfigurationCommandOutput),
 }
 
+#[derive(Serialize)]
 pub struct MimeTypesCommandOutput {
     pub mime_type: MimeType,
 }
 
+#[derive(Serialize)]
 pub struct MimeTypeCommandHandlerInfo {
     pub desktop_entry: DesktopEntryId,
     pub is_default_handler: bool,
 }
+
+#[derive(Serialize)]
 pub struct MimeTypeCommandOutput {
     pub mime_type: MimeType,
     pub handler_info: Vec<MimeTypeCommandHandlerInfo>,
 }
 
+#[derive(Serialize)]
 pub struct MimeInfo {
     pub mime_type: MimeType,
     pub is_default_handler: bool,
 }
 
+#[derive(Serialize)]
 pub struct ApplicationCommandOutput {
     pub desktop_entry: DesktopEntryId,
     pub mime_info: Vec<MimeInfo>,
 }
 
+#[derive(Serialize)]
 pub struct SetDefaultHandlerCommandOutput {
     pub desktop_entry: DesktopEntryId,
     pub mime_types: Vec<MimeType>,
 }
 
+#[derive(Serialize)]
 pub struct ResetDefaultHandlerCommandOutput {
-    pub mime_types: Vec<MimeType>,
+    pub reset_mime_types: Vec<MimeType>,
 }
 
+#[derive(Serialize)]
 pub struct ConfigurationCommandOutput {
     pub mime_association_scope_paths: Vec<PathBuf>,
     pub desktop_entry_scope_paths: Vec<PathBuf>,
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// Trait for handler types for processing CommandOutput
 pub trait CommandOutputConsumer {
     fn process(&self, command_output: &CommandOutput) -> anyhow::Result<()>;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /// The DefaultCommandOutputConsumer is human-readable text
+#[derive(Default)]
 pub struct DefaultCommandOutputConsumer {}
 
 impl CommandOutputConsumer for DefaultCommandOutputConsumer {
@@ -130,13 +145,13 @@ impl DefaultCommandOutputConsumer {
     }
 
     fn display_reset_default_handler_command_output(output: &ResetDefaultHandlerCommandOutput) {
-        if output.mime_types.is_empty() {
+        if output.reset_mime_types.is_empty() {
             println!("No mimetypes were reset.");
         } else {
             println!(
                 "Reset {}",
                 output
-                    .mime_types
+                    .reset_mime_types
                     .iter()
                     .map(|m| m.to_string())
                     .collect::<Vec<_>>()
@@ -158,5 +173,28 @@ impl DefaultCommandOutputConsumer {
                 println!("\t{}", path);
             }
         }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Default)]
+pub struct JsonCommandOutputConsumer {}
+
+impl CommandOutputConsumer for JsonCommandOutputConsumer {
+    fn process(&self, command_output: &CommandOutput) -> anyhow::Result<()> {
+        let json_string = match command_output {
+            CommandOutput::MimeTypes(output) => serde_json::to_string_pretty(output),
+            CommandOutput::MimeType(output) => serde_json::to_string_pretty(output),
+            CommandOutput::Applications(output) => serde_json::to_string_pretty(output),
+            CommandOutput::Application(output) => serde_json::to_string_pretty(output),
+            CommandOutput::Set(output) => serde_json::to_string_pretty(output),
+            CommandOutput::Reset(output) => serde_json::to_string_pretty(output),
+            CommandOutput::Configuration(output) => serde_json::to_string_pretty(output),
+        }?;
+
+        println!("{}", json_string);
+
+        Ok(())
     }
 }
