@@ -375,6 +375,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glib-build-tools"
+version = "0.17.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a65d79efe318ef2cbbbb37032b125866fd82c34ea44c816132621bbc552e716"
+
+[[package]]
 name = "glib-macros"
 version = "0.17.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -588,6 +594,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "453ad9f582a441959e5f0d088b02ce04cfe8d51a8eaf077f12ac6d3e94164ca6"
 
 [[package]]
+name = "libadwaita"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0244f4b13d8c3a8a0f0b86bbc234e2fbba7cfe70b7d14f822e363e5599bb7056"
+dependencies = [
+ "bitflags",
+ "gdk-pixbuf",
+ "gdk4",
+ "gio",
+ "glib",
+ "gtk4",
+ "libadwaita-sys",
+ "libc",
+ "pango",
+]
+
+[[package]]
+name = "libadwaita-sys"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5bf83ec83c0fc9449b139c721e6f9958137dd7a1d7d47136e4eec929e3bd5265"
+dependencies = [
+ "gdk4-sys",
+ "gio-sys",
+ "glib-sys",
+ "gobject-sys",
+ "gtk4-sys",
+ "libc",
+ "pango-sys",
+ "system-deps",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.142"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -620,8 +659,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "glib-build-tools",
  "gtk4",
  "is_executable",
+ "libadwaita",
  "serde",
  "serde_json",
  "which",
