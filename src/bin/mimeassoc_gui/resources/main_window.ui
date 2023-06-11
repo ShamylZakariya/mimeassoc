@@ -1,9 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
+  <menu id="main-menu">
+    <item>
+      <attribute name="label" translatable="yes">Show _Mime Types</attribute>
+      <attribute name="action">win.show-mime-types</attribute>
+    </item>
+    <item>
+      <attribute name="label" translatable="yes">Show _Applications</attribute>
+      <attribute name="action">win.show-applications</attribute>
+    </item>
+    <item>
+      <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
+      <attribute name="action">win.show-help-overlay</attribute>
+    </item>
+  </menu>
+
   <template class="MainWindow" parent="GtkApplicationWindow">
     <property name="title" translatable="yes">MimeAssoc</property>
     <property name="default_width">650</property>
     <property name="default_height">550</property>
+
+    <child type="titlebar">
+      <object class="GtkHeaderBar">
+        <child type="end">
+          <object class="GtkMenuButton">
+            <property name="icon-name">open-menu-symbolic</property>
+            <property name="menu-model">main-menu</property>
+            <property name="tooltip-text" translatable="yes">Main Menu</property>
+          </object>
+        </child>
+      </object>
+    </child>
     <child>
       <object class="GtkButton" id="button">
         <property name="label">Press me!</property>

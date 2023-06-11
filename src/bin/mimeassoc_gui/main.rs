@@ -1,7 +1,7 @@
 mod components;
 mod window;
 
-use gtk::{gdk::Display, prelude::*, *};
+use gtk::{gdk::Display, glib::clone, prelude::*, *};
 
 const APP_ID: &str = "org.zakariya.MimeAssoc";
 
@@ -9,7 +9,7 @@ fn main() -> glib::ExitCode {
     // Register and include resources
     gio::resources_register_include!("mimeassoc.gresource").expect("Failed to register resources.");
 
-    let app = gtk::Application::builder().application_id(APP_ID).build();
+    let app = adw::Application::builder().application_id(APP_ID).build();
 
     app.connect_startup(|app| {
         setup_shortcuts(app);
@@ -33,15 +33,27 @@ fn load_css() {
     );
 }
 
-fn setup_shortcuts(app: &gtk::Application) {
+fn setup_shortcuts(app: &adw::Application) {
     println!("setup_shortcuts");
+
+    app.set_accels_for_action("win.show-mime-types", &["<Ctrl>M"]);
+    app.set_accels_for_action("win.show-applications", &["<Ctrl>A"]);
+
+    // window close
     app.set_accels_for_action("window.close", &["<Ctrl>W"]);
-    app.set_accels_for_action("window.close", &["<Ctrl>Q"]);
+    app.set_accels_for_action("win.quit", &["<Ctrl>Q"]);
 }
 
-fn build_ui(app: &gtk::Application) {
+fn build_ui(app: &adw::Application) {
     println!("build_ui");
 
     let window = window::MainWindow::new(app);
+
+    let action_close = gio::SimpleAction::new("quit", None);
+    action_close.connect_activate(clone!(@weak window => move |_, _| {
+        window.close();
+    }));
+    window.add_action(&action_close);
+
     window.present();
 }

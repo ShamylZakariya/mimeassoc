@@ -1,5 +1,6 @@
 use std::cell::OnceCell;
 
+use adw::prelude::*;
 use adw::{subclass::prelude::*, *};
 use glib::subclass::*;
 use gtk::*;
@@ -40,13 +41,12 @@ impl ObjectImpl for MainWindow {
         // Setup
         let obj = self.obj();
         obj.setup_components();
+        obj.setup_actions();
     }
 }
 
 // Trait shared by all widgets
 impl WidgetImpl for MainWindow {}
-
-// impl AdwApplicationWindowImpl for MainWindow {}
 
 // Trait shared by all windows
 impl WindowImpl for MainWindow {}
