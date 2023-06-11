@@ -11,8 +11,14 @@ use crate::components::Components;
 #[template(resource = "/org/zakariya/MimeAssoc/main_window.ui")]
 pub struct MainWindow {
     pub components: OnceCell<Components>,
-    // #[template_child]
-    // pub stack: TemplateChild<Stack>,
+    #[template_child]
+    pub stack: TemplateChild<ViewStack>,
+
+    #[template_child]
+    pub page_mime_types: TemplateChild<ViewStackPage>,
+
+    #[template_child]
+    pub page_applications: TemplateChild<ViewStackPage>,
 }
 
 // The central trait for subclassing a GObject
