@@ -36,24 +36,23 @@ fn load_css() {
 fn setup_shortcuts(app: &adw::Application) {
     println!("setup_shortcuts");
 
+    // I presume `app` has an `app.quit` but I couldn't find documentation for it, so make our own
+    let action_close = gio::SimpleAction::new("quit", None);
+    action_close.connect_activate(clone!(@weak app => move |_, _| {
+        app.quit();
+    }));
+    app.add_action(&action_close);
+
+    // bind accelerators to actions
     app.set_accels_for_action("win.show-mime-types", &["<Ctrl>M"]);
     app.set_accels_for_action("win.show-applications", &["<Ctrl>A"]);
-
-    // window close
     app.set_accels_for_action("window.close", &["<Ctrl>W"]);
-    app.set_accels_for_action("win.quit", &["<Ctrl>Q"]);
+    app.set_accels_for_action("app.quit", &["<Ctrl>Q"]);
 }
 
 fn build_ui(app: &adw::Application) {
     println!("build_ui");
 
     let window = window::MainWindow::new(app);
-
-    let action_close = gio::SimpleAction::new("quit", None);
-    action_close.connect_activate(clone!(@weak window => move |_, _| {
-        window.close();
-    }));
-    window.add_action(&action_close);
-
     window.present();
 }
