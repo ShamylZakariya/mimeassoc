@@ -3,6 +3,12 @@
     <gresource prefix="/org/zakariya/MimeAssoc/">
         <file compressed="true" preprocess="xml-stripblanks" alias="gtk/help-overlay.ui">shortcuts.ui</file>
         <file compressed="true" preprocess="xml-stripblanks">main_window.ui</file>
+        <!-- CSS -->
+
         <file compressed="true">style.css</file>
+
+        <!-- icons -->
+        <file preprocess="xml-stripblanks">icons/emblem-documents-symbolic.svg</file>
+        <file preprocess="xml-stripblanks">icons/system-run-symbolic.svg</file>
     </gresource>
 </gresources>

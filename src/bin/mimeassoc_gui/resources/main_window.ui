@@ -41,10 +41,9 @@
       <object class="AdwViewStack" id="stack">
         <child>
           <object class="AdwViewStackPage" id="page_mime_types">
-            <property name="name">page1</property>
-            <property name="title" translatable="yes">_Mime Types</property>
-            <property name="icon-name">clock-world-symbolic</property>
-            <property name="use-underline">True</property>
+            <property name="name">page_mime_types</property>
+            <property name="title" translatable="yes">Mime Types</property>
+            <property name="icon-name">emblem-documents-symbolic</property>
             <property name="child">
               <object class="GtkLabel">
                 <property name="margin-top">24</property>
@@ -58,10 +57,9 @@
         </child>
         <child>
           <object class="AdwViewStackPage" id="page_applications">
-            <property name="name">page2</property>
-            <property name="title" translatable="yes">_Applications</property>
-            <property name="icon-name">clock-alarm-symbolic</property>
-            <property name="use-underline">True</property>
+            <property name="name">page_applications</property>
+            <property name="title" translatable="yes">Applications</property>
+            <property name="icon-name">system-run-symbolic</property>
             <property name="child">
               <object class="GtkLabel">
                 <property name="margin-top">24</property>
