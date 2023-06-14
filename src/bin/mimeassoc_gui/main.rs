@@ -1,4 +1,5 @@
 mod components;
+mod mime_type_entry;
 mod window;
 
 use gtk::{gdk::Display, glib::clone, prelude::*, *};

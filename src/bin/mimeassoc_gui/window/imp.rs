@@ -1,4 +1,4 @@
-use std::cell::OnceCell;
+use std::cell::{OnceCell, RefCell};
 
 use adw::prelude::*;
 use adw::{subclass::prelude::*, *};
@@ -11,6 +11,7 @@ use crate::components::Components;
 #[template(resource = "/org/zakariya/MimeAssoc/main_window.ui")]
 pub struct MainWindow {
     pub components: OnceCell<Components>,
+
     #[template_child]
     pub stack: TemplateChild<ViewStack>,
 
@@ -18,7 +19,12 @@ pub struct MainWindow {
     pub page_mime_types: TemplateChild<ViewStackPage>,
 
     #[template_child]
+    pub mime_type_entries_list: TemplateChild<ListBox>,
+
+    #[template_child]
     pub page_applications: TemplateChild<ViewStackPage>,
+
+    pub mime_type_entries: RefCell<Option<gio::ListStore>>,
 }
 
 // The central trait for subclassing a GObject
@@ -47,6 +53,10 @@ impl ObjectImpl for MainWindow {
         // Setup
         let obj = self.obj();
         obj.setup_components();
+        obj.setup_models();
+        obj.ready();
+
+        // finally
         obj.setup_actions();
     }
 }
