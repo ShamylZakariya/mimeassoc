@@ -1,3 +1,4 @@
+mod application_entry;
 mod components;
 mod mime_type_entry;
 mod window;

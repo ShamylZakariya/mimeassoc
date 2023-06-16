@@ -5,33 +5,22 @@ use adw::subclass::prelude::*;
 use glib::{ParamSpec, Properties, Value};
 use gtk::{gio, glib};
 
-use crate::application_entry::ApplicationEntry;
-
 #[derive(Properties, Default)]
-#[properties(wrapper_type = super::MimeTypeEntry)]
-pub struct MimeTypeEntry {
+#[properties(wrapper_type = super::ApplicationEntry)]
+pub struct ApplicationEntry {
     #[property(get, set)]
-    pub mime_type: RefCell<String>,
-
-    pub supported_applications: RefCell<Option<gio::ListStore>>,
+    pub desktop_entry_id: RefCell<String>,
 }
 
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
-impl ObjectSubclass for MimeTypeEntry {
-    const NAME: &'static str = "MimeAssocGUI_MimeTypeEntry";
-    type Type = super::MimeTypeEntry;
+impl ObjectSubclass for ApplicationEntry {
+    const NAME: &'static str = "MimeAssocGUI_ApplicationEntry";
+    type Type = super::ApplicationEntry;
 }
 
 // Trait shared by all GObjects
-impl ObjectImpl for MimeTypeEntry {
-    fn constructed(&self) {
-        Self::parent_constructed(&self);
-
-        self.supported_applications
-            .replace(Some(gio::ListStore::new(ApplicationEntry::static_type())));
-    }
-
+impl ObjectImpl for ApplicationEntry {
     fn properties() -> &'static [ParamSpec] {
         Self::derived_properties()
     }

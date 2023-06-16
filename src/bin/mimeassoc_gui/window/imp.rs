@@ -1,4 +1,5 @@
 use std::cell::{OnceCell, RefCell};
+use std::rc::Rc;
 
 use adw::prelude::*;
 use adw::{subclass::prelude::*, *};
@@ -10,7 +11,7 @@ use crate::components::Components;
 #[derive(CompositeTemplate, Default)]
 #[template(resource = "/org/zakariya/MimeAssoc/main_window.ui")]
 pub struct MainWindow {
-    pub components: OnceCell<Components>,
+    pub components: OnceCell<Rc<RefCell<Components>>>,
 
     #[template_child]
     pub stack: TemplateChild<ViewStack>,
