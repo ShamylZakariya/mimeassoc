@@ -46,36 +46,12 @@
             <property name="icon-name">emblem-documents-symbolic</property>
             <property name="child">
 
-              <object class="GtkScrolledWindow">
+              <object class="GtkScrolledWindow" id="mime_types_scrolled_window">
                 <property name="hscrollbar-policy">never</property>
                 <property name="min-content-height">420</property>
                 <property name="vexpand">True</property>
-                <property name="child">
-                  <object class="AdwClamp">
-                    <property name="child">
-                      <object class="GtkBox">
-                        <property name="orientation">vertical</property>
-                        <property name="margin-top">12</property>
-                        <property name="margin-bottom">12</property>
-                        <property name="margin-start">12</property>
-                        <property name="margin-end">12</property>
-                        <property name="spacing">12</property>
-                        <child>
-                          <object class="GtkListBox" id="mime_type_entries_list">
-                            <property name="valign">start</property>
-                            <!-- <property name="visible">False</property> -->
-                            <property name="selection-mode">none</property>
-                            <style>
-                              <class name="boxed-list" />
-                            </style>
-                          </object>
-                        </child>
-                      </object>
-                    </property>
-                  </object>
-                </property>
+                <!-- we will insert the list view here -->
               </object>
-
 
             </property>
           </object>

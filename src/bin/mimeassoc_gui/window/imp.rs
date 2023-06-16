@@ -11,8 +11,11 @@ use crate::components::Components;
 #[derive(CompositeTemplate, Default)]
 #[template(resource = "/org/zakariya/MimeAssoc/main_window.ui")]
 pub struct MainWindow {
+    // Models
     pub components: OnceCell<Rc<RefCell<Components>>>,
+    pub mime_type_entries: RefCell<Option<gio::ListStore>>,
 
+    // UI bindings
     #[template_child]
     pub stack: TemplateChild<ViewStack>,
 
@@ -20,12 +23,10 @@ pub struct MainWindow {
     pub page_mime_types: TemplateChild<ViewStackPage>,
 
     #[template_child]
-    pub mime_type_entries_list: TemplateChild<ListBox>,
+    pub mime_types_scrolled_window: TemplateChild<ScrolledWindow>,
 
     #[template_child]
     pub page_applications: TemplateChild<ViewStackPage>,
-
-    pub mime_type_entries: RefCell<Option<gio::ListStore>>,
 }
 
 // The central trait for subclassing a GObject
@@ -53,9 +54,8 @@ impl ObjectImpl for MainWindow {
 
         // Setup
         let obj = self.obj();
-        obj.setup_components();
         obj.setup_models();
-        obj.ready();
+        obj.setup_mime_types_pane();
 
         // finally
         obj.setup_actions();
