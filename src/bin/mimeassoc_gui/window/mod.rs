@@ -82,63 +82,8 @@ impl MainWindow {
             .extend_from_slice(&mime_type_entries);
     }
 
-    // fn create_mime_type_row(&self, entry: &MimeTypeEntry) -> ActionRow {
-    //     let components = self.components();
-    //     // let app_db = &components.borrow().app_db;
-
-    //     // Create row
-    //     let row = ActionRow::builder().build();
-
-    //     // TODO we need a list model to assign
-    //     let application_drop_down = DropDown::builder().build();
-    //     let applications_model = SingleSelection::new(Some(entry.supported_application_entries()));
-    //     application_drop_down.set_model(Some(&applications_model));
-
-    //     let list_item_factory = SignalListItemFactory::new();
-    //     list_item_factory.connect_setup(move |_, list_item| {
-    //         let label = Label::new(None);
-    //         list_item
-    //             .downcast_ref::<ListItem>()
-    //             .expect("Needs to be ListItem")
-    //             .set_child(Some(&label));
-    //     });
-
-    //     list_item_factory.connect_bind(move |_, list_item| {
-    //         let application_entry = list_item
-    //             .downcast_ref::<ListItem>()
-    //             .expect("Needs to be ListItem")
-    //             .item()
-    //             .and_downcast::<ApplicationEntry>()
-    //             .expect("The item has to be an `ApplicationEntry`.");
-
-    //         let label = list_item
-    //             .downcast_ref::<ListItem>()
-    //             .expect("Needs to be ListItem")
-    //             .child()
-    //             .and_downcast::<Label>()
-    //             .expect("The child has to be a `Label`.");
-
-    //         // // We have an ownership issue here... do we need to put components in an Rc?
-    //         // let application_name = application_entry
-    //         //     .get_desktop_entry(app_db)
-    //         //     .expect("Expect desktop_entry_id to be valid")
-    //         //     .name()
-    //         //     .unwrap_or("<Unnamed Application>")
-    //         //     .clone();
-
-    //         let application_name = "Foo";
-    //         label.set_text(application_name);
-    //     });
-
-    //     application_drop_down.set_list_factory(Some(&list_item_factory));
-
-    //     row.add_suffix(&application_drop_down);
-
-    //     row.set_title(&entry.mime_type());
-    //     row
-    // }
-
     fn setup_mime_types_pane(&self) {
+        let components = self.components();
         let factory = SignalListItemFactory::new();
         factory.connect_setup(move |_, list_item| {
             let row = MimeTypeEntryListRow::new();
@@ -163,7 +108,7 @@ impl MainWindow {
                 .and_downcast::<MimeTypeEntryListRow>()
                 .expect("The child has to be a `MimeTypeEntryListRow`.");
 
-            row.bind(&mime_type_entry);
+            row.bind(&mime_type_entry, components.clone());
         });
 
         factory.connect_unbind(move |_, list_item| {
