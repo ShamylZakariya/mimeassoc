@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 
 use glib::Binding;
+use gtk::glib::SignalHandlerId;
 use gtk::subclass::prelude::*;
 use gtk::traits::WidgetExt;
 use gtk::{glib, *};
@@ -9,6 +10,8 @@ use gtk::{glib, *};
 #[derive(Default, CompositeTemplate)]
 #[template(resource = "/org/zakariya/MimeAssoc/mime_type_entry_list_row.ui")]
 pub struct MimeTypeEntryListRow {
+    pub combobox_changed_handler_id: RefCell<Option<SignalHandlerId>>,
+
     // UI Bindings
     #[template_child]
     pub applications_combo_box: TemplateChild<ComboBoxText>,

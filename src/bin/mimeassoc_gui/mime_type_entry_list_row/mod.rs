@@ -6,7 +6,9 @@ use std::rc::Rc;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::Object;
-use gtk::glib;
+use gtk::glib::{self, clone};
+use mimeassoc::desktop_entry::DesktopEntryId;
+use mimeassoc::mime_type::MimeType;
 
 use crate::application_entry::ApplicationEntry;
 use crate::components::Components;
@@ -91,9 +93,65 @@ impl MimeTypeEntryListRow {
                 applications_combobox.set_sensitive(true);
             }
         }
+
+        let callback_id = applications_combobox.connect_changed(clone!(@weak mime_type_entry, @weak components, @weak self as window => move |a|{
+            if let Some(active_id) = a.active_id() {
+                let active_id = active_id.as_str();
+                let mime_type = mime_type_entry.get_mime_type();
+                let desktop_entry_id = DesktopEntryId::parse(&active_id).expect("Expected valid desktop entry id");
+                window.assign_handler_for_mimetype(&desktop_entry_id, &mime_type, components);
+            }
+        }));
+
+        self.imp()
+            .combobox_changed_handler_id
+            .replace(Some(callback_id));
     }
 
     pub fn unbind(&self) {
-        // nothing yet, but would make sense to disconnect callbacks
+        let applications_combobox = self.imp().applications_combo_box.get();
+        applications_combobox.remove_all();
+
+        if let Some(bar) = self.imp().combobox_changed_handler_id.take() {
+            applications_combobox.disconnect(bar);
+        }
+    }
+
+    fn assign_handler_for_mimetype(
+        &self,
+        desktop_entry_id: &DesktopEntryId,
+        mime_type: &MimeType,
+        components: Rc<RefCell<Components>>,
+    ) {
+        let desktop_entry = components
+            .borrow()
+            .app_db
+            .get_desktop_entry(&desktop_entry_id)
+            .expect("Expect to find a desktop entry for the id")
+            .clone();
+
+        let mut components = components.borrow_mut();
+
+        if let Err(e) = components
+            .mime_db
+            .set_default_handler_for_mime_type(&mime_type, &desktop_entry)
+        {
+            // TODO: Error dialog?
+            println!(
+                "Unable to assign {} to open {}; error: {:?}",
+                desktop_entry_id.to_string(),
+                mime_type.to_string(),
+                e
+            );
+        } else {
+            println!(
+                "Assigned {} to be default handler for {}",
+                desktop_entry_id, mime_type
+            );
+            if let Err(e) = components.mime_db.save() {
+                // TODO: Error dialog?
+                println!("Unable to save mime associations database, error: {:?}", e);
+            }
+        }
     }
 }
