@@ -2,17 +2,16 @@ use std::cell::RefCell;
 
 use glib::Binding;
 use gtk::subclass::prelude::*;
-use gtk::{glib, CheckButton, CompositeTemplate, Label};
+use gtk::traits::WidgetExt;
+use gtk::{glib, *};
 
 // Object holding the state
 #[derive(Default, CompositeTemplate)]
 #[template(resource = "/org/zakariya/MimeAssoc/mime_type_entry_list_row.ui")]
 pub struct MimeTypeEntryListRow {
-    pub bindings: RefCell<Vec<Binding>>,
-
     // UI Bindings
     #[template_child]
-    pub completed_button: TemplateChild<CheckButton>,
+    pub applications_combo_box: TemplateChild<ComboBoxText>,
 
     #[template_child]
     pub content_label: TemplateChild<Label>,
@@ -35,7 +34,13 @@ impl ObjectSubclass for MimeTypeEntryListRow {
 }
 
 // Trait shared by all GObjects
-impl ObjectImpl for MimeTypeEntryListRow {}
+impl ObjectImpl for MimeTypeEntryListRow {
+    fn constructed(&self) {
+        self.parent_constructed();
+        self.content_label.set_halign(Align::Start);
+        self.content_label.set_hexpand(true);
+    }
+}
 
 // Trait shared by all widgets
 impl WidgetImpl for MimeTypeEntryListRow {}

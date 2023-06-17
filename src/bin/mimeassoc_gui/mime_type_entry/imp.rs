@@ -13,7 +13,8 @@ pub struct MimeTypeEntry {
     #[property(get, set)]
     pub mime_type: RefCell<String>,
 
-    pub supported_applications: RefCell<Option<gio::ListStore>>,
+    #[property(get, set)]
+    pub supported_applications: RefCell<gio::ListStore>,
 }
 
 // The central trait for subclassing a GObject
@@ -29,7 +30,7 @@ impl ObjectImpl for MimeTypeEntry {
         Self::parent_constructed(&self);
 
         self.supported_applications
-            .replace(Some(gio::ListStore::new(ApplicationEntry::static_type())));
+            .replace(gio::ListStore::new(ApplicationEntry::static_type()));
     }
 
     fn properties() -> &'static [ParamSpec] {

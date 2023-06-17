@@ -32,19 +32,15 @@ impl MimeTypeEntry {
             .collect::<Vec<_>>();
 
         entry
-            .supported_application_entries()
+            .get_supported_application_entries()
             .extend_from_slice(&supported_applications);
 
         entry
     }
 
     /// Get the applications which can open this mime type
-    pub fn supported_application_entries(&self) -> gio::ListStore {
-        self.imp()
-            .supported_applications
-            .borrow()
-            .clone()
-            .expect("Could not get current mime_type_entries.")
+    pub fn get_supported_application_entries(&self) -> gio::ListStore {
+        self.imp().supported_applications.borrow().clone()
     }
 
     pub fn get_mime_type(&self) -> MimeType {

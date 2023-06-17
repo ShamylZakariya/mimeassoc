@@ -5,6 +5,7 @@ use adw::subclass::prelude::*;
 use glib::Object;
 use gtk::glib;
 
+use crate::application_entry::ApplicationEntry;
 use crate::mime_type_entry::MimeTypeEntry;
 
 glib::wrapper! {
@@ -25,52 +26,28 @@ impl MimeTypeEntryListRow {
     }
 
     pub fn bind(&self, mime_type_entry: &MimeTypeEntry) {
-        // Get state
-        // let completed_button = self.imp().completed_button.get();
+        self.set_spacing(12);
+
         let content_label = self.imp().content_label.get();
-        // let mut bindings = self.imp().bindings.borrow_mut();
+        let applications_combobox = self.imp().applications_combo_box.get();
 
         content_label.set_text(&mime_type_entry.get_mime_type().to_string());
 
-        // // Bind `task_object.completed` to `task_row.completed_button.active`
-        // let completed_button_binding = task_object
-        //     .bind_property("completed", &completed_button, "active")
-        //     .bidirectional()
-        //     .sync_create()
-        //     .build();
-        // // Save binding
-        // bindings.push(completed_button_binding);
+        let applications = mime_type_entry.get_supported_application_entries();
 
-        // Bind `task_object.content` to `task_row.content_label.label`
-        // let content_label_binding = mime_type_entry
-        //     .bind_property("content", &content_label, "label")
-        //     .sync_create()
-        //     .build();
-        // // Save binding
-        // bindings.push(content_label_binding);
-
-        // // Bind `task_object.completed` to `task_row.content_label.attributes`
-        // let content_label_binding = task_object
-        //     .bind_property("completed", &content_label, "attributes")
-        //     .sync_create()
-        //     .transform_to(|_, active| {
-        //         let attribute_list = AttrList::new();
-        //         if active {
-        //             // If "active" is true, content of the label will be strikethrough
-        //             let attribute = AttrInt::new_strikethrough(true);
-        //             attribute_list.insert(attribute);
-        //         }
-        //         Some(attribute_list.to_value())
-        //     })
-        //     .build();
-        // // Save binding
-        // bindings.push(content_label_binding);
+        applications_combobox.remove_all();
+        for i in 0_u32..applications.n_items() {
+            if let Some(entry) = applications.item(i) {
+                let entry = entry
+                    .downcast_ref::<ApplicationEntry>()
+                    .expect("Expect applications list store to contain ApplicationEntry");
+                let desktop_entry = entry.get_desktop_entry_id();
+                applications_combobox.append(None, &desktop_entry.to_string());
+            }
+        }
     }
 
     pub fn unbind(&self) {
-        // Unbind all stored bindings
-        for binding in self.imp().bindings.borrow_mut().drain(..) {
-            binding.unbind();
-        }
+        // nothing yet, but would make sense to disconnect callbacks
     }
 }
