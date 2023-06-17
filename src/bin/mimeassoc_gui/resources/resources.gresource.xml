@@ -4,6 +4,7 @@
         <!-- UI -->
         <file compressed="true" preprocess="xml-stripblanks" alias="gtk/help-overlay.ui">shortcuts.ui</file>
         <file compressed="true" preprocess="xml-stripblanks">main_window.ui</file>
+        <file compressed="true" preprocess="xml-stripblanks">mime_type_entry_list_row.ui</file>
         <!-- CSS -->
 
         <file compressed="true">style.css</file>

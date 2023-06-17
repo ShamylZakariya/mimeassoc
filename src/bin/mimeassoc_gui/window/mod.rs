@@ -13,6 +13,7 @@ use gtk::{gio, glib, *};
 use crate::application_entry::ApplicationEntry;
 use crate::components;
 use crate::mime_type_entry::MimeTypeEntry;
+use crate::mime_type_entry_list_row::MimeTypeEntryListRow;
 
 pub enum MainWindowPage {
     MimeTypes,
@@ -140,12 +141,11 @@ impl MainWindow {
     fn setup_mime_types_pane(&self) {
         let factory = SignalListItemFactory::new();
         factory.connect_setup(move |_, list_item| {
-            // For now just add a label
-            let label = Label::new(None);
+            let row = MimeTypeEntryListRow::new();
             let list_item = list_item
                 .downcast_ref::<ListItem>()
                 .expect("Needs to be ListItem");
-            list_item.set_child(Some(&label));
+            list_item.set_child(Some(&row));
         });
 
         factory.connect_bind(move |_, list_item| {
@@ -156,14 +156,24 @@ impl MainWindow {
                 .and_downcast::<MimeTypeEntry>()
                 .expect("The item has to be an `ApplicationEntry`.");
 
-            let label = list_item
+            let row = list_item
                 .downcast_ref::<ListItem>()
                 .expect("Needs to be ListItem")
                 .child()
-                .and_downcast::<Label>()
-                .expect("The child has to be a `Label`.");
+                .and_downcast::<MimeTypeEntryListRow>()
+                .expect("The child has to be a `MimeTypeEntryListRow`.");
 
-            label.set_text(&mime_type_entry.get_mime_type().to_string());
+            row.bind(&mime_type_entry);
+        });
+
+        factory.connect_unbind(move |_, list_item| {
+            let row = list_item
+                .downcast_ref::<ListItem>()
+                .expect("Needs to be ListItem")
+                .child()
+                .and_downcast::<MimeTypeEntryListRow>()
+                .expect("The child has to be a `MimeTypeEntryListRow`.");
+            row.unbind();
         });
 
         let selection_model = NoSelection::new(Some(self.mime_type_entries()));
