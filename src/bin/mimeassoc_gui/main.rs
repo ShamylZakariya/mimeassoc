@@ -24,7 +24,7 @@ fn main() -> glib::ExitCode {
 }
 
 fn load_css() {
-    println!("load_css");
+    println!("main::load_css");
 
     let provider = CssProvider::new();
     provider.load_from_resource("/org/zakariya/MimeAssoc/style.css");
@@ -37,7 +37,7 @@ fn load_css() {
 }
 
 fn setup_shortcuts(app: &adw::Application) {
-    println!("setup_shortcuts");
+    println!("main::setup_shortcuts");
 
     // I presume `app` has an `app.quit` but I couldn't find documentation for it, so make our own
     let action_close = gio::SimpleAction::new("quit", None);
@@ -54,7 +54,7 @@ fn setup_shortcuts(app: &adw::Application) {
 }
 
 fn build_ui(app: &adw::Application) {
-    println!("build_ui");
+    println!("main::build_ui");
 
     let window = window::MainWindow::new(app);
     window.present();

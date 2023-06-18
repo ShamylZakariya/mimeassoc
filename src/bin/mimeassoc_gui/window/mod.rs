@@ -49,6 +49,8 @@ impl MainWindow {
     }
 
     fn setup_models(&self) {
+        println!("MainWindow::setup_models");
+
         // Create models
         match components::Components::new() {
             Ok(components) => {
@@ -83,6 +85,7 @@ impl MainWindow {
     }
 
     fn setup_mime_types_pane(&self) {
+        println!("MainWindow::setup_mime_types_pane");
         let components = self.components();
         let factory = SignalListItemFactory::new();
         factory.connect_setup(move |_, list_item| {
@@ -135,6 +138,8 @@ impl MainWindow {
     }
 
     fn setup_actions(&self) {
+        println!("MainWindow::setup_actions");
+
         let action_show_mime_types = gtk::gio::SimpleAction::new("show-mime-types", None);
         action_show_mime_types.connect_activate(clone!(@weak self as window => move |_, _|{
             window.show_page(MainWindowPage::MimeTypes);
@@ -152,11 +157,11 @@ impl MainWindow {
         let page_selection_model = self.imp().stack.pages();
         match page {
             MainWindowPage::MimeTypes => {
-                println!("Selecting mime types");
+                println!("MainWindow::show_page - MimeTypes");
                 page_selection_model.select_item(0, true);
             }
             MainWindowPage::Applications => {
-                println!("Selecting applicaitons");
+                println!("MainWindow::show_page - Applications");
                 page_selection_model.select_item(1, true);
             }
         }

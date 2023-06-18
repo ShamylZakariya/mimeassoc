@@ -74,7 +74,7 @@ impl MimeTypeEntryListRow {
                 }
             }
         }
-
+ 
         match applications.n_items() {
             0 => {
                 // no applications support this mime type. Note, we should not be showing
