@@ -1,7 +1,6 @@
 use std::cell::{OnceCell, RefCell};
 use std::rc::Rc;
 
-use adw::prelude::*;
 use adw::{subclass::prelude::*, *};
 use glib::subclass::*;
 use gtk::*;

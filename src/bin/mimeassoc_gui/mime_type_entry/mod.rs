@@ -1,12 +1,10 @@
-use mimeassoc::mime_type::MimeType;
-
 mod imp;
 
-use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::Object;
 use gtk::{gio, glib};
 
+use mimeassoc::mime_type::MimeType;
 use crate::{application_entry::ApplicationEntry, components::Components};
 
 glib::wrapper! {

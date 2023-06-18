@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 
-use glib::Binding;
 use gtk::glib::SignalHandlerId;
 use gtk::subclass::prelude::*;
 use gtk::traits::WidgetExt;

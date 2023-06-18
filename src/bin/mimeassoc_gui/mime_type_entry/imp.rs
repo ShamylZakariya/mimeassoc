@@ -27,7 +27,7 @@ impl ObjectSubclass for MimeTypeEntry {
 // Trait shared by all GObjects
 impl ObjectImpl for MimeTypeEntry {
     fn constructed(&self) {
-        Self::parent_constructed(&self);
+        Self::parent_constructed(self);
 
         self.supported_applications
             .replace(gio::ListStore::new(ApplicationEntry::static_type()));

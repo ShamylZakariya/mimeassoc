@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::{ParamSpec, Properties, Value};
-use gtk::{gio, glib};
+use gtk::glib;
 
 #[derive(Properties, Default)]
 #[properties(wrapper_type = super::ApplicationEntry)]

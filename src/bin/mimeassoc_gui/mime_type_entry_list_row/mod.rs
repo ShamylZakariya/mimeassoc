@@ -74,7 +74,7 @@ impl MimeTypeEntryListRow {
                 }
             }
         }
- 
+
         match applications.n_items() {
             0 => {
                 // no applications support this mime type. Note, we should not be showing
@@ -98,7 +98,7 @@ impl MimeTypeEntryListRow {
             if let Some(active_id) = a.active_id() {
                 let active_id = active_id.as_str();
                 let mime_type = mime_type_entry.get_mime_type();
-                let desktop_entry_id = DesktopEntryId::parse(&active_id).expect("Expected valid desktop entry id");
+                let desktop_entry_id = DesktopEntryId::parse(active_id).expect("Expected valid desktop entry id");
                 window.assign_handler_for_mimetype(&desktop_entry_id, &mime_type, components);
             }
         }));
@@ -126,7 +126,7 @@ impl MimeTypeEntryListRow {
         let desktop_entry = components
             .borrow()
             .app_db
-            .get_desktop_entry(&desktop_entry_id)
+            .get_desktop_entry(desktop_entry_id)
             .expect("Expect to find a desktop entry for the id")
             .clone();
 
@@ -134,14 +134,12 @@ impl MimeTypeEntryListRow {
 
         if let Err(e) = components
             .mime_db
-            .set_default_handler_for_mime_type(&mime_type, &desktop_entry)
+            .set_default_handler_for_mime_type(mime_type, &desktop_entry)
         {
             // TODO: Error dialog?
             println!(
                 "Unable to assign {} to open {}; error: {:?}",
-                desktop_entry_id.to_string(),
-                mime_type.to_string(),
-                e
+                desktop_entry_id, mime_type, e
             );
         } else {
             println!(

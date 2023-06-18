@@ -10,7 +10,6 @@ use glib::Object;
 use gtk::glib::clone;
 use gtk::{gio, glib, *};
 
-use crate::application_entry::ApplicationEntry;
 use crate::components;
 use crate::mime_type_entry::MimeTypeEntry;
 use crate::mime_type_entry_list_row::MimeTypeEntryListRow;
