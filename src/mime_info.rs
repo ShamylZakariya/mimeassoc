@@ -2,6 +2,7 @@ use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
 
 use crate::mime_type::MimeType;
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct MimeTypeInfo {
     mime_type: MimeType,
 
@@ -11,6 +12,7 @@ pub struct MimeTypeInfo {
     comments: HashMap<String, String>,
     generic_icon: Option<String>,
     glob_patterns: Vec<String>,
+    aliases: Vec<MimeType>,
 }
 impl MimeTypeInfo {
     fn new(mime_type: &MimeType) -> Self {
@@ -20,6 +22,7 @@ impl MimeTypeInfo {
             comments: HashMap::new(),
             generic_icon: None,
             glob_patterns: Vec::new(),
+            aliases: Vec::new(),
         }
     }
 
@@ -57,10 +60,19 @@ impl MimeTypeInfo {
             })
             .collect()
     }
+
+    pub fn aliases(&self) -> Vec<&MimeType> {
+        self.aliases.iter().map(|mime_type| mime_type).collect()
+    }
 }
 
 pub struct MimeTypeInfoStore {
     mime_types: HashMap<MimeType, MimeTypeInfo>,
+
+    /// map of aliases to mime types stored in Self::mime_types. For example,
+    /// "application/vnd.amazon.mobi8-ebook" has an alias "application/x-mobi8-ebook".
+    /// That means, looking up aliases["application/x-mobi8-ebook"] gives us "application/vnd.amazon.mobi8-ebook"
+    aliases: HashMap<MimeType, MimeType>,
 }
 
 impl MimeTypeInfoStore {
@@ -72,8 +84,10 @@ impl MimeTypeInfoStore {
 
         let mut store = Self {
             mime_types: HashMap::new(),
+            aliases: HashMap::new(),
         };
 
+        // in-flight data to handle while sax parsing; this is ugly, but sax parsing always is
         let mut current_mime_type_info: Option<MimeTypeInfo> = None;
         let mut is_handling_comment = false;
         let mut current_comment_language: Option<String> = None;
@@ -105,9 +119,10 @@ impl MimeTypeInfoStore {
                     }
 
                     "generic-icon" => {
-                        if let Some(icon_name) = Self::get_attribute_named(&attributes, "name") {
+                        if let Some(icon_name_attr) = Self::get_attribute_named(&attributes, "name")
+                        {
                             if let Some(current_mime_type_info) = current_mime_type_info.as_mut() {
-                                let icon_name = icon_name.value.to_string();
+                                let icon_name = icon_name_attr.value.to_string();
                                 current_mime_type_info.generic_icon = Some(icon_name);
                             }
                         }
@@ -120,6 +135,18 @@ impl MimeTypeInfoStore {
                             if let Some(current_mime_type_info) = current_mime_type_info.as_mut() {
                                 let glob_pattern = glob_pattern.value.to_string();
                                 current_mime_type_info.glob_patterns.push(glob_pattern);
+                            }
+                        }
+                    }
+
+                    "alias" => {
+                        if let Some(alias_attr) = Self::get_attribute_named(&attributes, "type") {
+                            if let Some(current_mime_type_info) = current_mime_type_info.as_mut() {
+                                if let Ok(alias_mime_type) =
+                                    MimeType::parse(alias_attr.value.trim())
+                                {
+                                    current_mime_type_info.aliases.push(alias_mime_type);
+                                }
                             }
                         }
                     }
@@ -157,13 +184,22 @@ impl MimeTypeInfoStore {
             }
         }
 
+        store.resolve_aliases();
+
         Ok(store)
     }
 
     pub fn get_info_for_mime_type(&self, mime_type: &MimeType) -> Option<&MimeTypeInfo> {
-        self.mime_types.get(mime_type)
+        if let Some(info) = self.mime_types.get(mime_type) {
+            Some(info)
+        } else if let Some(resolved_mime_type) = self.aliases.get(mime_type) {
+            self.mime_types.get(resolved_mime_type)
+        } else {
+            None
+        }
     }
 
+    /// Find the first attribute with matching name, if any
     fn get_attribute_named<'a>(
         attributes: &'a [xml::attribute::OwnedAttribute],
         name: &str,
@@ -173,6 +209,14 @@ impl MimeTypeInfoStore {
             .filter(|a| a.name.local_name == name)
             .collect::<Vec<_>>();
         results.first().copied()
+    }
+
+    fn resolve_aliases(&mut self) {
+        for mime_type_info in self.mime_types.iter() {
+            for alias in mime_type_info.1.aliases.iter() {
+                self.aliases.insert(alias.clone(), mime_type_info.0.clone());
+            }
+        }
     }
 }
 
@@ -201,6 +245,7 @@ mod tests {
     ) -> anyhow::Result<()> {
         let store = MimeTypeInfoStore::load(freedesktop_org_xml_path)?;
 
+        // look up atari 7800 ROM mime type
         let atari_7800_mime_type = MimeType::parse("application/x-atari-7800-rom")?;
         let atari_7800_info = store
             .get_info_for_mime_type(&atari_7800_mime_type)
@@ -220,6 +265,7 @@ mod tests {
         let extensions = atari_7800_info.extensions();
         assert_eq!(extensions, ["a78"]);
 
+        // Look up amazon mobi mime type
         let mobi_mime_type = MimeType::parse("application/vnd.amazon.mobi8-ebook")?;
         let mobi_info = store
             .get_info_for_mime_type(&mobi_mime_type)
@@ -236,6 +282,14 @@ mod tests {
         let extensions = mobi_info.extensions();
         assert!(extensions.contains(&"azw3"));
         assert!(extensions.contains(&"kfx"));
+
+        // mobi has an alias
+        let mobi_alias_mime_type = MimeType::parse("application/x-mobi8-ebook")?;
+        let mobi_alias_info = store
+            .get_info_for_mime_type(&mobi_alias_mime_type)
+            .expect("Expect to look up resolved mime type for alias");
+
+        assert_eq!(mobi_info, mobi_alias_info);
 
         Ok(())
     }
