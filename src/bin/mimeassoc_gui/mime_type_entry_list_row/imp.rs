@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use gtk::glib::SignalHandlerId;
 use gtk::subclass::prelude::*;
-use gtk::traits::WidgetExt;
+use gtk::traits::{BoxExt, WidgetExt};
 use gtk::{glib, *};
 
 // Object holding the state
@@ -16,7 +16,13 @@ pub struct MimeTypeEntryListRow {
     pub applications_combo_box: TemplateChild<ComboBoxText>,
 
     #[template_child]
+    pub label_box: TemplateChild<Box>,
+
+    #[template_child]
     pub content_label: TemplateChild<Label>,
+
+    #[template_child]
+    pub info_label: TemplateChild<Label>,
 }
 
 #[glib::object_subclass]
@@ -39,8 +45,14 @@ impl ObjectSubclass for MimeTypeEntryListRow {
 impl ObjectImpl for MimeTypeEntryListRow {
     fn constructed(&self) {
         self.parent_constructed();
+
+        self.obj().set_spacing(12);
+        self.label_box.set_hexpand(true);
         self.content_label.set_halign(Align::Start);
-        self.content_label.set_hexpand(true);
+        // self.content_label.set_hexpand(true);
+        self.info_label.set_halign(Align::Start);
+        self.info_label.set_opacity(0.7);
+        // self.info_label.set_hexpand(true);
     }
 }
 

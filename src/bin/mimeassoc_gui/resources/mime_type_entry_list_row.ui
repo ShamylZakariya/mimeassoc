@@ -5,19 +5,34 @@
   <template class="MimeTypeEntryListRow" parent="GtkBox">
     <property name="can-focus">False</property>
     <child>
-      <object class="GtkLabel" id="content_label">
+      <object class="GtkBox" id="label_box">
+        <property name="visible">True</property>
         <property name="can-focus">False</property>
-        <property name="margin-start">12</property>
-        <property name="margin-end">12</property>
-        <property name="margin-top">12</property>
-        <property name="margin-bottom">12</property>
-        <property name="label" translatable="yes">This is sample text</property>
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="GtkLabel" id="content_label">
+            <property name="can-focus">False</property>
+            <property name="margin-start">12</property>
+            <property name="margin-end">12</property>
+            <property name="margin-top">12</property>
+            <property name="margin-bottom">3</property>
+            <property name="label" translatable="yes">This is sample text</property>
+            <attributes>
+              <attribute name="weight" value="bold" />
+            </attributes>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel" id="info_label">
+            <property name="can-focus">False</property>
+            <property name="margin-start">12</property>
+            <property name="margin-end">12</property>
+            <property name="margin-top">3</property>
+            <property name="margin-bottom">12</property>
+            <property name="label" translatable="yes">Mime Info</property>
+          </object>
+        </child>
       </object>
-      <!-- <packing>
-        <property name="expand">True</property>
-        <property name="fill">True</property>
-        <property name="position">0</property>
-      </packing> -->
     </child>
     <child>
       <object class="GtkComboBoxText" id="applications_combo_box">
@@ -27,12 +42,6 @@
         <property name="margin-top">12</property>
         <property name="margin-bottom">12</property>
       </object>
-      <!-- <packing>
-        <property name="expand">False</property>
-        <property name="fill">True</property>
-        <property name="pack-type">end</property>
-        <property name="position">1</property>
-      </packing> -->
     </child>
   </template>
 </interface>

@@ -11,8 +11,8 @@ use mimeassoc::desktop_entry::DesktopEntryId;
 use mimeassoc::mime_type::MimeType;
 
 use crate::application_entry::ApplicationEntry;
-use crate::stores::MimeAssocStores;
 use crate::mime_type_entry::MimeTypeEntry;
+use crate::stores::MimeAssocStores;
 
 glib::wrapper! {
     pub struct MimeTypeEntryListRow(ObjectSubclass<imp::MimeTypeEntryListRow>)
@@ -34,15 +34,59 @@ impl MimeTypeEntryListRow {
     pub fn bind(&self, mime_type_entry: &MimeTypeEntry, stores: Rc<RefCell<MimeAssocStores>>) {
         self.set_spacing(12);
 
-        let content_label = self.imp().content_label.get();
+        self.bind_labels(mime_type_entry, stores.clone());
+        self.bind_default_handler_combobox(mime_type_entry, stores);
+    }
+
+    pub fn unbind(&self) {
         let applications_combobox = self.imp().applications_combo_box.get();
-
-        content_label.set_text(&mime_type_entry.get_mime_type().to_string());
-
-        let applications = mime_type_entry.get_supported_application_entries();
-        let mime_type = &mime_type_entry.get_mime_type();
-
         applications_combobox.remove_all();
+
+        if let Some(bar) = self.imp().combobox_changed_handler_id.take() {
+            applications_combobox.disconnect(bar);
+        }
+    }
+
+    fn bind_labels(&self, mime_type_entry: &MimeTypeEntry, stores: Rc<RefCell<MimeAssocStores>>) {
+        let mime_type = &mime_type_entry.get_mime_type();
+        let content_label = self.imp().content_label.get();
+        content_label.set_text(&mime_type.to_string());
+
+        let info_label = self.imp().info_label.get();
+        let mime_info_store = &stores.borrow().mime_info_store;
+        let info_label_text: Option<String> =
+            if let Some(mime_info) = mime_info_store.get_info_for_mime_type(mime_type) {
+                info_label.set_visible(true);
+                let extensions = mime_info.extensions().join(", ").to_uppercase();
+                if !extensions.is_empty() {
+                    Some(format!(
+                        "{}: {}",
+                        mime_info.comment().unwrap_or(""),
+                        extensions,
+                    ))
+                } else {
+                    Some(mime_info.comment().unwrap_or("").to_string())
+                }
+            } else {
+                info_label.set_visible(false);
+                None
+            };
+
+        if let Some(info_label_text) = info_label_text {
+            info_label.set_text(&info_label_text);
+        }
+    }
+
+    fn bind_default_handler_combobox(
+        &self,
+        mime_type_entry: &MimeTypeEntry,
+        stores: Rc<RefCell<MimeAssocStores>>,
+    ) {
+        let applications_combobox = self.imp().applications_combo_box.get();
+        let mime_type = &mime_type_entry.get_mime_type();
+        let applications = mime_type_entry.get_supported_application_entries();
+
+        // Populate application combobox
         for i in 0_u32..applications.n_items() {
             if let Some(entry) = applications.item(i) {
                 let entry = entry
@@ -75,6 +119,7 @@ impl MimeTypeEntryListRow {
             }
         }
 
+        // Set application combobox behavior based on whether there are options available to user
         match applications.n_items() {
             0 => {
                 // no applications support this mime type. Note, we should not be showing
@@ -94,6 +139,7 @@ impl MimeTypeEntryListRow {
             }
         }
 
+        // bind to changed event on combobox
         let callback_id = applications_combobox.connect_changed(clone!(@weak mime_type_entry, @weak stores, @weak self as window => move |a|{
             if let Some(active_id) = a.active_id() {
                 let active_id = active_id.as_str();
@@ -106,15 +152,6 @@ impl MimeTypeEntryListRow {
         self.imp()
             .combobox_changed_handler_id
             .replace(Some(callback_id));
-    }
-
-    pub fn unbind(&self) {
-        let applications_combobox = self.imp().applications_combo_box.get();
-        applications_combobox.remove_all();
-
-        if let Some(bar) = self.imp().combobox_changed_handler_id.take() {
-            applications_combobox.disconnect(bar);
-        }
     }
 
     fn assign_handler_for_mimetype(
