@@ -40,7 +40,7 @@ impl MimeTypeInfo {
     }
 
     pub fn comment_language(&self, lang: &str) -> Option<&str> {
-        self.comments.get(lang).and_then(|c| Some(c.as_str()))
+        self.comments.get(lang).map(|c| c.as_str())
     }
 
     pub fn generic_icon(&self) -> Option<&str> {
@@ -52,17 +52,13 @@ impl MimeTypeInfo {
             .iter()
             .filter_map(|glob| {
                 let components = glob.split('.').collect::<Vec<_>>();
-                if let Some(extension) = components.get(1) {
-                    Some(*extension)
-                } else {
-                    None
-                }
+                components.get(1).copied()
             })
             .collect()
     }
 
     pub fn aliases(&self) -> Vec<&MimeType> {
-        self.aliases.iter().map(|mime_type| mime_type).collect()
+        self.aliases.iter().collect()
     }
 }
 
@@ -98,10 +94,8 @@ impl MimeTypeInfoStore {
                     name, attributes, ..
                 }) => match name.local_name.as_str() {
                     "mime-type" => {
-                        let mime_type =
-                            Self::get_attribute_named(&attributes, "type").and_then(|attr| {
-                                return MimeType::parse(&attr.value).ok();
-                            });
+                        let mime_type = Self::get_attribute_named(&attributes, "type")
+                            .and_then(|attr| MimeType::parse(&attr.value).ok());
 
                         if let Some(mime_type) = mime_type {
                             current_mime_type_info.replace(MimeTypeInfo::new(&mime_type));
