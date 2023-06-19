@@ -3,20 +3,20 @@ use mimeassoc::mime_info::MimeTypeInfoStore;
 use mimeassoc::mime_type::*;
 use mimeassoc::*;
 
-pub struct Components {
+pub struct MimeAssocStores {
     pub mime_associations_store: MimeAssociationStore,
     pub desktop_entry_store: DesktopEntryStore,
     pub mime_info_store: MimeTypeInfoStore,
 }
 
-impl std::fmt::Debug for Components {
+impl std::fmt::Debug for MimeAssocStores {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // we need a better Debug print, but it depends on having it for mime_associations_store and desktop_entry_store, etc
         f.write_str("[Components]")
     }
 }
 
-impl Components {
+impl MimeAssocStores {
     pub fn new() -> anyhow::Result<Self> {
         let desktop_entry_dirs = match desktop_entry_dirs() {
             Ok(desktop_entry_dirs) => desktop_entry_dirs,

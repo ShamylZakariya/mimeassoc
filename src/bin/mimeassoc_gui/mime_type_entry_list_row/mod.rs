@@ -11,7 +11,7 @@ use mimeassoc::desktop_entry::DesktopEntryId;
 use mimeassoc::mime_type::MimeType;
 
 use crate::application_entry::ApplicationEntry;
-use crate::components::Components;
+use crate::stores::MimeAssocStores;
 use crate::mime_type_entry::MimeTypeEntry;
 
 glib::wrapper! {
@@ -31,7 +31,7 @@ impl MimeTypeEntryListRow {
         Object::builder().build()
     }
 
-    pub fn bind(&self, mime_type_entry: &MimeTypeEntry, components: Rc<RefCell<Components>>) {
+    pub fn bind(&self, mime_type_entry: &MimeTypeEntry, stores: Rc<RefCell<MimeAssocStores>>) {
         self.set_spacing(12);
 
         let content_label = self.imp().content_label.get();
@@ -51,13 +51,13 @@ impl MimeTypeEntryListRow {
                 let desktop_entry_id = entry.get_desktop_entry_id();
                 let id = desktop_entry_id.to_string();
                 let display_name = entry
-                    .get_desktop_entry(&components.borrow().desktop_entry_store)
+                    .get_desktop_entry(&stores.borrow().desktop_entry_store)
                     .expect("Expect to get DesktopEntry from DesktopEntryId")
                     .name()
                     .unwrap_or(&id)
                     .to_string();
 
-                let is_assigned = if let Some(assigned_desktop_entry) = components
+                let is_assigned = if let Some(assigned_desktop_entry) = stores
                     .borrow()
                     .mime_associations_store
                     .assigned_application_for(mime_type)
@@ -94,12 +94,12 @@ impl MimeTypeEntryListRow {
             }
         }
 
-        let callback_id = applications_combobox.connect_changed(clone!(@weak mime_type_entry, @weak components, @weak self as window => move |a|{
+        let callback_id = applications_combobox.connect_changed(clone!(@weak mime_type_entry, @weak stores, @weak self as window => move |a|{
             if let Some(active_id) = a.active_id() {
                 let active_id = active_id.as_str();
                 let mime_type = mime_type_entry.get_mime_type();
                 let desktop_entry_id = DesktopEntryId::parse(active_id).expect("Expected valid desktop entry id");
-                window.assign_handler_for_mimetype(&desktop_entry_id, &mime_type, components);
+                window.assign_handler_for_mimetype(&desktop_entry_id, &mime_type, stores);
             }
         }));
 
@@ -121,18 +121,18 @@ impl MimeTypeEntryListRow {
         &self,
         desktop_entry_id: &DesktopEntryId,
         mime_type: &MimeType,
-        components: Rc<RefCell<Components>>,
+        stores: Rc<RefCell<MimeAssocStores>>,
     ) {
-        let desktop_entry = components
+        let desktop_entry = stores
             .borrow()
             .desktop_entry_store
             .get_desktop_entry(desktop_entry_id)
             .expect("Expect to find a desktop entry for the id")
             .clone();
 
-        let mut components = components.borrow_mut();
+        let mut stores = stores.borrow_mut();
 
-        if let Err(e) = components
+        if let Err(e) = stores
             .mime_associations_store
             .set_default_handler_for_mime_type(mime_type, &desktop_entry)
         {
@@ -146,7 +146,7 @@ impl MimeTypeEntryListRow {
                 "Assigned {} to be default handler for {}",
                 desktop_entry_id, mime_type
             );
-            if let Err(e) = components.mime_associations_store.save() {
+            if let Err(e) = stores.mime_associations_store.save() {
                 // TODO: Error dialog?
                 println!("Unable to save mime associations database, error: {:?}", e);
             }

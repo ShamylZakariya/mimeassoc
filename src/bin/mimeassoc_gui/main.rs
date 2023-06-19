@@ -1,7 +1,7 @@
 mod application_entry;
-mod components;
 mod mime_type_entry;
 mod mime_type_entry_list_row;
+mod stores;
 mod window;
 
 use gtk::{gdk::Display, glib::clone, prelude::*, *};

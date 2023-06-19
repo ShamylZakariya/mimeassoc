@@ -10,9 +10,9 @@ use glib::Object;
 use gtk::glib::clone;
 use gtk::{gio, glib, *};
 
-use crate::components;
 use crate::mime_type_entry::MimeTypeEntry;
 use crate::mime_type_entry_list_row::MimeTypeEntryListRow;
+use crate::stores;
 
 pub enum MainWindowPage {
     MimeTypes,
@@ -31,11 +31,11 @@ impl MainWindow {
         Object::builder().property("application", app).build()
     }
 
-    fn components(&self) -> Rc<RefCell<components::Components>> {
+    fn stores(&self) -> Rc<RefCell<stores::MimeAssocStores>> {
         self.imp()
-            .components
+            .stores
             .get()
-            .expect("Expect components to have been set")
+            .expect("Expect `setup_models()` to be called before calling `stores()`.")
             .clone()
     }
 
@@ -51,23 +51,23 @@ impl MainWindow {
         println!("MainWindow::setup_models");
 
         // Create models
-        match components::Components::new() {
-            Ok(components) => {
+        match stores::MimeAssocStores::new() {
+            Ok(stores) => {
                 self.imp()
-                    .components
-                    .set(Rc::new(RefCell::new(components)))
+                    .stores
+                    .set(Rc::new(RefCell::new(stores)))
                     .expect("MainWindow::setup_models() should only be set once");
             }
-            Err(e) => panic!("Failed to initialize mimeassoc components, error: {}", e),
+            Err(e) => panic!("Failed to initialize MimeAssocStores, error: {}", e),
         }
 
         let model = gio::ListStore::new(MimeTypeEntry::static_type());
         self.imp().mime_type_entries.replace(Some(model));
 
         // Populate the mime type model
-        let components = self.components();
-        let apps = &components.borrow().desktop_entry_store;
-        let mime_associations_store = &components.borrow().mime_associations_store;
+        let stores = self.stores();
+        let apps = &stores.borrow().desktop_entry_store;
+        let mime_associations_store = &stores.borrow().mime_associations_store;
 
         let mut all_mime_types = mime_associations_store.mime_types();
         all_mime_types.sort();
@@ -76,7 +76,7 @@ impl MainWindow {
             .iter()
             // Hide any mimetypes for which we have no applications
             .filter(|mt| !apps.get_desktop_entries_for_mimetype(mt).is_empty())
-            .map(|mt| MimeTypeEntry::new(mt, &components.borrow()))
+            .map(|mt| MimeTypeEntry::new(mt, &stores.borrow()))
             .collect::<Vec<_>>();
 
         self.mime_type_entries()
@@ -85,7 +85,7 @@ impl MainWindow {
 
     fn setup_mime_types_pane(&self) {
         println!("MainWindow::setup_mime_types_pane");
-        let components = self.components();
+        let stores = self.stores();
         let factory = SignalListItemFactory::new();
         factory.connect_setup(move |_, list_item| {
             let row = MimeTypeEntryListRow::new();
@@ -110,7 +110,7 @@ impl MainWindow {
                 .and_downcast::<MimeTypeEntryListRow>()
                 .expect("The child has to be a `MimeTypeEntryListRow`.");
 
-            row.bind(&mime_type_entry, components.clone());
+            row.bind(&mime_type_entry, stores.clone());
         });
 
         factory.connect_unbind(move |_, list_item| {

@@ -5,13 +5,13 @@ use adw::{subclass::prelude::*, *};
 use glib::subclass::*;
 use gtk::*;
 
-use crate::components::Components;
+use crate::stores::MimeAssocStores;
 
 #[derive(CompositeTemplate, Default)]
 #[template(resource = "/org/zakariya/MimeAssoc/main_window.ui")]
 pub struct MainWindow {
     // Models
-    pub components: OnceCell<Rc<RefCell<Components>>>,
+    pub stores: OnceCell<Rc<RefCell<MimeAssocStores>>>,
     pub mime_type_entries: RefCell<Option<gio::ListStore>>,
 
     // UI bindings

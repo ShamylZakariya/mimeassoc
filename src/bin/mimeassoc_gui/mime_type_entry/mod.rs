@@ -4,7 +4,7 @@ use adw::subclass::prelude::*;
 use glib::Object;
 use gtk::{gio, glib};
 
-use crate::{application_entry::ApplicationEntry, components::Components};
+use crate::{application_entry::ApplicationEntry, stores::MimeAssocStores};
 use mimeassoc::mime_type::MimeType;
 
 glib::wrapper! {
@@ -12,7 +12,7 @@ glib::wrapper! {
 }
 
 impl MimeTypeEntry {
-    pub fn new(mime_type: &MimeType, components: &Components) -> Self {
+    pub fn new(mime_type: &MimeType, stores: &MimeAssocStores) -> Self {
         // TODO: why does Object::builder().property("mime_type", mime_type.to_string()).build() crash???
         // I get an exception that "mime_type" property isn't found on MimeTypeEntry
         // Consider identifying and fixing this, or just store an actual RefCell<MimeType>
@@ -22,7 +22,7 @@ impl MimeTypeEntry {
         entry.set_mime_type(mime_type.to_string());
 
         // Populate supported_applications
-        let supported_applications = components
+        let supported_applications = stores
             .desktop_entry_store
             .get_desktop_entries_for_mimetype(mime_type)
             .iter()
