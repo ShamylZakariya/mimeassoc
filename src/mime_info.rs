@@ -72,7 +72,7 @@ pub struct MimeTypeInfoStore {
 }
 
 impl MimeTypeInfoStore {
-    fn load<P: AsRef<Path>>(mime_info_xml_paths: &[P]) -> anyhow::Result<Self> {
+    pub fn load<P: AsRef<Path>>(mime_info_xml_paths: &[P]) -> anyhow::Result<Self> {
         let mut store = Self {
             mime_types: HashMap::new(),
             aliases: HashMap::new(),

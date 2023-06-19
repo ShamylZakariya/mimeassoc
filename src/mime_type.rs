@@ -277,11 +277,11 @@ impl MimeAssociationScope {
     }
 }
 
-pub struct MimeAssociations {
+pub struct MimeAssociationStore {
     scopes: Vec<MimeAssociationScope>,
 }
 
-impl MimeAssociations {
+impl MimeAssociationStore {
     /// Return zeroth scope; this is normally associated with the scope
     /// loaded from the user directory.
     /// TODO: Sanitize this - this is brittle. Having the user scope be zero
@@ -489,7 +489,7 @@ impl MimeAssociations {
 
 #[cfg(test)]
 mod tests {
-    use crate::desktop_entry::DesktopEntries;
+    use crate::desktop_entry::DesktopEntryStore;
 
     use super::*;
 
@@ -528,11 +528,12 @@ mod tests {
         }
     }
 
-    fn create_test_entries_and_associations() -> anyhow::Result<(DesktopEntries, MimeAssociations)>
-    {
-        let entries = DesktopEntries::load(&[test_user_applications(), test_sys_applications()])?;
+    fn create_test_entries_and_associations(
+    ) -> anyhow::Result<(DesktopEntryStore, MimeAssociationStore)> {
+        let entries =
+            DesktopEntryStore::load(&[test_user_applications(), test_sys_applications()])?;
 
-        let associations = MimeAssociations::load(&[
+        let associations = MimeAssociationStore::load(&[
             test_user_mimeapps_list(),
             test_gnome_mimeapps_list(),
             test_sys_mimeapps_list(),
@@ -619,7 +620,7 @@ mod tests {
 
     #[test]
     fn mime_assocations_loads() -> anyhow::Result<()> {
-        let _ = MimeAssociations::load(&[
+        let _ = MimeAssociationStore::load(&[
             test_sys_mimeapps_list(),
             test_gnome_mimeapps_list(),
             test_user_mimeapps_list(),
@@ -631,7 +632,7 @@ mod tests {
     #[test]
     fn assigned_application_prefers_user_default_application_over_system_associations(
     ) -> anyhow::Result<()> {
-        let associations = MimeAssociations::load(&[
+        let associations = MimeAssociationStore::load(&[
             test_user_mimeapps_list(),
             test_gnome_mimeapps_list(),
             test_sys_mimeapps_list(),
@@ -649,7 +650,7 @@ mod tests {
 
     #[test]
     fn default_application_skips_user_associations() -> anyhow::Result<()> {
-        let associations = MimeAssociations::load(&[
+        let associations = MimeAssociationStore::load(&[
             test_user_mimeapps_list(),
             test_gnome_mimeapps_list(),
             test_sys_mimeapps_list(),
@@ -667,7 +668,7 @@ mod tests {
 
     #[test]
     fn remove_assigned_application_works() -> anyhow::Result<()> {
-        let mut associations = MimeAssociations::load(&[
+        let mut associations = MimeAssociationStore::load(&[
             test_user_mimeapps_list(),
             test_gnome_mimeapps_list(),
             test_sys_mimeapps_list(),
@@ -697,7 +698,7 @@ mod tests {
 
     #[test]
     fn remove_assigned_application_works_with_wildcard_mimetypes() -> anyhow::Result<()> {
-        let mut associations = MimeAssociations::load(&[
+        let mut associations = MimeAssociationStore::load(&[
             test_user_mimeapps_list(),
             test_gnome_mimeapps_list(),
             test_sys_mimeapps_list(),
@@ -747,7 +748,7 @@ mod tests {
 
     #[test]
     fn mimeassocations_wildcard_lookup_works() -> anyhow::Result<()> {
-        let associations = MimeAssociations::load(&[
+        let associations = MimeAssociationStore::load(&[
             test_user_mimeapps_list(),
             test_gnome_mimeapps_list(),
             test_sys_mimeapps_list(),
@@ -802,7 +803,7 @@ mod tests {
 
     #[test]
     fn mime_assocations_loads_expected_added_associations() -> anyhow::Result<()> {
-        let associations = MimeAssociations::load(&[
+        let associations = MimeAssociationStore::load(&[
             test_user_mimeapps_list(),
             test_gnome_mimeapps_list(),
             test_sys_mimeapps_list(),

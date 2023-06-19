@@ -15,6 +15,7 @@ use mimeassoc::*;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help = true)]
 pub struct Cli {
+    /// If set, produce all output in JSON
     #[arg(short, long)]
     json: bool,
 
@@ -23,9 +24,13 @@ pub struct Cli {
 }
 
 impl Cli {
-    pub fn process(&self, mime_db: &mut MimeAssociations, desktop_entry_db: &DesktopEntries) {
+    pub fn process(
+        &self,
+        mime_associations_store: &mut MimeAssociationStore,
+        desktop_entry_store: &DesktopEntryStore,
+    ) {
         if let Some(command) = &self.command {
-            let command_output = command.process(mime_db, desktop_entry_db);
+            let command_output = command.process(mime_associations_store, desktop_entry_store);
             if let Err(e) = self.command_output_consumer().process(&command_output) {
                 panic!("Error processing command output: {}", e);
             }
@@ -54,16 +59,16 @@ fn main() {
         Err(e) => panic!("Unable to load mimeapps_lists_paths: {:?}", e),
     };
 
-    let mut mime_db = match MimeAssociations::load(&mimeapps_lists) {
+    let mut mime_associations_store = match MimeAssociationStore::load(&mimeapps_lists) {
         Ok(mimeassoc) => mimeassoc,
-        Err(e) => panic!("Unable to load MimeAssociations: {:?}", e),
+        Err(e) => panic!("Unable to load MimeAssociationStore: {:?}", e),
     };
 
-    let desktop_entry_db = match DesktopEntries::load(&desktop_entry_dirs) {
+    let desktop_entry_store = match DesktopEntryStore::load(&desktop_entry_dirs) {
         Ok(desktop_entries) => desktop_entries,
-        Err(e) => panic!("Unable to load DesktopEntries: {:?}", e),
+        Err(e) => panic!("Unable to load DesktopEntryStore: {:?}", e),
     };
 
     let cli = Cli::parse();
-    cli.process(&mut mime_db, &desktop_entry_db);
+    cli.process(&mut mime_associations_store, &desktop_entry_store);
 }

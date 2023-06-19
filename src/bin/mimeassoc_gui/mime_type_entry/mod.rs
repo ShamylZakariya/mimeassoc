@@ -4,8 +4,8 @@ use adw::subclass::prelude::*;
 use glib::Object;
 use gtk::{gio, glib};
 
-use mimeassoc::mime_type::MimeType;
 use crate::{application_entry::ApplicationEntry, components::Components};
+use mimeassoc::mime_type::MimeType;
 
 glib::wrapper! {
     pub struct MimeTypeEntry(ObjectSubclass<imp::MimeTypeEntry>);
@@ -23,7 +23,7 @@ impl MimeTypeEntry {
 
         // Populate supported_applications
         let supported_applications = components
-            .app_db
+            .desktop_entry_store
             .get_desktop_entries_for_mimetype(mime_type)
             .iter()
             .map(|de| ApplicationEntry::new(de.id()))

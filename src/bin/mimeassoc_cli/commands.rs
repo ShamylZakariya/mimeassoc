@@ -57,21 +57,27 @@ pub enum Commands {
 impl Commands {
     pub fn process(
         &self,
-        mime_db: &mut MimeAssociations,
-        desktop_entry_db: &DesktopEntries,
+        mime_associations_store: &mut MimeAssociationStore,
+        desktop_entry_store: &DesktopEntryStore,
     ) -> CommandOutput {
         match self {
-            Commands::MimeTypes => Self::get_mime_types(mime_db),
-            Commands::MimeType(args) => {
-                Self::get_mime_type(mime_db, desktop_entry_db, args.id.as_deref())
+            Commands::MimeTypes => Self::get_mime_types(mime_associations_store),
+            Commands::MimeType(args) => Self::get_mime_type(
+                mime_associations_store,
+                desktop_entry_store,
+                args.id.as_deref(),
+            ),
+            Commands::Applications => {
+                Self::get_applications(mime_associations_store, desktop_entry_store)
             }
-            Commands::Applications => Self::get_applications(mime_db, desktop_entry_db),
-            Commands::Application(args) => {
-                Self::get_application(mime_db, desktop_entry_db, args.id.as_deref())
-            }
+            Commands::Application(args) => Self::get_application(
+                mime_associations_store,
+                desktop_entry_store,
+                args.id.as_deref(),
+            ),
             Commands::Set(args) => Self::set_default_handler(
-                mime_db,
-                desktop_entry_db,
+                mime_associations_store,
+                desktop_entry_store,
                 args.desktop_entry.as_str(),
                 &args
                     .mime_types
@@ -81,7 +87,7 @@ impl Commands {
                 args.dry_run,
             ),
             Commands::Reset(args) => Self::reset_mime_types(
-                mime_db,
+                mime_associations_store,
                 &args
                     .mime_types
                     .iter()
@@ -89,12 +95,14 @@ impl Commands {
                     .collect::<Vec<_>>(),
                 args.dry_run,
             ),
-            Commands::Configuration => Self::get_configuration(mime_db, desktop_entry_db),
+            Commands::Configuration => {
+                Self::get_configuration(mime_associations_store, desktop_entry_store)
+            }
         }
     }
 
-    fn get_mime_types(mime_db: &MimeAssociations) -> CommandOutput {
-        let mut mime_types = mime_db.mime_types();
+    fn get_mime_types(mime_associations_store: &MimeAssociationStore) -> CommandOutput {
+        let mut mime_types = mime_associations_store.mime_types();
         mime_types.sort();
 
         CommandOutput::MimeTypes(
@@ -108,8 +116,8 @@ impl Commands {
     }
 
     fn get_mime_type(
-        mime_db: &MimeAssociations,
-        desktop_entry_db: &DesktopEntries,
+        mime_associations_store: &MimeAssociationStore,
+        desktop_entry_store: &DesktopEntryStore,
         id: Option<&str>,
     ) -> CommandOutput {
         let Some(id) = id else {
@@ -121,10 +129,10 @@ impl Commands {
         };
 
         let mut output = vec![];
-        for mt_match in mime_db.find_matching_mimetypes(&mime_type) {
+        for mt_match in mime_associations_store.find_matching_mimetypes(&mime_type) {
             output.push(Self::get_single_mime_type(
-                mime_db,
-                desktop_entry_db,
+                mime_associations_store,
+                desktop_entry_store,
                 mt_match,
             ));
         }
@@ -135,12 +143,12 @@ impl Commands {
     }
 
     fn get_single_mime_type(
-        mime_db: &MimeAssociations,
-        desktop_entry_db: &DesktopEntries,
+        mime_associations_store: &MimeAssociationStore,
+        desktop_entry_store: &DesktopEntryStore,
         mime_type: &MimeType,
     ) -> MimeTypeCommandOutput {
-        let desktop_entries = desktop_entry_db.get_desktop_entries_for_mimetype(mime_type);
-        let default_handler = mime_db.assigned_application_for(mime_type);
+        let desktop_entries = desktop_entry_store.get_desktop_entries_for_mimetype(mime_type);
+        let default_handler = mime_associations_store.assigned_application_for(mime_type);
 
         let mut output = MimeTypeCommandOutput {
             mime_type: mime_type.clone(),
@@ -158,11 +166,11 @@ impl Commands {
     }
 
     fn get_applications(
-        mime_db: &MimeAssociations,
-        desktop_entry_db: &DesktopEntries,
+        mime_associations_store: &MimeAssociationStore,
+        desktop_entry_store: &DesktopEntryStore,
     ) -> CommandOutput {
         CommandOutput::Applications(
-            desktop_entry_db
+            desktop_entry_store
                 .desktop_entries()
                 .iter()
                 .map(|desktop_entry| {
@@ -172,7 +180,8 @@ impl Commands {
                     let mime_info = mime_types
                         .iter()
                         .map(|mime_type| {
-                            let is_handler = mime_db.assigned_application_for(mime_type)
+                            let is_handler = mime_associations_store
+                                .assigned_application_for(mime_type)
                                 == Some(desktop_entry.id());
                             MimeInfo {
                                 mime_type: mime_type.clone(),
@@ -191,15 +200,15 @@ impl Commands {
     }
 
     fn get_application(
-        mime_db: &MimeAssociations,
-        desktop_entry_db: &DesktopEntries,
+        mime_associations_store: &MimeAssociationStore,
+        desktop_entry_store: &DesktopEntryStore,
         id: Option<&str>,
     ) -> CommandOutput {
         let Some(id) = id else {
             panic!("No desktop entry id provded.");
         };
 
-        let Some(desktop_entry) = lookup_desktop_entry(desktop_entry_db, id) else {
+        let Some(desktop_entry) = lookup_desktop_entry(desktop_entry_store, id) else {
             panic!("\"{}\" does not appear to be an installed application", id);
         };
 
@@ -209,8 +218,8 @@ impl Commands {
         let mime_info = mime_types
             .iter()
             .map(|mime_type| {
-                let is_handler =
-                    mime_db.assigned_application_for(mime_type) == Some(desktop_entry.id());
+                let is_handler = mime_associations_store.assigned_application_for(mime_type)
+                    == Some(desktop_entry.id());
                 MimeInfo {
                     mime_type: mime_type.clone(),
                     is_default_handler: is_handler,
@@ -225,8 +234,8 @@ impl Commands {
     }
 
     fn set_default_handler(
-        mime_db: &mut MimeAssociations,
-        desktop_entry_db: &DesktopEntries,
+        mime_associations_store: &mut MimeAssociationStore,
+        desktop_entry_store: &DesktopEntryStore,
         desktop_entry_id: &str,
         mime_types: &[&str],
         dry_run: bool,
@@ -242,7 +251,7 @@ impl Commands {
         }
 
         // find the desktop entry
-        let Some(desktop_entry) = lookup_desktop_entry(desktop_entry_db, desktop_entry_id) else {
+        let Some(desktop_entry) = lookup_desktop_entry(desktop_entry_store, desktop_entry_id) else {
             panic!("\"{}\" does not appear to be an installed application", desktop_entry_id);
         };
 
@@ -268,7 +277,9 @@ impl Commands {
         };
 
         for mime_type in resolved_mime_types.iter() {
-            match mime_db.set_default_handler_for_mime_type(mime_type, desktop_entry) {
+            match mime_associations_store
+                .set_default_handler_for_mime_type(mime_type, desktop_entry)
+            {
                 Ok(_) => output.mime_types.push(mime_type.clone()),
                 Err(e) => panic!(
                     "Failed to assign {} to {}, error: {:?}",
@@ -281,7 +292,7 @@ impl Commands {
 
         // persist the changes...
         if !dry_run {
-            if let Err(e) = mime_db.save() {
+            if let Err(e) = mime_associations_store.save() {
                 panic!("Unable to save changes: {:?}", e);
             }
         }
@@ -290,7 +301,7 @@ impl Commands {
     }
 
     fn reset_mime_types(
-        mime_db: &mut MimeAssociations,
+        mime_associations_store: &mut MimeAssociationStore,
         mime_types: &[&str],
         dry_run: bool,
     ) -> CommandOutput {
@@ -309,7 +320,7 @@ impl Commands {
         };
 
         for mime_type in resolved_mime_types.into_iter() {
-            match mime_db.remove_assigned_applications_for(&mime_type) {
+            match mime_associations_store.remove_assigned_applications_for(&mime_type) {
                 Ok(_) => output.reset_mime_types.push(mime_type),
                 Err(e) => panic!(
                     "Failed to reset default applicaiton assignment for \"{}\", error: {:?}",
@@ -320,7 +331,7 @@ impl Commands {
 
         // persist the changes...
         if !dry_run {
-            if let Err(e) = mime_db.save() {
+            if let Err(e) = mime_associations_store.save() {
                 panic!("Unable to save changes: {:?}", e);
             }
         }
@@ -329,15 +340,15 @@ impl Commands {
     }
 
     fn get_configuration(
-        mime_db: &MimeAssociations,
-        desktop_entry_db: &DesktopEntries,
+        mime_associations_store: &MimeAssociationStore,
+        desktop_entry_store: &DesktopEntryStore,
     ) -> CommandOutput {
-        let mime_association_scope_paths = mime_db
+        let mime_association_scope_paths = mime_associations_store
             .sources()
             .iter()
             .map(PathBuf::from)
             .collect::<Vec<_>>();
-        let desktop_entry_scope_paths = desktop_entry_db
+        let desktop_entry_scope_paths = desktop_entry_store
             .sources()
             .iter()
             .map(PathBuf::from)

@@ -51,7 +51,7 @@ impl MimeTypeEntryListRow {
                 let desktop_entry_id = entry.get_desktop_entry_id();
                 let id = desktop_entry_id.to_string();
                 let display_name = entry
-                    .get_desktop_entry(&components.borrow().app_db)
+                    .get_desktop_entry(&components.borrow().desktop_entry_store)
                     .expect("Expect to get DesktopEntry from DesktopEntryId")
                     .name()
                     .unwrap_or(&id)
@@ -59,7 +59,7 @@ impl MimeTypeEntryListRow {
 
                 let is_assigned = if let Some(assigned_desktop_entry) = components
                     .borrow()
-                    .mime_db
+                    .mime_associations_store
                     .assigned_application_for(mime_type)
                 {
                     assigned_desktop_entry == &desktop_entry_id
@@ -125,7 +125,7 @@ impl MimeTypeEntryListRow {
     ) {
         let desktop_entry = components
             .borrow()
-            .app_db
+            .desktop_entry_store
             .get_desktop_entry(desktop_entry_id)
             .expect("Expect to find a desktop entry for the id")
             .clone();
@@ -133,7 +133,7 @@ impl MimeTypeEntryListRow {
         let mut components = components.borrow_mut();
 
         if let Err(e) = components
-            .mime_db
+            .mime_associations_store
             .set_default_handler_for_mime_type(mime_type, &desktop_entry)
         {
             // TODO: Error dialog?
@@ -146,7 +146,7 @@ impl MimeTypeEntryListRow {
                 "Assigned {} to be default handler for {}",
                 desktop_entry_id, mime_type
             );
-            if let Err(e) = components.mime_db.save() {
+            if let Err(e) = components.mime_associations_store.save() {
                 // TODO: Error dialog?
                 println!("Unable to save mime associations database, error: {:?}", e);
             }

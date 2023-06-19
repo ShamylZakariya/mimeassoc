@@ -116,8 +116,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::{
-        desktop_entry::{DesktopEntries, DesktopEntry, DesktopEntryId},
-        mime_type::{MimeAssociations, MimeType},
+        desktop_entry::{DesktopEntry, DesktopEntryId, DesktopEntryStore},
+        mime_type::{MimeAssociationStore, MimeType},
         *,
     };
 
@@ -196,8 +196,8 @@ mod tests {
 
     fn default_application_for_mime_type<'a>(
         mime_type: &MimeType,
-        mime_associations: &'a MimeAssociations,
-        desktop_entries: &'a DesktopEntries,
+        mime_associations: &'a MimeAssociationStore,
+        desktop_entries: &'a DesktopEntryStore,
     ) -> Option<&'a DesktopEntry> {
         if let Some(desktop_entry_id) = mime_associations.assigned_application_for(&mime_type) {
             if let Some(desktop_entry) = desktop_entries.get_desktop_entry(desktop_entry_id) {
@@ -209,8 +209,8 @@ mod tests {
 
     #[test]
     fn makes_correct_mime_to_desktop_associations() -> anyhow::Result<()> {
-        let mime_associations = MimeAssociations::load(&test_mimeapps_lists_paths())?;
-        let desktop_entries = DesktopEntries::load(&test_desktop_entry_dirs())?;
+        let mime_associations = MimeAssociationStore::load(&test_mimeapps_lists_paths())?;
+        let desktop_entries = DesktopEntryStore::load(&test_desktop_entry_dirs())?;
 
         let text_plain = MimeType::parse("text/plain")?;
         let audio_m4a = MimeType::parse("audio/m4a")?;

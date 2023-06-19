@@ -302,11 +302,11 @@ impl DesktopEntryScope {
     }
 }
 
-pub struct DesktopEntries {
+pub struct DesktopEntryStore {
     scopes: Vec<DesktopEntryScope>,
 }
 
-impl DesktopEntries {
+impl DesktopEntryStore {
     /// Load desktop entries from the directory paths provided, with desktop entries in
     /// earlier dirs overriding those in later.
     pub fn load<P>(scope_paths: &[P]) -> anyhow::Result<Self>
@@ -384,7 +384,7 @@ impl DesktopEntries {
 /// Finally, attempts to CASE-INSENSITIVE match the name to the id of each registered DesktopEntry, such that, e.g.,
 /// org.gnome.Evince.desktop` would match "Evince", by using the token preceding ".desktop".
 pub fn lookup_desktop_entry<'a>(
-    entries: &'a DesktopEntries,
+    entries: &'a DesktopEntryStore,
     identifier: &str,
 ) -> Option<&'a DesktopEntry> {
     if let Ok(desktop_entry_id) = DesktopEntryId::parse(identifier) {
@@ -547,10 +547,10 @@ mod tests {
 
     #[test]
     fn desktop_entries_loads_single_scopes() -> anyhow::Result<()> {
-        assert!(!DesktopEntries::load(&[test_sys_applications()])?
+        assert!(!DesktopEntryStore::load(&[test_sys_applications()])?
             .desktop_entries()
             .is_empty());
-        assert!(!DesktopEntries::load(&[test_user_applications()])?
+        assert!(!DesktopEntryStore::load(&[test_user_applications()])?
             .desktop_entries()
             .is_empty());
 
@@ -560,7 +560,7 @@ mod tests {
     #[test]
     fn desktop_entries_loads_multiple_scopes() -> anyhow::Result<()> {
         assert!(
-            !DesktopEntries::load(&[test_user_applications(), test_sys_applications()])?
+            !DesktopEntryStore::load(&[test_user_applications(), test_sys_applications()])?
                 .desktop_entries()
                 .is_empty()
         );
@@ -570,7 +570,8 @@ mod tests {
 
     #[test]
     fn desktop_entries_later_scopes_shadow_earlier() -> anyhow::Result<()> {
-        let entries = DesktopEntries::load(&[test_user_applications(), test_sys_applications()])?;
+        let entries =
+            DesktopEntryStore::load(&[test_user_applications(), test_sys_applications()])?;
 
         let weather_id = DesktopEntryId::parse("org.gnome.Weather.desktop")?;
         let weather = entries.get_desktop_entry(&weather_id);
@@ -583,7 +584,8 @@ mod tests {
 
     #[test]
     fn desktop_entries_looks_up_correct_openers_for_mime_type() -> anyhow::Result<()> {
-        let entries = DesktopEntries::load(&[test_user_applications(), test_sys_applications()])?;
+        let entries =
+            DesktopEntryStore::load(&[test_user_applications(), test_sys_applications()])?;
 
         let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
         let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
@@ -625,7 +627,8 @@ mod tests {
 
     #[test]
     fn fuzzy_lookup_works() -> anyhow::Result<()> {
-        let entries = DesktopEntries::load(&[test_user_applications(), test_sys_applications()])?;
+        let entries =
+            DesktopEntryStore::load(&[test_user_applications(), test_sys_applications()])?;
 
         // reference
         let photopea_id = DesktopEntryId::parse("photopea.desktop")?;

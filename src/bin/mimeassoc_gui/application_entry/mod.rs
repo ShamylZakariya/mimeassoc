@@ -3,7 +3,7 @@ mod imp;
 use adw::subclass::prelude::*;
 use glib::Object;
 use gtk::glib;
-use mimeassoc::desktop_entry::{DesktopEntries, DesktopEntry, DesktopEntryId};
+use mimeassoc::desktop_entry::{DesktopEntry, DesktopEntryId, DesktopEntryStore};
 
 glib::wrapper! {
     pub struct ApplicationEntry(ObjectSubclass<imp::ApplicationEntry>);
@@ -23,7 +23,7 @@ impl ApplicationEntry {
         DesktopEntryId::parse(&desktop_entry_string).unwrap()
     }
 
-    pub fn get_desktop_entry<'a>(&self, db: &'a DesktopEntries) -> Option<&'a DesktopEntry> {
+    pub fn get_desktop_entry<'a>(&self, db: &'a DesktopEntryStore) -> Option<&'a DesktopEntry> {
         let id = self.get_desktop_entry_id();
         db.get_desktop_entry(&id)
     }

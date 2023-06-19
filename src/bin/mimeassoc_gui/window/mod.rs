@@ -66,16 +66,16 @@ impl MainWindow {
 
         // Populate the mime type model
         let components = self.components();
-        let app_db = &components.borrow().app_db;
-        let mime_db = &components.borrow().mime_db;
+        let apps = &components.borrow().desktop_entry_store;
+        let mime_associations_store = &components.borrow().mime_associations_store;
 
-        let mut all_mime_types = mime_db.mime_types();
+        let mut all_mime_types = mime_associations_store.mime_types();
         all_mime_types.sort();
 
         let mime_type_entries = all_mime_types
             .iter()
             // Hide any mimetypes for which we have no applications
-            .filter(|mt| !app_db.get_desktop_entries_for_mimetype(mt).is_empty())
+            .filter(|mt| !apps.get_desktop_entries_for_mimetype(mt).is_empty())
             .map(|mt| MimeTypeEntry::new(mt, &components.borrow()))
             .collect::<Vec<_>>();
 
