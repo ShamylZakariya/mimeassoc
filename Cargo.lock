@@ -666,6 +666,7 @@ dependencies = [
  "serde",
  "serde_json",
  "which",
+ "xml-rs",
 ]
 
 [[package]]
@@ -1092,3 +1093,9 @@ checksum = "61de7bac303dc551fe038e2b3cef0f571087a47571ea6e79a87692ac99b99699"
 dependencies = [
  "memchr",
 ]
+
+[[package]]
+name = "xml-rs"
+version = "0.8.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52839dc911083a8ef63efa4d039d1f58b5e409f923e44c80828f206f66e5541c"

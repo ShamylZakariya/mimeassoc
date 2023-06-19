@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mime-info [
+    <!ELEMENT mime-info (mime-type)+>
+    <!ATTLIST mime-info xmlns CDATA #FIXED "http://www.freedesktop.org/standards/shared-mime-info">
+    <!ELEMENT mime-type (comment+ , (acronym , expanded-acronym)? , (icon | generic-icon | glob | magic | treemagic | root-XML | alias | sub-class-of)*)>
+    <!ATTLIST mime-type type CDATA #REQUIRED>
+    <!-- a comment describing a document with the respective MIME type. Example: "WMV video" -->
+    <!ELEMENT comment (#PCDATA)>
+    <!ATTLIST comment xml:lang CDATA #IMPLIED>
+    <!-- a comment describing the respective unexpanded MIME type acronym. Example: "WMV" -->
+    <!ELEMENT acronym (#PCDATA)>
+    <!-- a comment describing the respective expanded MIME type acronym. Example: "Windows Media
+    Video" -->
+    <!ELEMENT expanded-acronym (#PCDATA)>
+    <!ELEMENT icon EMPTY>
+    <!ATTLIST icon name CDATA #REQUIRED>
+    <!-- a generic icon name as per the Icon Naming Specification, only required if computing
+  it from the mime-type would not work, See "generic-icon" in the Shared Mime Specification -->
+    <!ELEMENT generic-icon EMPTY>
+    <!ATTLIST generic-icon name (application-x-executable | audio-x-generic | folder | font-x-generic | image-x-generic | package-x-generic | text-html | text-x-generic | text-x-generic-template | text-x-script | video-x-generic | x-office-address-book | x-office-calendar | x-office-document | x-office-presentation | x-office-spreadsheet) #REQUIRED>
+    <!ELEMENT glob EMPTY>
+    <!ATTLIST glob pattern CDATA #REQUIRED>
+    <!ATTLIST glob weight CDATA "50">
+    <!ATTLIST glob case-sensitive CDATA #IMPLIED>
+    <!ELEMENT magic (match)+>
+    <!ATTLIST magic priority CDATA "50">
+    <!ELEMENT match (match)*>
+    <!ATTLIST match offset CDATA #REQUIRED>
+    <!ATTLIST match type (string | big16 | big32 | little16 | little32 | host16 | host32 | byte) #REQUIRED>
+    <!ATTLIST match value CDATA #REQUIRED>
+    <!ATTLIST match mask CDATA #IMPLIED>
+    <!ELEMENT treemagic (treematch)+>
+    <!ATTLIST treemagic priority CDATA "50">
+    <!ELEMENT treematch (treematch)*>
+    <!ATTLIST treematch path CDATA #REQUIRED>
+    <!ATTLIST treematch type (file | directory | link) #IMPLIED>
+    <!ATTLIST treematch match-case (true | false) #IMPLIED>
+    <!ATTLIST treematch executable (true | false) #IMPLIED>
+    <!ATTLIST treematch non-empty (true | false) #IMPLIED>
+    <!ATTLIST treematch mimetype CDATA #IMPLIED>
+    <!ELEMENT root-XML EMPTY>
+    <!ATTLIST root-XML namespaceURI CDATA #REQUIRED>
+    <!ATTLIST root-XML localName CDATA #REQUIRED>
+    <!ELEMENT alias EMPTY>
+    <!ATTLIST alias type CDATA #REQUIRED>
+    <!ELEMENT sub-class-of EMPTY>
+    <!ATTLIST sub-class-of type CDATA #REQUIRED>
+]>
+<!--
+The freedesktop.org shared MIME database (this file) was created by merging
+several existing MIME databases (all released under the GNU GPL).
+
+It comes with ABSOLUTELY NO WARRANTY, to the extent permitted by law. You may
+redistribute copies of freedesktop.org.xml under the terms of the GNU General
+Public License version 2 or later. For more information about these matters,
+see the file named COPYING.
+
+The latest version is available from:
+
+	http://www.freedesktop.org/wiki/Software/shared-mime-info/
+
+To extend this database, users and applications should create additional
+XML files in the 'packages' directory and run the update-mime-database
+command to generate the output files.
+-->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+    <mime-type type="application/x-atari-2600-rom">
+        <comment>Atari 2600 ROM</comment>
+        <comment xml:lang="zh_TW">雅達利 2600 ROM</comment>
+        <comment xml:lang="zh_CN">雅达利 2600 ROM</comment>
+        <comment xml:lang="uk">Atari 2600 ROM</comment>
+        <comment xml:lang="tr">Atari 2600 ROM</comment>
+        <comment xml:lang="sv">Atari 2600-rom</comment>
+        <comment xml:lang="sr">Атари 2600 РОМ</comment>
+        <comment xml:lang="sl">Atari 2600 ROM</comment>
+        <comment xml:lang="pt_BR">ROM do Atari 2600</comment>
+        <comment xml:lang="pt">ROM Atari 2600</comment>
+        <comment xml:lang="pl">Plik ROM konsoli Atari 2600</comment>
+        <comment xml:lang="ko">아타리 2600 롬</comment>
+        <comment xml:lang="kk">Atari 2600 ROM</comment>
+        <comment xml:lang="ja">Atari 2600 ROM</comment>
+        <comment xml:lang="it">ROM Atari 2600</comment>
+        <comment xml:lang="id">Atari 2600 ROM</comment>
+        <comment xml:lang="hu">Atari 2600 ROM</comment>
+        <comment xml:lang="hr">Atari 2600 ROM</comment>
+        <comment xml:lang="he">Atari 2600 ROM</comment>
+        <comment xml:lang="fur">ROM Atari 2600</comment>
+        <comment xml:lang="fr">ROM Atari 2600</comment>
+        <comment xml:lang="fi">Atari 2600 -ROM</comment>
+        <comment xml:lang="eu">Atari 2600 ROMa</comment>
+        <comment xml:lang="es">ROM de Atari 2600</comment>
+        <comment xml:lang="en_GB">Atari 2600 ROM</comment>
+        <comment xml:lang="de">Atari 2600 ROM</comment>
+        <comment xml:lang="da">Atari 2600-ROM</comment>
+        <comment xml:lang="ca">ROM d'Atari 2600</comment>
+        <comment xml:lang="bg">ROM — Atari 2600</comment>
+        <comment xml:lang="ar">روم Atari 2600</comment>
+        <generic-icon name="application-x-executable" />
+        <glob pattern="*.a26" />
+    </mime-type>
+    <mime-type type="application/x-atari-7800-rom">
+        <comment>Atari 7800 ROM</comment>
+        <comment xml:lang="zh_TW">雅達利 7800 ROM</comment>
+        <comment xml:lang="zh_CN">雅达利 7800 ROM</comment>
+        <comment xml:lang="uk">Atari 7800 ROM</comment>
+        <comment xml:lang="tr">Atari 7800 ROM</comment>
+        <comment xml:lang="sv">Atari 7800-rom</comment>
+        <comment xml:lang="sr">Атари 7800 РОМ</comment>
+        <comment xml:lang="sl">Atari 7800 ROM</comment>
+        <comment xml:lang="pt_BR">ROM do Atari 7800</comment>
+        <comment xml:lang="pt">ROM Atari 7800</comment>
+        <comment xml:lang="pl">Plik ROM konsoli Atari 7800</comment>
+        <comment xml:lang="ko">아타리 7800 롬</comment>
+        <comment xml:lang="kk">Atari 7800 ROM</comment>
+        <comment xml:lang="ja">Atari 7800 ROM</comment>
+        <comment xml:lang="it">ROM Atari 7800</comment>
+        <comment xml:lang="id">Atari 7800 ROM</comment>
+        <comment xml:lang="hu">Atari 7800 ROM</comment>
+        <comment xml:lang="hr">Atari 7800 ROM</comment>
+        <comment xml:lang="he">Atari 7800 ROM</comment>
+        <comment xml:lang="fur">ROM Atari 7800</comment>
+        <comment xml:lang="fr">ROM Atari 7800</comment>
+        <comment xml:lang="fi">Atari 7800 -ROM</comment>
+        <comment xml:lang="eu">Atari 7800 ROMa</comment>
+        <comment xml:lang="es">ROM de Atari 7800</comment>
+        <comment xml:lang="en_GB">Atari 7800 ROM</comment>
+        <comment xml:lang="de">Atari 7800 ROM</comment>
+        <comment xml:lang="da">Atari 7800-ROM</comment>
+        <comment xml:lang="ca">ROM d'Atari 7800</comment>
+        <comment xml:lang="bg">ROM — Atari 7800</comment>
+        <comment xml:lang="ar">روم Atari 7800</comment>
+        <generic-icon name="application-x-executable" />
+        <glob pattern="*.a78" />
+        <magic>
+            <match type="string" value="ATARI7800" offset="1" />
+        </magic>
+    </mime-type>
+    <mime-type type="application/vnd.amazon.mobi8-ebook">
+        <comment>Kindle book document</comment>
+        <comment xml:lang="zh_TW">Kindle 書文件</comment>
+        <comment xml:lang="zh_CN">Kindle 电子书文档</comment>
+        <comment xml:lang="uk">документ книги Kindle</comment>
+        <comment xml:lang="tr">Kindle kitap belgesi</comment>
+        <comment xml:lang="sv">Kindle-bokdokument</comment>
+        <comment xml:lang="sr">Документ Киндл књиге</comment>
+        <comment xml:lang="sl">Dokument knjige Kindle</comment>
+        <comment xml:lang="ru">Электронная книга Kindle</comment>
+        <comment xml:lang="pt_BR">Documento livro do Kindle</comment>
+        <comment xml:lang="pt">documento de livro eletrónico do Kindle</comment>
+        <comment xml:lang="pl">Dokument książki Kindle</comment>
+        <comment xml:lang="lt">Kindle knygos dokumentas</comment>
+        <comment xml:lang="ko">Kindle 책 문서</comment>
+        <comment xml:lang="kk">Kindle кітап құжаты</comment>
+        <comment xml:lang="ja">キンドルブックドキュメント</comment>
+        <comment xml:lang="it">Documento libro Kindle</comment>
+        <comment xml:lang="id">Dokumen buku Kindle</comment>
+        <comment xml:lang="hu">Kindle könyvdokumentum</comment>
+        <comment xml:lang="hr">Dokument Kindle knjige</comment>
+        <comment xml:lang="he">מסמך ספר Kindle</comment>
+        <comment xml:lang="fr">document livre Kindle</comment>
+        <comment xml:lang="fi">Kindle book -asiakirja</comment>
+        <comment xml:lang="es">documento de libro de Kindle</comment>
+        <comment xml:lang="en_GB">Kindle book document</comment>
+        <comment xml:lang="de">Kindle-Buch-Dokument</comment>
+        <comment xml:lang="da">Kindle-bogdokument</comment>
+        <comment xml:lang="ca">document de llibre Kindle</comment>
+        <comment xml:lang="ar">مستند كتاب كندل</comment>
+        <sub-class-of type="application/x-mobipocket-ebook" />
+        <glob pattern="*.azw3" />
+        <glob pattern="*.kfx" />
+        <alias type="application/x-mobi8-ebook" />
+    </mime-type>
+</mime-info>

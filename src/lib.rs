@@ -9,6 +9,9 @@ pub mod desktop_entry;
 #[allow(dead_code)]
 pub mod mime_type;
 
+#[allow(dead_code)]
+pub mod mime_info;
+
 /// Return a vector of paths to the application dirs for the user.
 #[allow(dead_code)]
 pub fn desktop_entry_dirs() -> anyhow::Result<Vec<PathBuf>> {
