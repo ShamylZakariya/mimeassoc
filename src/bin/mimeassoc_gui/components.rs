@@ -1,10 +1,12 @@
 use mimeassoc::desktop_entry::*;
+use mimeassoc::mime_info::MimeTypeInfoStore;
 use mimeassoc::mime_type::*;
 use mimeassoc::*;
 
 pub struct Components {
     pub mime_db: MimeAssociations,
     pub app_db: DesktopEntries,
+    //pub mime_info_db: MimeTypeInfoStore,
 }
 
 impl std::fmt::Debug for Components {

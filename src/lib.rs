@@ -84,6 +84,22 @@ pub fn mimeapps_lists_paths() -> anyhow::Result<Vec<PathBuf>> {
     Ok(mimeapps_list_paths)
 }
 
+/// Return a vector of paths to system mime info xml files, to be loaded by MimeInfoStore
+#[allow(dead_code)]
+pub fn mimeinfo_paths() -> anyhow::Result<Vec<PathBuf>> {
+    let directory = PathBuf::from("/usr/share/mime/packages");
+    let contents = std::fs::read_dir(directory)?;
+    let mut xml_paths = Vec::new();
+    for file in contents.flatten() {
+        let file_path = file.path();
+        if has_extension(&file_path, "xml") {
+            xml_paths.push(file_path);
+        }
+    }
+
+    Ok(xml_paths)
+}
+
 fn has_extension<P>(path: P, extension: &str) -> bool
 where
     P: AsRef<Path>,
@@ -136,6 +152,19 @@ mod tests {
         let paths = mimeapps_lists_paths()?;
         assert!(!paths.is_empty());
 
+        for path in paths.iter() {
+            assert!(path.exists());
+            assert!(path.is_file());
+            assert!(!path.is_dir());
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn mimeinfo_paths_returns_nonempty_vec() -> anyhow::Result<()> {
+        let paths = mimeinfo_paths()?;
+        assert!(!paths.is_empty());
         for path in paths.iter() {
             assert!(path.exists());
             assert!(path.is_file());

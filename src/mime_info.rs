@@ -72,16 +72,28 @@ pub struct MimeTypeInfoStore {
 }
 
 impl MimeTypeInfoStore {
-    pub fn load<P: AsRef<Path>>(freedesktop_org_xml_path: P) -> anyhow::Result<Self> {
-        let path = freedesktop_org_xml_path.as_ref();
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
-        let parser = xml::EventReader::new(reader);
-
+    fn load<P: AsRef<Path>>(mime_info_xml_paths: &[P]) -> anyhow::Result<Self> {
         let mut store = Self {
             mime_types: HashMap::new(),
             aliases: HashMap::new(),
         };
+
+        for path in mime_info_xml_paths.iter() {
+            Self::load_single_xml_into_store(path, &mut store)?;
+        }
+
+        store.resolve_aliases();
+        Ok(store)
+    }
+
+    fn load_single_xml_into_store<P: AsRef<Path>>(
+        freedesktop_org_xml_path: P,
+        store: &mut Self,
+    ) -> anyhow::Result<()> {
+        let path = freedesktop_org_xml_path.as_ref();
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+        let parser = xml::EventReader::new(reader);
 
         // in-flight data to handle while sax parsing; this is ugly, but sax parsing always is
         let mut current_mime_type_info: Option<MimeTypeInfo> = None;
@@ -178,9 +190,7 @@ impl MimeTypeInfoStore {
             }
         }
 
-        store.resolve_aliases();
-
-        Ok(store)
+        Ok(())
     }
 
     pub fn get_info_for_mime_type(&self, mime_type: &MimeType) -> Option<&MimeTypeInfo> {
@@ -230,6 +240,10 @@ mod tests {
         path("test-data/usr/share/mime/packages/tiny_freedesktop.org.xml")
     }
 
+    fn code_workspace_xml_path() -> PathBuf {
+        path("test-data/usr/share/mime/packages/code-workspace.xml")
+    }
+
     fn full_freedesktop_org_xml_path() -> PathBuf {
         path("test-data/usr/share/mime/packages/freedesktop.org.xml")
     }
@@ -237,7 +251,7 @@ mod tests {
     fn loads_and_contains_expected_data<P: AsRef<Path>>(
         freedesktop_org_xml_path: P,
     ) -> anyhow::Result<()> {
-        let store = MimeTypeInfoStore::load(freedesktop_org_xml_path)?;
+        let store = MimeTypeInfoStore::load(&[freedesktop_org_xml_path])?;
 
         // look up atari 7800 ROM mime type
         let atari_7800_mime_type = MimeType::parse("application/x-atari-7800-rom")?;
@@ -296,5 +310,21 @@ mod tests {
     #[test]
     fn loads_full_freedesktop_org_xml() -> anyhow::Result<()> {
         loads_and_contains_expected_data(full_freedesktop_org_xml_path())
+    }
+
+    #[test]
+    fn merges_multiple_sources() -> anyhow::Result<()> {
+        let sources = vec![tiny_freedesktop_org_xml_path(), code_workspace_xml_path()];
+        let store = MimeTypeInfoStore::load(&sources)?;
+
+        let mobi_mime_type = MimeType::parse("application/vnd.amazon.mobi8-ebook")?;
+        let code_workspace_mime_type = MimeType::parse("application/x-code-workspace")?;
+
+        assert!(store.get_info_for_mime_type(&mobi_mime_type).is_some());
+        assert!(store
+            .get_info_for_mime_type(&code_workspace_mime_type)
+            .is_some());
+
+        Ok(())
     }
 }
