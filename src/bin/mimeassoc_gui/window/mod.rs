@@ -134,6 +134,11 @@ impl MainWindow {
         self.imp()
             .mime_types_scrolled_window
             .set_child(Some(&list_view));
+
+        // FIXME: Why doesn't this result in kinetic scrolling?
+        self.imp()
+            .mime_types_scrolled_window
+            .set_kinetic_scrolling(true);
     }
 
     fn setup_actions(&self) {
