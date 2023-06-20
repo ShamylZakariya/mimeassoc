@@ -13,16 +13,12 @@ use is_executable::IsExecutable;
 use super::{has_extension, mime_type::MimeType};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize)]
-pub struct DesktopEntryId {
-    id: String,
-}
+pub struct DesktopEntryId(String);
 
 impl DesktopEntryId {
     pub fn parse(desktop_entry: &str) -> anyhow::Result<DesktopEntryId> {
         if desktop_entry.ends_with(".desktop") {
-            Ok(DesktopEntryId {
-                id: desktop_entry.to_string(),
-            })
+            Ok(DesktopEntryId(desktop_entry.to_string()))
         } else {
             anyhow::bail!(
                 "id: \"{}\" not a valid Gnome .desktop file name",
@@ -32,26 +28,25 @@ impl DesktopEntryId {
     }
 
     pub fn id(&self) -> &str {
-        let desktop_idx = self.id.find(".desktop").unwrap();
-        &self.id[0..desktop_idx]
+        &self.0
     }
 }
 
 impl PartialOrd for DesktopEntryId {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.id.partial_cmp(&other.id)
+        self.0.partial_cmp(&other.0)
     }
 }
 
 impl Ord for DesktopEntryId {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.id.cmp(&other.id)
+        self.0.cmp(&other.0)
     }
 }
 
 impl Display for DesktopEntryId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.id)
+        write!(f, "{}", self.0)
     }
 }
 
@@ -410,7 +405,7 @@ pub fn lookup_desktop_entry<'a>(
     }
 
     for desktop_entry in desktop_entries {
-        let components = desktop_entry.id().id.split('.').collect::<Vec<_>>();
+        let components = desktop_entry.id().id().split('.').collect::<Vec<_>>();
         let count = components.len();
         if count >= 2 && components[count - 2].eq_ignore_ascii_case(identifier) {
             return Some(desktop_entry);
@@ -473,9 +468,9 @@ mod tests {
     fn parses_desktop_entry_id() -> anyhow::Result<()> {
         assert_eq!(
             DesktopEntryId::parse("org.foo.Bar.desktop")?.id(),
-            "org.foo.Bar"
+            "org.foo.Bar.desktop"
         );
-        assert_eq!(DesktopEntryId::parse("Baz.desktop")?.id(), "Baz");
+        assert_eq!(DesktopEntryId::parse("Baz.desktop")?.id(), "Baz.desktop");
 
         Ok(())
     }

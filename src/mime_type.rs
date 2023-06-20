@@ -719,7 +719,7 @@ mod tests {
                 .assigned_application_for(&image_bmp)
                 .unwrap()
                 .id(),
-            "photopea"
+            "photopea.desktop"
         );
 
         assert_eq!(
@@ -727,7 +727,7 @@ mod tests {
                 .assigned_application_for(&image_png)
                 .unwrap()
                 .id(),
-            "org.gimp.GIMP"
+            "org.gimp.GIMP.desktop"
         );
 
         assert_eq!(
@@ -735,7 +735,7 @@ mod tests {
                 .assigned_application_for(&image_pdf)
                 .unwrap()
                 .id(),
-            "org.gnome.Evince"
+            "org.gnome.Evince.desktop"
         );
 
         associations.remove_assigned_applications_for(&image_star)?;
