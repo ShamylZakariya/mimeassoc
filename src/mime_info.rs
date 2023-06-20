@@ -1,8 +1,10 @@
 use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
 
+use serde::Serialize;
+
 use crate::mime_type::MimeType;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct MimeTypeInfo {
     mime_type: MimeType,
 
@@ -45,6 +47,10 @@ impl MimeTypeInfo {
 
     pub fn generic_icon(&self) -> Option<&str> {
         self.generic_icon.as_deref()
+    }
+
+    pub fn glob_patterns(&self) -> Vec<&str> {
+        self.glob_patterns.iter().map(|g| g.as_str()).collect()
     }
 
     pub fn extensions(&self) -> Vec<&str> {

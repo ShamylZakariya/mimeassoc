@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Args, Subcommand};
+use mimeassoc::mime_info::MimeTypeInfoStore;
 
 use super::command_output::*;
 use mimeassoc::desktop_entry::*;
@@ -59,12 +60,14 @@ impl Commands {
         &self,
         mime_associations_store: &mut MimeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
+        mime_info_store: &MimeTypeInfoStore,
     ) -> CommandOutput {
         match self {
-            Commands::MimeTypes => Self::get_mime_types(mime_associations_store),
+            Commands::MimeTypes => Self::get_mime_types(mime_associations_store, mime_info_store),
             Commands::MimeType(args) => Self::get_mime_type(
                 mime_associations_store,
                 desktop_entry_store,
+                mime_info_store,
                 args.id.as_deref(),
             ),
             Commands::Applications => {
@@ -101,7 +104,10 @@ impl Commands {
         }
     }
 
-    fn get_mime_types(mime_associations_store: &MimeAssociationStore) -> CommandOutput {
+    fn get_mime_types(
+        mime_associations_store: &MimeAssociationStore,
+        mime_info_store: &MimeTypeInfoStore,
+    ) -> CommandOutput {
         let mut mime_types = mime_associations_store.mime_types();
         mime_types.sort();
 
@@ -110,6 +116,7 @@ impl Commands {
                 .into_iter()
                 .map(|m| MimeTypesCommandOutput {
                     mime_type: m.clone(),
+                    mime_info: mime_info_store.get_info_for_mime_type(m).cloned(),
                 })
                 .collect::<Vec<_>>(),
         )
@@ -118,6 +125,7 @@ impl Commands {
     fn get_mime_type(
         mime_associations_store: &MimeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
+        mime_info_store: &MimeTypeInfoStore,
         id: Option<&str>,
     ) -> CommandOutput {
         let Some(id) = id else {
@@ -133,6 +141,7 @@ impl Commands {
             output.push(Self::get_single_mime_type(
                 mime_associations_store,
                 desktop_entry_store,
+                mime_info_store,
                 mt_match,
             ));
         }
@@ -145,6 +154,7 @@ impl Commands {
     fn get_single_mime_type(
         mime_associations_store: &MimeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
+        mime_info_store: &MimeTypeInfoStore,
         mime_type: &MimeType,
     ) -> MimeTypeCommandOutput {
         let desktop_entries = desktop_entry_store.get_desktop_entries_for_mimetype(mime_type);
@@ -152,6 +162,7 @@ impl Commands {
 
         let mut output = MimeTypeCommandOutput {
             mime_type: mime_type.clone(),
+            mime_info: mime_info_store.get_info_for_mime_type(mime_type).cloned(),
             handler_info: vec![],
         };
 

@@ -6,6 +6,7 @@ use clap::Parser;
 use command_output::*;
 use commands::*;
 use mimeassoc::desktop_entry::*;
+use mimeassoc::mime_info::MimeTypeInfoStore;
 use mimeassoc::mime_type::*;
 use mimeassoc::*;
 
@@ -28,9 +29,14 @@ impl Cli {
         &self,
         mime_associations_store: &mut MimeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
+        mime_info_store: &MimeTypeInfoStore,
     ) {
         if let Some(command) = &self.command {
-            let command_output = command.process(mime_associations_store, desktop_entry_store);
+            let command_output = command.process(
+                mime_associations_store,
+                desktop_entry_store,
+                mime_info_store,
+            );
             if let Err(e) = self.command_output_consumer().process(&command_output) {
                 panic!("Error processing command output: {}", e);
             }
@@ -59,6 +65,11 @@ fn main() {
         Err(e) => panic!("Unable to load mimeapps_lists_paths: {:?}", e),
     };
 
+    let mimetype_info_paths = match mimeinfo_paths() {
+        Ok(paths) => paths,
+        Err(e) => panic!("Unable to load mimeinfo_paths: {:?}", e),
+    };
+
     let mut mime_associations_store = match MimeAssociationStore::load(&mimeapps_lists) {
         Ok(mimeassoc) => mimeassoc,
         Err(e) => panic!("Unable to load MimeAssociationStore: {:?}", e),
@@ -69,6 +80,15 @@ fn main() {
         Err(e) => panic!("Unable to load DesktopEntryStore: {:?}", e),
     };
 
+    let mime_info_store = match MimeTypeInfoStore::load(&mimetype_info_paths) {
+        Ok(s) => s,
+        Err(e) => panic!("Unable to load MimeTypeInfoStore: {:?}", e),
+    };
+
     let cli = Cli::parse();
-    cli.process(&mut mime_associations_store, &desktop_entry_store);
+    cli.process(
+        &mut mime_associations_store,
+        &desktop_entry_store,
+        &mime_info_store,
+    );
 }
