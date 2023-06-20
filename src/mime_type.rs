@@ -11,9 +11,7 @@ use std::{
 use super::desktop_entry::{DesktopEntry, DesktopEntryId};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
-pub struct MimeType {
-    pub id: String,
-}
+pub struct MimeType(String);
 
 impl MimeType {
     pub fn parse(id: &str) -> anyhow::Result<Self> {
@@ -24,17 +22,21 @@ impl MimeType {
                 id
             )
         }
-        Ok(Self { id: id.to_string() })
+        Ok(Self(id.to_string()))
+    }
+
+    pub fn id(&self) -> &str {
+        &self.0
     }
 
     pub fn major_type(&self) -> &str {
-        let slash_pos = self.id.find('/').expect("Mimetype should contain a '/'");
-        &self.id[0..slash_pos]
+        let slash_pos = self.0.find('/').expect("Mimetype should contain a '/'");
+        &self.0[0..slash_pos]
     }
 
     pub fn minor_type(&self) -> &str {
-        let slash_pos = self.id.find('/').expect("Mimetype should contain a '/'");
-        &self.id[slash_pos + 1..self.id.len()]
+        let slash_pos = self.0.find('/').expect("Mimetype should contain a '/'");
+        &self.0[slash_pos + 1..self.0.len()]
     }
 
     /// True if the minor type is `*`, e.g., `image/*`
@@ -54,7 +56,7 @@ impl MimeType {
 
 impl Display for MimeType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.id)
+        write!(f, "{}", self.0)
     }
 }
 
