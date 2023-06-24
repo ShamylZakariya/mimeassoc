@@ -5,7 +5,7 @@ use glib::Object;
 use gtk::glib;
 
 use crate::model::*;
-use mimeassoc::mime_type::MimeType;
+use mimeassoc::*;
 
 glib::wrapper! {
     pub struct MimeTypeEntry(ObjectSubclass<imp::MimeTypeEntry>);

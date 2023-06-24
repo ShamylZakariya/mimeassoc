@@ -7,8 +7,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::Object;
 use gtk::glib::{self, clone};
-use mimeassoc::desktop_entry::DesktopEntryId;
-use mimeassoc::mime_type::MimeType;
+use mimeassoc::{DesktopEntryId, MimeType};
 
 use crate::model::*;
 

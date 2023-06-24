@@ -1,11 +1,9 @@
 use std::path::PathBuf;
 
 use clap::{Args, Subcommand};
-use mimeassoc::mime_info::MimeTypeInfoStore;
+use mimeassoc::*;
 
 use super::command_output::*;
-use mimeassoc::desktop_entry::*;
-use mimeassoc::mime_type::*;
 
 #[derive(Args)]
 pub struct MimeTypeCommandArgs {

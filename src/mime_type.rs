@@ -288,6 +288,7 @@ impl MimeAssociationStore {
     /// loaded from the user directory.
     /// TODO: Sanitize this - this is brittle. Having the user scope be zero
     /// is fine, as a convention, but easily misconfigured.
+    #[allow(dead_code)]
     fn get_user_scope(&self) -> Option<&MimeAssociationScope> {
         if let Some(scope) = self.scopes.get(0) {
             if scope.is_user_customizable {

@@ -5,9 +5,6 @@ use clap::Parser;
 
 use command_output::*;
 use commands::*;
-use mimeassoc::desktop_entry::*;
-use mimeassoc::mime_info::MimeTypeInfoStore;
-use mimeassoc::mime_type::*;
 use mimeassoc::*;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

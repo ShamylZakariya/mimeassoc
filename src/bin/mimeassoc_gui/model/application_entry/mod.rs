@@ -2,7 +2,7 @@ mod imp;
 
 use glib::Object;
 use gtk::glib;
-use mimeassoc::desktop_entry::{DesktopEntry, DesktopEntryId, DesktopEntryStore};
+use mimeassoc::*;
 
 glib::wrapper! {
     pub struct ApplicationEntry(ObjectSubclass<imp::ApplicationEntry>);

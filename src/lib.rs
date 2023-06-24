@@ -3,14 +3,13 @@ use std::{
     path::{Path, PathBuf},
 };
 
-#[allow(dead_code)]
 pub mod desktop_entry;
-
-#[allow(dead_code)]
+pub mod mime_info;
 pub mod mime_type;
 
-#[allow(dead_code)]
-pub mod mime_info;
+pub use desktop_entry::*;
+pub use mime_info::*;
+pub use mime_type::*;
 
 /// Return a vector of paths to the application dirs for the user.
 #[allow(dead_code)]

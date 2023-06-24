@@ -1,6 +1,3 @@
-use mimeassoc::desktop_entry::*;
-use mimeassoc::mime_info::MimeTypeInfoStore;
-use mimeassoc::mime_type::*;
 use mimeassoc::*;
 
 pub struct MimeAssocStores {
