@@ -48,7 +48,7 @@ impl MimeTypeEntryListRow {
     }
 
     fn bind_labels(&self, mime_type_entry: &MimeTypeEntry, stores: Rc<RefCell<MimeAssocStores>>) {
-        let mime_type = &mime_type_entry.get_mime_type();
+        let mime_type = &mime_type_entry.mime_type();
         let content_label = self.imp().content_label.get();
         content_label.set_text(&mime_type.to_string());
 
@@ -83,8 +83,8 @@ impl MimeTypeEntryListRow {
         stores: Rc<RefCell<MimeAssocStores>>,
     ) {
         let applications_combobox = self.imp().applications_combo_box.get();
-        let mime_type = &mime_type_entry.get_mime_type();
-        let applications = mime_type_entry.get_supported_application_entries();
+        let mime_type = &mime_type_entry.mime_type();
+        let applications = mime_type_entry.supported_application_entries();
 
         // Populate application combobox
         for i in 0_u32..applications.n_items() {
@@ -92,10 +92,10 @@ impl MimeTypeEntryListRow {
                 let entry = entry
                     .downcast_ref::<ApplicationEntry>()
                     .expect("Expect applications list store to contain ApplicationEntry");
-                let desktop_entry_id = entry.get_desktop_entry_id();
+                let desktop_entry_id = entry.desktop_entry_id();
                 let id = desktop_entry_id.to_string();
                 let display_name = entry
-                    .get_desktop_entry(&stores.borrow().desktop_entry_store)
+                    .desktop_entry(&stores.borrow().desktop_entry_store)
                     .expect("Expect to get DesktopEntry from DesktopEntryId")
                     .name()
                     .unwrap_or(&id)
@@ -143,7 +143,7 @@ impl MimeTypeEntryListRow {
         let callback_id = applications_combobox.connect_changed(clone!(@weak mime_type_entry, @weak stores, @weak self as window => move |a|{
             if let Some(active_id) = a.active_id() {
                 let active_id = active_id.as_str();
-                let mime_type = mime_type_entry.get_mime_type();
+                let mime_type = mime_type_entry.mime_type();
                 let desktop_entry_id = DesktopEntryId::parse(active_id).expect("Expected valid desktop entry id");
                 window.assign_handler_for_mimetype(&desktop_entry_id, &mime_type, stores);
             }

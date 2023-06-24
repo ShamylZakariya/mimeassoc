@@ -16,13 +16,13 @@ impl ApplicationEntry {
     }
 
     /// Get the represented MimeType for this entry
-    pub fn get_desktop_entry_id(&self) -> DesktopEntryId {
+    pub fn desktop_entry_id(&self) -> DesktopEntryId {
         let desktop_entry_id_raw = self.id();
         DesktopEntryId::parse(&desktop_entry_id_raw).unwrap()
     }
 
-    pub fn get_desktop_entry<'a>(&self, db: &'a DesktopEntryStore) -> Option<&'a DesktopEntry> {
-        let id = self.get_desktop_entry_id();
+    pub fn desktop_entry<'a>(&self, db: &'a DesktopEntryStore) -> Option<&'a DesktopEntry> {
+        let id = self.desktop_entry_id();
         db.get_desktop_entry(&id)
     }
 }

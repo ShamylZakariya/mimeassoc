@@ -8,7 +8,7 @@ use gtk::glib;
 #[derive(Properties, Default)]
 #[properties(wrapper_type = super::ApplicationEntry)]
 pub struct ApplicationEntry {
-    #[property(name = "id", get, set, type = String)]
+    #[property(get, set)]
     pub id: RefCell<String>,
 }
 

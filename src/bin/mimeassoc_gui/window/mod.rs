@@ -63,8 +63,11 @@ impl MainWindow {
 
         let model = gio::ListStore::new(MimeTypeEntry::static_type());
         self.imp().mime_type_entries.replace(Some(model));
+        self.build_mime_type_entries_list_store()
+    }
 
-        // Populate the mime type model
+    /// Populates self::mime_type_entries with the current state of self.stores()
+    fn build_mime_type_entries_list_store(&self) {
         let stores = self.stores();
         let apps = &stores.borrow().desktop_entry_store;
         let mime_associations_store = &stores.borrow().mime_associations_store;
@@ -152,11 +155,12 @@ impl MainWindow {
         self.add_action(&action_show_applications);
     }
 
-    fn show_page(&self, page: MainWindowPage) {
+    pub fn show_page(&self, page: MainWindowPage) {
         let page_selection_model = self.imp().stack.pages();
         match page {
             MainWindowPage::MimeTypes => {
                 println!("MainWindow::show_page - MimeTypes");
+                self.build_mime_type_entries_list_store();
                 page_selection_model.select_item(0, true);
             }
             MainWindowPage::Applications => {

@@ -11,10 +11,10 @@ use crate::application_entry::ApplicationEntry;
 #[properties(wrapper_type = super::MimeTypeEntry)]
 pub struct MimeTypeEntry {
     #[property(get, set)]
-    pub mime_type: RefCell<String>,
+    pub id: RefCell<String>,
 
     #[property(get, set)]
-    pub supported_applications: RefCell<gio::ListStore>,
+    pub supported_application_entries: RefCell<gio::ListStore>,
 }
 
 // The central trait for subclassing a GObject
@@ -29,7 +29,7 @@ impl ObjectImpl for MimeTypeEntry {
     fn constructed(&self) {
         Self::parent_constructed(self);
 
-        self.supported_applications
+        self.supported_application_entries
             .replace(gio::ListStore::new(ApplicationEntry::static_type()));
     }
 
