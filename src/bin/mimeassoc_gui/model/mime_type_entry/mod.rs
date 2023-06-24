@@ -2,9 +2,9 @@ mod imp;
 
 use adw::subclass::prelude::*;
 use glib::Object;
-use gtk::{gio, glib};
+use gtk::glib;
 
-use crate::{application_entry::ApplicationEntry, stores::MimeAssocStores};
+use crate::model::*;
 use mimeassoc::mime_type::MimeType;
 
 glib::wrapper! {

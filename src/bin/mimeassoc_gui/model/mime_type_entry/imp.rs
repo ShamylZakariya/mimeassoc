@@ -5,7 +5,7 @@ use adw::subclass::prelude::*;
 use glib::{ParamSpec, Properties, Value};
 use gtk::{gio, glib};
 
-use crate::application_entry::ApplicationEntry;
+use crate::model::*;
 
 #[derive(Properties, Default)]
 #[properties(wrapper_type = super::MimeTypeEntry)]

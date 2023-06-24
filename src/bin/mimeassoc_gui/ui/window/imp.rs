@@ -5,7 +5,7 @@ use adw::{subclass::prelude::*, *};
 use glib::subclass::*;
 use gtk::*;
 
-use crate::stores::MimeAssocStores;
+use crate::model::*;
 
 #[derive(CompositeTemplate, Default)]
 #[template(resource = "/org/zakariya/MimeAssoc/main_window.ui")]

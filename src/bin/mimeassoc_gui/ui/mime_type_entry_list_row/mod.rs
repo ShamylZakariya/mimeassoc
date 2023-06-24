@@ -10,9 +10,7 @@ use gtk::glib::{self, clone};
 use mimeassoc::desktop_entry::DesktopEntryId;
 use mimeassoc::mime_type::MimeType;
 
-use crate::application_entry::ApplicationEntry;
-use crate::mime_type_entry::MimeTypeEntry;
-use crate::stores::MimeAssocStores;
+use crate::model::*;
 
 glib::wrapper! {
     pub struct MimeTypeEntryListRow(ObjectSubclass<imp::MimeTypeEntryListRow>)

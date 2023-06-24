@@ -1,8 +1,5 @@
-mod application_entry;
-mod mime_type_entry;
-mod mime_type_entry_list_row;
-mod stores;
-mod window;
+mod model;
+mod ui;
 
 use gtk::{gdk::Display, glib::clone, prelude::*, *};
 
@@ -56,7 +53,7 @@ fn setup_shortcuts(app: &adw::Application) {
 fn build_ui(app: &adw::Application) {
     println!("main::build_ui");
 
-    let window = window::MainWindow::new(app);
-    // window.show_page(window::MainWindowPage::Applications);
+    let window = ui::MainWindow::new(app);
+    // window.show_page(ui::MainWindowPage::Applications);
     window.present();
 }

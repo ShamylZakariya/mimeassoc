@@ -10,9 +10,8 @@ use glib::Object;
 use gtk::glib::clone;
 use gtk::{gio, glib, *};
 
-use crate::mime_type_entry::MimeTypeEntry;
-use crate::mime_type_entry_list_row::MimeTypeEntryListRow;
-use crate::stores;
+use crate::ui::MimeTypeEntryListRow;
+use crate::model::*;
 
 pub enum MainWindowPage {
     MimeTypes,

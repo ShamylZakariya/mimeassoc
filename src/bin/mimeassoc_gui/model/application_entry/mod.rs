@@ -15,12 +15,13 @@ impl ApplicationEntry {
             .build()
     }
 
-    /// Get the represented MimeType for this entry
+    /// Get DesktopEntryId for this entry for use with a `DesktopEntryStore`
     pub fn desktop_entry_id(&self) -> DesktopEntryId {
         let desktop_entry_id_raw = self.id();
         DesktopEntryId::parse(&desktop_entry_id_raw).unwrap()
     }
 
+    /// Get the associated `DesktopEntry`
     pub fn desktop_entry<'a>(&self, db: &'a DesktopEntryStore) -> Option<&'a DesktopEntry> {
         let id = self.desktop_entry_id();
         db.get_desktop_entry(&id)
