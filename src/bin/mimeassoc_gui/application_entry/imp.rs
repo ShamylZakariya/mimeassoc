@@ -8,8 +8,8 @@ use gtk::glib;
 #[derive(Properties, Default)]
 #[properties(wrapper_type = super::ApplicationEntry)]
 pub struct ApplicationEntry {
-    #[property(get, set)]
-    pub desktop_entry_id: RefCell<String>,
+    #[property(name = "id", get, set, type = String)]
+    pub id: RefCell<String>,
 }
 
 // The central trait for subclassing a GObject
