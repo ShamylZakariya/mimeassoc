@@ -326,14 +326,14 @@ impl MimeAssociationStore {
 
     /// Return all mimetypes represented, in no particular order.
     pub fn mime_types(&self) -> Vec<&MimeType> {
-        let mut mime_types = Vec::new();
+        let mut mime_types = HashSet::new();
         for scope in self.scopes.iter().rev() {
             for (mime_type, _) in scope.default_applications.iter() {
-                mime_types.push(mime_type);
+                mime_types.insert(mime_type);
             }
         }
 
-        mime_types
+        mime_types.into_iter().collect()
     }
 
     /// Return the sources used to create this store, in preferential chain order, e.g., user entries before system.
