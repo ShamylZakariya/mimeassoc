@@ -4,12 +4,14 @@ use glib::Object;
 use gtk::glib;
 use mimeassoc::*;
 
+use super::MimeAssocStores;
+
 glib::wrapper! {
     pub struct ApplicationEntry(ObjectSubclass<imp::ApplicationEntry>);
 }
 
 impl ApplicationEntry {
-    pub fn new(desktop_entry_id: &DesktopEntryId) -> Self {
+    pub fn new(desktop_entry_id: &DesktopEntryId, _stores: &MimeAssocStores) -> Self {
         Object::builder()
             .property("id", desktop_entry_id.to_string())
             .build()

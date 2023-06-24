@@ -13,19 +13,23 @@ pub struct MainWindow {
     // Models
     pub stores: OnceCell<Rc<RefCell<MimeAssocStores>>>,
     pub mime_type_entries: RefCell<Option<gio::ListStore>>,
+    pub application_entries: RefCell<Option<gio::ListStore>>,
 
     // UI bindings
     #[template_child]
     pub stack: TemplateChild<ViewStack>,
 
     #[template_child]
-    pub page_mime_types: TemplateChild<ViewStackPage>,
+    pub mime_types_page: TemplateChild<ViewStackPage>,
 
     #[template_child]
     pub mime_types_scrolled_window: TemplateChild<ScrolledWindow>,
 
     #[template_child]
-    pub page_applications: TemplateChild<ViewStackPage>,
+    pub applications_page: TemplateChild<ViewStackPage>,
+
+    #[template_child]
+    pub applications_scrolled_window: TemplateChild<ScrolledWindow>,
 }
 
 // The central trait for subclassing a GObject
@@ -55,6 +59,7 @@ impl ObjectImpl for MainWindow {
         let obj = self.obj();
         obj.setup_models();
         obj.setup_mime_types_pane();
+        obj.setup_applications_pane();
 
         // finally
         obj.setup_actions();

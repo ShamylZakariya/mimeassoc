@@ -10,8 +10,9 @@ use glib::Object;
 use gtk::glib::clone;
 use gtk::{gio, glib, *};
 
-use crate::ui::MimeTypeEntryListRow;
 use crate::model::*;
+use crate::ui::application_entry_list_row::ApplicationEntryListRow;
+use crate::ui::MimeTypeEntryListRow;
 
 pub enum MainWindowPage {
     MimeTypes,
@@ -43,7 +44,15 @@ impl MainWindow {
             .mime_type_entries
             .borrow()
             .clone()
-            .expect("Could not get current mime_type_entries.")
+            .expect("Could not get mime_type_entries.")
+    }
+
+    fn application_entries(&self) -> gio::ListStore {
+        self.imp()
+            .application_entries
+            .borrow()
+            .clone()
+            .expect("Could not get application_entries.")
     }
 
     fn setup_models(&self) {
@@ -60,9 +69,17 @@ impl MainWindow {
             Err(e) => panic!("Failed to initialize MimeAssocStores, error: {}", e),
         }
 
-        let model = gio::ListStore::new(MimeTypeEntry::static_type());
-        self.imp().mime_type_entries.replace(Some(model));
-        self.build_mime_type_entries_list_store()
+        let mime_types_list_store = gio::ListStore::new(MimeTypeEntry::static_type());
+        self.imp()
+            .mime_type_entries
+            .replace(Some(mime_types_list_store));
+        self.build_mime_type_entries_list_store();
+
+        let applications_list_store = gio::ListStore::new(ApplicationEntry::static_type());
+        self.imp()
+            .application_entries
+            .replace(Some(applications_list_store));
+        self.build_application_entries_list_store();
     }
 
     /// Populates self::mime_type_entries with the current state of self.stores()
@@ -85,6 +102,28 @@ impl MainWindow {
             .extend_from_slice(&mime_type_entries);
     }
 
+    /// Populates self::application_entries with the current state of self.stores()
+    fn build_application_entries_list_store(&self) {
+        let stores = self.stores();
+        let apps = &stores.borrow().desktop_entry_store;
+
+        let mut all_desktop_entries = apps.desktop_entries();
+        all_desktop_entries.sort_by(|a, b| {
+            a.name()
+                .unwrap_or(&a.id().to_string())
+                .cmp(&b.name().unwrap_or(&b.id().to_string()))
+        });
+
+        let application_entries = all_desktop_entries
+            .iter()
+            .filter(|de| !de.mime_types().is_empty())
+            .map(|de| ApplicationEntry::new(de.id(), &stores.borrow()))
+            .collect::<Vec<_>>();
+
+        self.application_entries()
+            .extend_from_slice(&application_entries);
+    }
+
     fn setup_mime_types_pane(&self) {
         println!("MainWindow::setup_mime_types_pane");
         let stores = self.stores();
@@ -103,7 +142,7 @@ impl MainWindow {
                 .expect("Needs to be ListItem")
                 .item()
                 .and_downcast::<MimeTypeEntry>()
-                .expect("The item has to be an `ApplicationEntry`.");
+                .expect("The item has to be an `MimeTypeEntry`.");
 
             let row = list_item
                 .downcast_ref::<ListItem>()
@@ -135,6 +174,59 @@ impl MainWindow {
         list_view.set_margin_bottom(12);
         self.imp()
             .mime_types_scrolled_window
+            .set_child(Some(&list_view));
+    }
+
+    fn setup_applications_pane(&self) {
+        println!("MainWindow::setup_applications_pane");
+        let stores = self.stores();
+        let factory = SignalListItemFactory::new();
+        factory.connect_setup(move |_, list_item| {
+            let row = ApplicationEntryListRow::new();
+            let list_item = list_item
+                .downcast_ref::<ListItem>()
+                .expect("Needs to be ListItem");
+            list_item.set_child(Some(&row));
+        });
+
+        factory.connect_bind(move |_, list_item| {
+            let application_entry = list_item
+                .downcast_ref::<ListItem>()
+                .expect("Needs to be ListItem")
+                .item()
+                .and_downcast::<ApplicationEntry>()
+                .expect("The item has to be an `ApplicationEntry`.");
+
+            let row = list_item
+                .downcast_ref::<ListItem>()
+                .expect("Needs to be ListItem")
+                .child()
+                .and_downcast::<ApplicationEntryListRow>()
+                .expect("The child has to be a `ApplicationEntryListRow`.");
+
+            row.bind(&application_entry, stores.clone());
+        });
+
+        factory.connect_unbind(move |_, list_item| {
+            let row = list_item
+                .downcast_ref::<ListItem>()
+                .expect("Needs to be ListItem")
+                .child()
+                .and_downcast::<ApplicationEntryListRow>()
+                .expect("The child has to be a `ApplicationEntryListRow`.");
+            row.unbind();
+        });
+
+        let selection_model = NoSelection::new(Some(self.application_entries()));
+        let list_view = ListView::new(Some(selection_model), Some(factory));
+        list_view.add_css_class("frame");
+        list_view.add_css_class("separators");
+        list_view.set_margin_start(12);
+        list_view.set_margin_end(12);
+        list_view.set_margin_top(12);
+        list_view.set_margin_bottom(12);
+        self.imp()
+            .applications_scrolled_window
             .set_child(Some(&list_view));
     }
 

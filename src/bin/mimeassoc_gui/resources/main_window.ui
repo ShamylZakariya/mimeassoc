@@ -40,8 +40,8 @@
     <child>
       <object class="AdwViewStack" id="stack">
         <child>
-          <object class="AdwViewStackPage" id="page_mime_types">
-            <property name="name">page_mime_types</property>
+          <object class="AdwViewStackPage" id="mime_types_page">
+            <property name="name">mime_types_page</property>
             <property name="title" translatable="yes">Mime Types</property>
             <property name="icon-name">emblem-documents-symbolic</property>
             <property name="child">
@@ -50,25 +50,26 @@
                 <property name="hscrollbar-policy">never</property>
                 <property name="min-content-height">420</property>
                 <property name="vexpand">True</property>
-                <!-- we will insert the list view here -->
+                <!-- we will insert the mimetypes list view here at runtime -->
               </object>
 
             </property>
           </object>
         </child>
         <child>
-          <object class="AdwViewStackPage" id="page_applications">
-            <property name="name">page_applications</property>
+          <object class="AdwViewStackPage" id="applications_page">
+            <property name="name">applications_page</property>
             <property name="title" translatable="yes">Applications</property>
             <property name="icon-name">system-run-symbolic</property>
             <property name="child">
-              <object class="GtkLabel">
-                <property name="margin-top">24</property>
-                <property name="margin-bottom">24</property>
-                <property name="margin-start">24</property>
-                <property name="margin-end">24</property>
-                <property name="label" translatable="yes">Applications List goes here</property>
+
+              <object class="GtkScrolledWindow" id="applications_scrolled_window">
+                <property name="hscrollbar-policy">never</property>
+                <property name="min-content-height">420</property>
+                <property name="vexpand">True</property>
+                <!-- we will insert the applications list view here at runtime -->
               </object>
+
             </property>
           </object>
         </child>

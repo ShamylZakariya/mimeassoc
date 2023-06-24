@@ -21,7 +21,7 @@ impl MimeTypeEntry {
             .desktop_entry_store
             .get_desktop_entries_for_mimetype(mime_type)
             .iter()
-            .map(|de| ApplicationEntry::new(de.id()))
+            .map(|de| ApplicationEntry::new(de.id(), stores))
             .collect::<Vec<_>>();
 
         entry
