@@ -92,7 +92,7 @@ impl MimeTypeEntryListRow {
                 let desktop_entry_id = entry.desktop_entry_id();
                 let id = desktop_entry_id.to_string();
                 let display_name = entry
-                    .desktop_entry(&stores.borrow().desktop_entry_store)
+                    .desktop_entry()
                     .expect("Expect to get DesktopEntry from DesktopEntryId")
                     .name()
                     .unwrap_or(&id)

@@ -1,13 +1,20 @@
-use std::cell::RefCell;
+use std::{
+    cell::{OnceCell, RefCell},
+    rc::Rc,
+};
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::{ParamSpec, Properties, Value};
 use gtk::glib;
 
+use crate::model::*;
+
 #[derive(Properties, Default)]
 #[properties(wrapper_type = super::ApplicationEntry)]
 pub struct ApplicationEntry {
+    pub stores: OnceCell<Rc<RefCell<MimeAssocStores>>>,
+
     #[property(get, set)]
     pub id: RefCell<String>,
 }

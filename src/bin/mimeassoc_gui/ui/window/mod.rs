@@ -95,8 +95,12 @@ impl MainWindow {
             .iter()
             // Hide any mimetypes for which we have no applications
             .filter(|mt| !apps.get_desktop_entries_for_mimetype(mt).is_empty())
-            .map(|mt| MimeTypeEntry::new(mt, &stores.borrow()))
+            .map(|mt| MimeTypeEntry::new(mt, stores.clone()))
             .collect::<Vec<_>>();
+
+        mime_type_entries
+            .iter()
+            .for_each(|entry| entry.update_supported_applications());
 
         self.mime_type_entries()
             .extend_from_slice(&mime_type_entries);
@@ -111,13 +115,13 @@ impl MainWindow {
         all_desktop_entries.sort_by(|a, b| {
             a.name()
                 .unwrap_or(&a.id().to_string())
-                .cmp(&b.name().unwrap_or(&b.id().to_string()))
+                .cmp(b.name().unwrap_or(&b.id().to_string()))
         });
 
         let application_entries = all_desktop_entries
             .iter()
             .filter(|de| !de.mime_types().is_empty())
-            .map(|de| ApplicationEntry::new(de.id(), &stores.borrow()))
+            .map(|de| ApplicationEntry::new(de.id(), stores.clone()))
             .collect::<Vec<_>>();
 
         self.application_entries()
@@ -179,7 +183,6 @@ impl MainWindow {
 
     fn setup_applications_pane(&self) {
         println!("MainWindow::setup_applications_pane");
-        let stores = self.stores();
         let factory = SignalListItemFactory::new();
         factory.connect_setup(move |_, list_item| {
             let row = ApplicationEntryListRow::new();
@@ -204,7 +207,7 @@ impl MainWindow {
                 .and_downcast::<ApplicationEntryListRow>()
                 .expect("The child has to be a `ApplicationEntryListRow`.");
 
-            row.bind(&application_entry, stores.clone());
+            row.bind(&application_entry);
         });
 
         factory.connect_unbind(move |_, list_item| {

@@ -1,4 +1,7 @@
-use std::cell::RefCell;
+use std::{
+    cell::{OnceCell, RefCell},
+    rc::Rc,
+};
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
@@ -10,6 +13,8 @@ use crate::model::*;
 #[derive(Properties, Default)]
 #[properties(wrapper_type = super::MimeTypeEntry)]
 pub struct MimeTypeEntry {
+    pub stores: OnceCell<Rc<RefCell<MimeAssocStores>>>,
+
     #[property(get, set)]
     pub id: RefCell<String>,
 

@@ -1,8 +1,5 @@
 mod imp;
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::Object;
@@ -27,22 +24,16 @@ impl ApplicationEntryListRow {
         Object::builder().build()
     }
 
-    pub fn bind(&self, application_entry: &ApplicationEntry, stores: Rc<RefCell<MimeAssocStores>>) {
+    pub fn bind(&self, application_entry: &ApplicationEntry) {
         self.set_spacing(12);
-
-        self.bind_labels(application_entry, stores.clone());
+        self.bind_labels(application_entry);
     }
 
     pub fn unbind(&self) {}
 
-    fn bind_labels(
-        &self,
-        application_entry: &ApplicationEntry,
-        stores: Rc<RefCell<MimeAssocStores>>,
-    ) {
-        let desktop_entry_store = &stores.borrow().desktop_entry_store;
+    fn bind_labels(&self, application_entry: &ApplicationEntry) {
         let desktop_entry = &application_entry
-            .desktop_entry(&desktop_entry_store)
+            .desktop_entry()
             .expect("Expected a DesktopEntry");
         let content_label = self.imp().name_label.get();
         content_label.set_text(desktop_entry.name().unwrap_or("<Unnamed Application>"));
