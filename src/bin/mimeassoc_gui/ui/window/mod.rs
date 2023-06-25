@@ -98,6 +98,7 @@ impl MainWindow {
             .map(|mt| MimeTypeEntry::new(mt, stores.clone()))
             .collect::<Vec<_>>();
 
+        // load the supported applications for each MimeType
         mime_type_entries
             .iter()
             .for_each(|entry| entry.update_supported_applications());
@@ -123,6 +124,11 @@ impl MainWindow {
             .filter(|de| !de.mime_types().is_empty())
             .map(|de| ApplicationEntry::new(de.id(), stores.clone()))
             .collect::<Vec<_>>();
+
+        // load the supported mimetypes for each application
+        application_entries
+            .iter()
+            .for_each(|a| a.update_supported_mime_types());
 
         self.application_entries()
             .extend_from_slice(&application_entries);

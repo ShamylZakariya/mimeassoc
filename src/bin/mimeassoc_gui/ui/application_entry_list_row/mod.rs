@@ -33,8 +33,7 @@ impl ApplicationEntryListRow {
 
     fn bind_labels(&self, application_entry: &ApplicationEntry) {
         let desktop_entry = &application_entry
-            .desktop_entry()
-            .expect("Expected a DesktopEntry");
+            .desktop_entry();
         let content_label = self.imp().name_label.get();
         content_label.set_text(desktop_entry.name().unwrap_or("<Unnamed Application>"));
 

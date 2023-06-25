@@ -36,16 +36,15 @@ impl MimeTypeEntry {
         let stores = self.stores();
         let desktop_entry_store = &stores.borrow().desktop_entry_store;
 
-        let supported_applications = desktop_entry_store
+        let new_supported_application_entries = desktop_entry_store
             .get_desktop_entries_for_mimetype(&mime_type)
             .iter()
             .map(|de| ApplicationEntry::new(de.id(), stores.clone()))
             .collect::<Vec<_>>();
 
-        self.imp()
-            .supported_application_entries
-            .borrow()
-            .extend_from_slice(&supported_applications);
+        let supported_application_entries = self.supported_application_entries();
+        supported_application_entries.remove_all();
+        supported_application_entries.extend_from_slice(&new_supported_application_entries);
     }
 
     fn stores(&self) -> Rc<RefCell<stores::MimeAssocStores>> {
