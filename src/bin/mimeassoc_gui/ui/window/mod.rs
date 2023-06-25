@@ -256,6 +256,7 @@ impl MainWindow {
             }
             MainWindowPage::Applications => {
                 println!("MainWindow::show_page - Applications");
+                self.build_application_entries_list_store();
                 page_selection_model.select_item(1, true);
             }
         }

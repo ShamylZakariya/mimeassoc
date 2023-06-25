@@ -15,16 +15,10 @@ impl std::fmt::Debug for MimeAssocStores {
 
 impl MimeAssocStores {
     pub fn new() -> anyhow::Result<Self> {
-        let mime_associations_store = MimeAssociationStore::load(&mimeapps_lists_paths()?)?;
-
-        let desktop_entry_store = DesktopEntryStore::load(&desktop_entry_dirs()?)?;
-
-        let mime_info_store = MimeTypeInfoStore::load(&mimeinfo_paths()?)?;
-
         Ok(Self {
-            mime_associations_store,
-            desktop_entry_store,
-            mime_info_store,
+            mime_associations_store: MimeAssociationStore::load(&mimeapps_lists_paths()?)?,
+            desktop_entry_store: DesktopEntryStore::load(&desktop_entry_dirs()?)?,
+            mime_info_store: MimeTypeInfoStore::load(&mimeinfo_paths()?)?,
         })
     }
 }
