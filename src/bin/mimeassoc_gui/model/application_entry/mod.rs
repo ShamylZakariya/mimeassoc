@@ -47,10 +47,11 @@ impl ApplicationEntry {
         let desktop_entry = self.desktop_entry();
         let mime_types = desktop_entry.mime_types();
         let stores = self.stores();
+        let mime_db = &stores.borrow().mime_associations_store;
         let new_supported_mime_types = mime_types
             .iter()
             .map(|mt| {
-                let assigned = desktop_entry.mime_types().contains(mt);
+                let assigned = mime_db.assigned_application_for(mt) == Some(desktop_entry.id());
                 MimeTypeAssignmentEntry::new(mt, assigned, stores.clone())
             })
             .collect::<Vec<_>>();
