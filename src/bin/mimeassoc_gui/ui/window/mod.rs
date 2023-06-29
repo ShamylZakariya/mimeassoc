@@ -31,7 +31,7 @@ impl MainWindow {
         Object::builder().property("application", app).build()
     }
 
-    fn stores(&self) -> Rc<RefCell<stores::MimeAssocStores>> {
+    fn stores(&self) -> Rc<RefCell<MimeAssocStores>> {
         self.imp()
             .stores
             .get()
@@ -59,7 +59,7 @@ impl MainWindow {
         println!("MainWindow::setup_models");
 
         // Create models
-        match stores::MimeAssocStores::new() {
+        match MimeAssocStores::new() {
             Ok(stores) => {
                 self.imp()
                     .stores
@@ -147,7 +147,7 @@ impl MainWindow {
         });
 
         factory.connect_bind(move |_, list_item| {
-            let mime_type_entry = list_item
+            let model = list_item
                 .downcast_ref::<ListItem>()
                 .expect("Needs to be ListItem")
                 .item()
@@ -161,7 +161,7 @@ impl MainWindow {
                 .and_downcast::<MimeTypeEntryListRow>()
                 .expect("The child has to be a `MimeTypeEntryListRow`.");
 
-            row.bind(&mime_type_entry, stores.clone());
+            row.bind(&model, stores.clone());
         });
 
         factory.connect_unbind(move |_, list_item| {
@@ -199,7 +199,7 @@ impl MainWindow {
         });
 
         factory.connect_bind(move |_, list_item| {
-            let application_entry = list_item
+            let model = list_item
                 .downcast_ref::<ListItem>()
                 .expect("Needs to be ListItem")
                 .item()
@@ -213,7 +213,7 @@ impl MainWindow {
                 .and_downcast::<ApplicationEntryListRow>()
                 .expect("The child has to be a `ApplicationEntryListRow`.");
 
-            row.bind(&application_entry);
+            row.bind(&model);
         });
 
         factory.connect_unbind(move |_, list_item| {

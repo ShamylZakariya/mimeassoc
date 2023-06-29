@@ -19,13 +19,13 @@ pub struct ApplicationEntry {
     pub id: RefCell<String>,
 
     #[property(get, set)]
-    pub supported_mime_types: RefCell<gio::ListStore>,
+    pub mime_type_assignments: RefCell<gio::ListStore>,
 }
 
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
 impl ObjectSubclass for ApplicationEntry {
-    const NAME: &'static str = "MimeAssocGUI_ApplicationEntry";
+    const NAME: &'static str = "ApplicationEntry";
     type Type = super::ApplicationEntry;
 }
 
@@ -33,8 +33,8 @@ impl ObjectSubclass for ApplicationEntry {
 impl ObjectImpl for ApplicationEntry {
     fn constructed(&self) {
         Self::parent_constructed(&self);
-        self.supported_mime_types
-            .replace(gio::ListStore::new(MimeTypeEntry::static_type()));
+        self.mime_type_assignments
+            .replace(gio::ListStore::new(MimeTypeAssignmentEntry::static_type()));
     }
 
     fn properties() -> &'static [ParamSpec] {

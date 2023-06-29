@@ -49,10 +49,13 @@ impl ApplicationEntry {
         let stores = self.stores();
         let new_supported_mime_types = mime_types
             .iter()
-            .map(|mt| MimeTypeEntry::new(mt, stores.clone()))
+            .map(|mt| {
+                let assigned = desktop_entry.mime_types().contains(mt);
+                MimeTypeAssignmentEntry::new(mt, assigned, stores.clone())
+            })
             .collect::<Vec<_>>();
 
-        let supported_mime_types = self.supported_mime_types();
+        let supported_mime_types = self.mime_type_assignments();
         supported_mime_types.remove_all();
         supported_mime_types.extend_from_slice(&new_supported_mime_types);
     }

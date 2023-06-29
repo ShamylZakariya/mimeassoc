@@ -6,7 +6,9 @@
         <file compressed="true" preprocess="xml-stripblanks">main_window.ui</file>
         <file compressed="true" preprocess="xml-stripblanks">mime_type_entry_list_row.ui</file>
         <file compressed="true" preprocess="xml-stripblanks">application_entry_list_row.ui</file>
-        <!-- CSS -->
+        <file compressed="true" preprocess="xml-stripblanks">application_entry_mimetype_assignment_row.ui</file>
+
+    <!-- CSS -->
 
         <file compressed="true">style.css</file>
 
