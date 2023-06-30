@@ -1,5 +1,5 @@
 use gtk::subclass::prelude::*;
-use gtk::traits::{BoxExt, WidgetExt};
+use gtk::traits::WidgetExt;
 use gtk::{glib, *};
 
 // Object holding the state
@@ -40,9 +40,6 @@ impl ObjectSubclass for ApplicationEntryListRow {
 impl ObjectImpl for ApplicationEntryListRow {
     fn constructed(&self) {
         self.parent_constructed();
-
-        let obj = self.obj();
-        // obj.setup_mimetype_assignment_list_view();
 
         self.label_box.set_hexpand(true);
         self.name_label.set_halign(Align::Start);

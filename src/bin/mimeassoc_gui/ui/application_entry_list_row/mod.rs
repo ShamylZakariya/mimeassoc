@@ -49,7 +49,7 @@ impl ApplicationEntryListRow {
         self.imp().mime_type_assignment_list.bind_model(Some(&model),
             clone!(@weak self as window => @default-panic, move |obj| {
                 let model = obj.downcast_ref().expect("The object should be of type `MimeTypeAssignmentEntry`.");
-                let row = window.create_mime_type_assignment_row(&model);
+                let row = window.create_mime_type_assignment_row(model);
                 row.upcast()
             }));
     }

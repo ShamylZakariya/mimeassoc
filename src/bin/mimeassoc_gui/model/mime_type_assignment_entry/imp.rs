@@ -6,7 +6,7 @@ use std::{
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::{ParamSpec, Properties, Value};
-use gtk::{gio, glib};
+use gtk::glib;
 
 use crate::model::*;
 

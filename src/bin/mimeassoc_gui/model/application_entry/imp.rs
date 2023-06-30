@@ -32,7 +32,7 @@ impl ObjectSubclass for ApplicationEntry {
 // Trait shared by all GObjects
 impl ObjectImpl for ApplicationEntry {
     fn constructed(&self) {
-        Self::parent_constructed(&self);
+        Self::parent_constructed(self);
         self.mime_type_assignments
             .replace(gio::ListStore::new(MimeTypeAssignmentEntry::static_type()));
     }
