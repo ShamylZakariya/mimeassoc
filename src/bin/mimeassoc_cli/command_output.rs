@@ -41,7 +41,7 @@ pub struct MimeInfo {
 
 #[derive(Serialize)]
 pub struct ApplicationCommandOutput {
-    pub desktop_entry: DesktopEntryId,
+    pub desktop_entry: Option<DesktopEntryId>,
     pub mime_info: Vec<MimeInfo>,
 }
 
@@ -157,13 +157,17 @@ impl DefaultCommandOutputConsumer {
     }
 
     fn display_application_command_output(output: &ApplicationCommandOutput) {
-        println!("{}", output.desktop_entry);
-        for mime_info in output.mime_info.iter() {
-            if mime_info.is_default_handler {
-                println!("\t*{}", mime_info.mime_type);
-            } else {
-                println!("\t {}", mime_info.mime_type);
+        if let Some(desktop_entry) = &output.desktop_entry {
+            println!("{}", desktop_entry);
+            for mime_info in output.mime_info.iter() {
+                if mime_info.is_default_handler {
+                    println!("\t*{}", mime_info.mime_type);
+                } else {
+                    println!("\t {}", mime_info.mime_type);
+                }
             }
+        } else {
+            println!("No matching application found.");
         }
     }
 

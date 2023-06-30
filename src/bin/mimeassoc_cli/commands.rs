@@ -200,7 +200,7 @@ impl Commands {
                         .collect::<Vec<_>>();
 
                     ApplicationCommandOutput {
-                        desktop_entry: desktop_entry.id().clone(),
+                        desktop_entry: Some(desktop_entry.id().clone()),
                         mime_info,
                     }
                 })
@@ -218,7 +218,10 @@ impl Commands {
         };
 
         let Some(desktop_entry) = lookup_desktop_entry(desktop_entry_store, id) else {
-            panic!("\"{}\" does not appear to be an installed application", id);
+            return CommandOutput::Application(ApplicationCommandOutput {
+                desktop_entry: None,
+                mime_info: vec![],
+            });
         };
 
         let mut mime_types = desktop_entry.mime_types().clone();
@@ -237,7 +240,7 @@ impl Commands {
             .collect::<Vec<_>>();
 
         CommandOutput::Application(ApplicationCommandOutput {
-            desktop_entry: desktop_entry.id().clone(),
+            desktop_entry: Some(desktop_entry.id().clone()),
             mime_info,
         })
     }
