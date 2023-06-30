@@ -2,12 +2,14 @@ mod imp;
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
+use adw::*;
 use glib::Object;
-use gtk::{glib, *};
+use gtk::{
+    glib::{self, clone},
+    *,
+};
 
 use crate::model::*;
-
-use super::ApplicationEntryMimetypeAssignmentRow;
 
 glib::wrapper! {
     pub struct ApplicationEntryListRow(ObjectSubclass<imp::ApplicationEntryListRow>)
@@ -44,48 +46,40 @@ impl ApplicationEntryListRow {
 
     fn bind_mime_type_assignment_list(&self, application_entry: &ApplicationEntry) {
         let model = NoSelection::new(Some(application_entry.mime_type_assignments()));
-        self.imp().mime_type_assignment_list.set_model(Some(&model));
+        self.imp().mime_type_assignment_list.bind_model(Some(&model),
+            clone!(@weak self as window => @default-panic, move |obj| {
+                let model = obj.downcast_ref().expect("The object should be of type `MimeTypeAssignmentEntry`.");
+                let row = window.create_mime_type_assignment_row(&model);
+                row.upcast()
+            }));
     }
 
-    // configures the mimetype assignment list view's factory
-    fn setup_mimetype_assignment_list_view(&self) {
-        let factory = SignalListItemFactory::new();
-        factory.connect_setup(move |_, list_item| {
-            let row = ApplicationEntryMimetypeAssignmentRow::new();
-            let list_item = list_item
-                .downcast_ref::<ListItem>()
-                .expect("Needs to be ListItem");
-            list_item.set_child(Some(&row));
-        });
+    fn create_mime_type_assignment_row(
+        &self,
+        mime_type_assignment_entry: &MimeTypeAssignmentEntry,
+    ) -> ActionRow {
+        let check_button = CheckButton::builder()
+            .valign(Align::Center)
+            .can_focus(false)
+            .build();
 
-        factory.connect_bind(move |_, list_item| {
-            let model = list_item
-                .downcast_ref::<ListItem>()
-                .expect("Needs to be ListItem")
-                .item()
-                .and_downcast::<MimeTypeAssignmentEntry>()
-                .expect("The item has to be an `MimeTypeAssignmentEntry`.");
+        // Create row
+        let row = ActionRow::builder()
+            .activatable_widget(&check_button)
+            .build();
+        row.add_prefix(&check_button);
 
-            let row = list_item
-                .downcast_ref::<ListItem>()
-                .expect("Needs to be ListItem")
-                .child()
-                .and_downcast::<ApplicationEntryMimetypeAssignmentRow>()
-                .expect("The child has to be a `ApplicationEntryMimetypeAssignmentRow`.");
+        // Bind properties
+        mime_type_assignment_entry
+            .bind_property("assigned", &check_button, "active")
+            .bidirectional()
+            .sync_create()
+            .build();
+        mime_type_assignment_entry
+            .bind_property("id", &row, "title")
+            .sync_create()
+            .build();
 
-            row.bind(&model);
-        });
-
-        factory.connect_unbind(move |_, list_item| {
-            let row = list_item
-                .downcast_ref::<ListItem>()
-                .expect("Needs to be ListItem")
-                .child()
-                .and_downcast::<ApplicationEntryMimetypeAssignmentRow>()
-                .expect("The child has to be a `ApplicationEntryMimetypeAssignmentRow`.");
-            row.unbind();
-        });
-
-        self.imp().mime_type_assignment_list.set_factory(Some(&factory));
+        row
     }
 }

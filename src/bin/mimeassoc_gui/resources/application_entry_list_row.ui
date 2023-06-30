@@ -5,18 +5,25 @@
   <template class="ApplicationEntryListRow" parent="GtkBox">
     <property name="can-focus">False</property>
     <property name="orientation">vertical</property>
+    <property name="margin-start">12</property>
+    <property name="margin-end">12</property>
+    <property name="margin-top">12</property>
+    <property name="margin-bottom">12</property>
+    <property name="spacing">12</property>
     <child>
       <object class="GtkBox" id="label_box">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
         <property name="orientation">horizontal</property>
+        <property name="margin-start">12</property>
+        <property name="margin-end">12</property>
+        <property name="margin-top">12</property>
+        <property name="margin-bottom">12</property>
+        <property name="spacing">12</property>
         <child>
           <object class="GtkLabel" id="name_label">
             <property name="can-focus">False</property>
-            <property name="margin-start">12</property>
             <property name="margin-end">12</property>
-            <property name="margin-top">12</property>
-            <property name="margin-bottom">12</property>
             <property name="label" translatable="yes">Application Name</property>
             <attributes>
               <attribute name="weight" value="bold" />
@@ -26,18 +33,20 @@
         <child>
           <object class="GtkLabel" id="info_label">
             <property name="can-focus">False</property>
-            <property name="margin-start">12</property>
             <property name="margin-end">12</property>
-            <property name="margin-top">12</property>
-            <property name="margin-bottom">12</property>
             <property name="label" translatable="yes">Application Info</property>
           </object>
         </child>
       </object>
     </child>
     <child>
-      <object class="GtkListView" id="mime_type_assignment_list">
-        <property name="valign">start</property>
+      <object class="GtkListBox" id="mime_type_assignment_list">
+        <property name="selection-mode">none</property>
+        <property name="margin-start">12</property>
+        <property name="margin-bottom">12</property>
+        <style>
+          <class name="boxed-list" />
+        </style>
       </object>
     </child>
   </template>

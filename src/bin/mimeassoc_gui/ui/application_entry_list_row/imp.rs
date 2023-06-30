@@ -17,7 +17,7 @@ pub struct ApplicationEntryListRow {
     pub info_label: TemplateChild<Label>,
 
     #[template_child]
-    pub mime_type_assignment_list: TemplateChild<ListView>,
+    pub mime_type_assignment_list: TemplateChild<ListBox>,
 }
 
 #[glib::object_subclass]
@@ -42,9 +42,8 @@ impl ObjectImpl for ApplicationEntryListRow {
         self.parent_constructed();
 
         let obj = self.obj();
-        obj.setup_mimetype_assignment_list_view();
+        // obj.setup_mimetype_assignment_list_view();
 
-        obj.set_spacing(12);
         self.label_box.set_hexpand(true);
         self.name_label.set_halign(Align::Start);
         self.name_label.set_hexpand(true);
