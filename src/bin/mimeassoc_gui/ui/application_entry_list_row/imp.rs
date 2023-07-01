@@ -8,16 +8,10 @@ use gtk::{glib, *};
 pub struct ApplicationEntryListRow {
     // UI Bindings
     #[template_child]
-    pub label_box: TemplateChild<Box>,
-
-    #[template_child]
     pub name_label: TemplateChild<Label>,
 
     #[template_child]
     pub info_label: TemplateChild<Label>,
-
-    #[template_child]
-    pub mime_type_assignment_list: TemplateChild<ListBox>,
 }
 
 #[glib::object_subclass]
@@ -41,10 +35,8 @@ impl ObjectImpl for ApplicationEntryListRow {
     fn constructed(&self) {
         self.parent_constructed();
 
-        self.label_box.set_hexpand(true);
         self.name_label.set_halign(Align::Start);
-        self.name_label.set_hexpand(true);
-        self.info_label.set_halign(Align::End);
+        self.info_label.set_halign(Align::Start);
         self.info_label.set_opacity(0.7);
     }
 }

@@ -30,7 +30,7 @@ impl ApplicationEntryListRow {
 
     pub fn bind(&self, application_entry: &ApplicationEntry) {
         self.bind_labels(application_entry);
-        self.bind_mime_type_assignment_list(application_entry);
+        // self.bind_mime_type_assignment_list(application_entry);
     }
 
     pub fn unbind(&self) {}
@@ -44,42 +44,42 @@ impl ApplicationEntryListRow {
         info_label.set_text(&desktop_entry.id().to_string());
     }
 
-    fn bind_mime_type_assignment_list(&self, application_entry: &ApplicationEntry) {
-        let model = NoSelection::new(Some(application_entry.mime_type_assignments()));
-        self.imp().mime_type_assignment_list.bind_model(Some(&model),
-            clone!(@weak self as window => @default-panic, move |obj| {
-                let model = obj.downcast_ref().expect("The object should be of type `MimeTypeAssignmentEntry`.");
-                let row = window.create_mime_type_assignment_row(model);
-                row.upcast()
-            }));
-    }
+    // fn bind_mime_type_assignment_list(&self, application_entry: &ApplicationEntry) {
+    //     let model = NoSelection::new(Some(application_entry.mime_type_assignments()));
+    //     self.imp().mime_type_assignment_list.bind_model(Some(&model),
+    //         clone!(@weak self as window => @default-panic, move |obj| {
+    //             let model = obj.downcast_ref().expect("The object should be of type `MimeTypeAssignmentEntry`.");
+    //             let row = window.create_mime_type_assignment_row(model);
+    //             row.upcast()
+    //         }));
+    // }
 
-    fn create_mime_type_assignment_row(
-        &self,
-        mime_type_assignment_entry: &MimeTypeAssignmentEntry,
-    ) -> ActionRow {
-        let check_button = CheckButton::builder()
-            .valign(Align::Center)
-            .can_focus(false)
-            .build();
+    // fn create_mime_type_assignment_row(
+    //     &self,
+    //     mime_type_assignment_entry: &MimeTypeAssignmentEntry,
+    // ) -> ActionRow {
+    //     let check_button = CheckButton::builder()
+    //         .valign(Align::Center)
+    //         .can_focus(false)
+    //         .build();
 
-        // Create row
-        let row = ActionRow::builder()
-            .activatable_widget(&check_button)
-            .build();
-        row.add_prefix(&check_button);
+    //     // Create row
+    //     let row = ActionRow::builder()
+    //         .activatable_widget(&check_button)
+    //         .build();
+    //     row.add_prefix(&check_button);
 
-        // Bind properties
-        mime_type_assignment_entry
-            .bind_property("assigned", &check_button, "active")
-            .bidirectional()
-            .sync_create()
-            .build();
-        mime_type_assignment_entry
-            .bind_property("id", &row, "title")
-            .sync_create()
-            .build();
+    //     // Bind properties
+    //     mime_type_assignment_entry
+    //         .bind_property("assigned", &check_button, "active")
+    //         .bidirectional()
+    //         .sync_create()
+    //         .build();
+    //     mime_type_assignment_entry
+    //         .bind_property("id", &row, "title")
+    //         .sync_create()
+    //         .build();
 
-        row
-    }
+    //     row
+    // }
 }

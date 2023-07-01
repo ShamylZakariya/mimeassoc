@@ -178,10 +178,6 @@ impl MainWindow {
         let list_view = ListView::new(Some(selection_model), Some(factory));
         list_view.add_css_class("frame");
         list_view.add_css_class("separators");
-        list_view.set_margin_start(12);
-        list_view.set_margin_end(12);
-        list_view.set_margin_top(12);
-        list_view.set_margin_bottom(12);
         self.imp()
             .mime_types_scrolled_window
             .set_child(Some(&list_view));
@@ -226,14 +222,9 @@ impl MainWindow {
             row.unbind();
         });
 
-        let selection_model = NoSelection::new(Some(self.application_entries()));
+        let selection_model = SingleSelection::new(Some(self.application_entries()));
         let list_view = ListView::new(Some(selection_model), Some(factory));
-        list_view.add_css_class("frame");
-        list_view.add_css_class("separators");
-        list_view.set_margin_start(12);
-        list_view.set_margin_end(12);
-        list_view.set_margin_top(12);
-        list_view.set_margin_bottom(12);
+        list_view.add_css_class("navigation-sidebar");
         self.imp()
             .applications_scrolled_window
             .set_child(Some(&list_view));
