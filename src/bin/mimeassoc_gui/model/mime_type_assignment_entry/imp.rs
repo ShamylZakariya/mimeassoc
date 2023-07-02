@@ -22,6 +22,12 @@ pub struct MimeTypeAssignmentEntry {
     pub assigned: RefCell<bool>,
 }
 
+impl MimeTypeAssignmentEntry {
+    fn ready(&self) -> bool {
+        self.stores.get().is_some()
+    }
+}
+
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
 impl ObjectSubclass for MimeTypeAssignmentEntry {
@@ -40,10 +46,15 @@ impl ObjectImpl for MimeTypeAssignmentEntry {
     }
 
     fn set_property(&self, id: usize, value: &Value, pspec: &ParamSpec) {
-        // println!(
-        //     "MimeTypeAssignmentEntry::set_property id:{} value: {:?} pspec: {:?}",
-        //     id, value, pspec
-        // );
+        if self.ready() {
+            println!(
+                "MimeTypeAssignmentEntry[{}]::set_property id:{} value: {:?} pspec: {:?}",
+                self.id.borrow(),
+                id,
+                value,
+                pspec
+            );
+        }
 
         // id 1 is "id", 2 is "assigned", carrying "gbool", makes sense
 

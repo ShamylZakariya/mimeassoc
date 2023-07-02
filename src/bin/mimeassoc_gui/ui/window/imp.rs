@@ -30,6 +30,15 @@ pub struct MainWindow {
 
     #[template_child]
     pub applications_scrolled_window: TemplateChild<ScrolledWindow>,
+
+    #[template_child]
+    pub application_list_box: TemplateChild<ListBox>,
+
+    #[template_child]
+    pub application_mime_type_assignment_scrolled_window: TemplateChild<ScrolledWindow>,
+
+    #[template_child]
+    pub application_mime_type_assignment_list_box: TemplateChild<ListBox>,
 }
 
 // The central trait for subclassing a GObject

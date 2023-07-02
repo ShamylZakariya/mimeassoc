@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use adw::subclass::prelude::*;
 use glib::Object;
-use gtk::glib;
+use gtk::{gio, glib, prelude::*};
 use mimeassoc::*;
 
 use crate::model::*;
@@ -41,14 +41,13 @@ impl ApplicationEntry {
         )
     }
 
-    /// If `ApplicationEntry::supported_mime_types` will be used (as in the Applications Pane) this
-    /// needs to be called to populate that list
-    pub fn update_supported_mime_types(&self) {
+    /// Get the mime type assignments to this application
+    pub fn mime_type_assignments(&self) -> gio::ListStore {
         let desktop_entry = self.desktop_entry();
         let mime_types = desktop_entry.mime_types();
         let stores = self.stores();
         let mime_db = &stores.borrow().mime_associations_store;
-        let new_supported_mime_types = mime_types
+        let supported_mime_types = mime_types
             .iter()
             .map(|mt| {
                 let assigned = mime_db.assigned_application_for(mt) == Some(desktop_entry.id());
@@ -56,9 +55,10 @@ impl ApplicationEntry {
             })
             .collect::<Vec<_>>();
 
-        let supported_mime_types = self.mime_type_assignments();
-        supported_mime_types.remove_all();
-        supported_mime_types.extend_from_slice(&new_supported_mime_types);
+        let store = gio::ListStore::new(MimeTypeAssignmentEntry::static_type());
+        store.extend_from_slice(&supported_mime_types);
+
+        store
     }
 
     fn stores(&self) -> Rc<RefCell<MimeAssocStores>> {

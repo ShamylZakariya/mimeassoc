@@ -63,11 +63,51 @@
             <property name="icon-name">system-run-symbolic</property>
             <property name="child">
 
-              <object class="GtkScrolledWindow" id="applications_scrolled_window">
-                <property name="hscrollbar-policy">never</property>
-                <property name="min-content-height">420</property>
-                <property name="vexpand">True</property>
-                <!-- we will insert the applications list view here at runtime -->
+              <object class="GtkBox" id="applications_box">
+                <property name="orientation">horizontal</property>
+                <child>
+
+                  <!-- Applications Page left-hand side, showing applications list -->
+                  <object class="GtkScrolledWindow" id="applications_scrolled_window">
+                    <property name="hscrollbar-policy">never</property>
+                    <property name="min-content-height">420</property>
+                    <property name="width-request">220</property>
+                    <property name="vexpand">True</property>
+                    <property name="child">
+                      <object class="GtkListBox" id="application_list_box">
+                        <property name="valign">start</property>
+                        <style>
+                          <class name="navigation-sidebar" />
+                        </style>
+                      </object>
+                    </property>
+                  </object>
+
+                </child>
+                <child>
+
+                  <!-- Applications Page right-hand side, showing mime assignment list box -->
+                  <object class="GtkScrolledWindow"
+                    id="application_mime_type_assignment_scrolled_window">
+                    <property name="hscrollbar-policy">never</property>
+                    <property name="min-content-height">420</property>
+                    <property name="vexpand">True</property>
+                    <property name="hexpand">True</property>
+                    <property name="child">
+                      <object class="GtkListBox" id="application_mime_type_assignment_list_box">
+                        <property name="valign">start</property>
+                        <property name="margin-start">12</property>
+                        <property name="margin-end">12</property>
+                        <property name="margin-top">12</property>
+                        <property name="margin-bottom">12</property>
+                        <style>
+                          <class name="boxed-list" />
+                        </style>
+                      </object>
+                    </property>
+                  </object>
+
+                </child>
               </object>
 
             </property>

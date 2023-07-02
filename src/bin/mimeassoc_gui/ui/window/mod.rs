@@ -11,7 +11,6 @@ use gtk::glib::clone;
 use gtk::{gio, glib, *};
 
 use crate::model::*;
-use crate::ui::application_entry_list_row::ApplicationEntryListRow;
 use crate::ui::MimeTypeEntryListRow;
 
 pub enum MainWindowPage {
@@ -125,11 +124,6 @@ impl MainWindow {
             .map(|de| ApplicationEntry::new(de.id(), stores.clone()))
             .collect::<Vec<_>>();
 
-        // load the supported mimetypes for each application
-        application_entries
-            .iter()
-            .for_each(|a| a.update_supported_mime_types());
-
         self.application_entries()
             .extend_from_slice(&application_entries);
     }
@@ -185,49 +179,96 @@ impl MainWindow {
 
     fn setup_applications_pane(&self) {
         println!("MainWindow::setup_applications_pane");
-        let factory = SignalListItemFactory::new();
-        factory.connect_setup(move |_, list_item| {
-            let row = ApplicationEntryListRow::new();
-            let list_item = list_item
-                .downcast_ref::<ListItem>()
-                .expect("Needs to be ListItem");
-            list_item.set_child(Some(&row));
-        });
 
-        factory.connect_bind(move |_, list_item| {
-            let model = list_item
-                .downcast_ref::<ListItem>()
-                .expect("Needs to be ListItem")
-                .item()
-                .and_downcast::<ApplicationEntry>()
-                .expect("The item has to be an `ApplicationEntry`.");
+        // Populate applications list
+        self.imp().application_list_box.bind_model(
+            Some(&self.application_entries()),
+            clone!(@weak self as window => @default-panic, move |obj| {
+                let model = obj
+                    .downcast_ref()
+                    .unwrap();
+                let row = window.create_application_list_box_row(model);
+                row.upcast()
+            }),
+        );
 
-            let row = list_item
-                .downcast_ref::<ListItem>()
-                .expect("Needs to be ListItem")
-                .child()
-                .and_downcast::<ApplicationEntryListRow>()
-                .expect("The child has to be a `ApplicationEntryListRow`.");
+        // Listen for selection
+        self.imp().application_list_box.connect_row_activated(
+            clone!(@weak self as window => move |_, row|{
+                let index = row.index();
+                let model = window.application_entries().item(index as u32)
+                    .expect("Expected valid item index")
+                    .downcast::<ApplicationEntry>()
+                    .expect("MainWindow::application_entries should only contain ApplicationEntry");
+                window.show_application_mime_type_assignment(&model);
+            }),
+        );
 
-            row.bind(&model);
-        });
+        // Select first entry
+        let row = self.imp().application_list_box.row_at_index(0);
+        self.imp().application_list_box.select_row(row.as_ref());
+        self.show_application_mime_type_assignment(
+            &self
+                .application_entries()
+                .item(0)
+                .expect("Expect non-empty application entries model")
+                .downcast::<ApplicationEntry>()
+                .expect("MainWindow::application_entries should only contain ApplicationEntry"),
+        );
+    }
 
-        factory.connect_unbind(move |_, list_item| {
-            let row = list_item
-                .downcast_ref::<ListItem>()
-                .expect("Needs to be ListItem")
-                .child()
-                .and_downcast::<ApplicationEntryListRow>()
-                .expect("The child has to be a `ApplicationEntryListRow`.");
-            row.unbind();
-        });
+    fn show_application_mime_type_assignment(&self, application_entry: &ApplicationEntry) {
+        println!(
+            "MainWindow::show_application_mime_type_assignment application_entry: {}",
+            application_entry.id()
+        );
+        let model = NoSelection::new(Some(application_entry.mime_type_assignments()));
+        self.imp().application_mime_type_assignment_list_box.bind_model(Some(&model),
+            clone!(@weak self as window => @default-panic, move |obj| {
+                let model = obj.downcast_ref().expect("The object should be of type `MimeTypeAssignmentEntry`.");
+                let row = Self::create_mime_type_assignment_row(model);
+                row.upcast()
+            }));
+    }
 
-        let selection_model = SingleSelection::new(Some(self.application_entries()));
-        let list_view = ListView::new(Some(selection_model), Some(factory));
-        list_view.add_css_class("navigation-sidebar");
-        self.imp()
-            .applications_scrolled_window
-            .set_child(Some(&list_view));
+    fn create_mime_type_assignment_row(
+        mime_type_assignment_entry: &MimeTypeAssignmentEntry,
+    ) -> ActionRow {
+        let check_button = CheckButton::builder()
+            .valign(Align::Center)
+            .can_focus(false)
+            .build();
+
+        // Create row
+        let row = ActionRow::builder()
+            .activatable_widget(&check_button)
+            .build();
+        row.add_prefix(&check_button);
+
+        // Bind properties
+        mime_type_assignment_entry
+            .bind_property("assigned", &check_button, "active")
+            .bidirectional()
+            .sync_create()
+            .build();
+        mime_type_assignment_entry
+            .bind_property("id", &row, "title")
+            .sync_create()
+            .build();
+
+        row
+    }
+
+    fn create_application_list_box_row(&self, model: &ApplicationEntry) -> ListBoxRow {
+        let label = Label::builder()
+            .ellipsize(pango::EllipsizeMode::End)
+            .xalign(0.0)
+            .build();
+
+        let desktop_entry = &model.desktop_entry();
+        label.set_text(desktop_entry.name().unwrap_or("<Unnamed Application>"));
+
+        ListBoxRow::builder().child(&label).build()
     }
 
     fn setup_actions(&self) {
