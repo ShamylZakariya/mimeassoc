@@ -54,6 +54,6 @@ fn build_ui(app: &adw::Application) {
     println!("main::build_ui");
 
     let window = ui::MainWindow::new(app);
-    window.show_page(ui::MainWindowPage::Applications);
+    //window.show_page(ui::MainWindowPage::Applications);
     window.present();
 }

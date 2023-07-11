@@ -6,7 +6,7 @@ use std::{
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::{ParamSpec, Properties, Value};
-use gtk::{gio, glib};
+use gtk::glib;
 
 use crate::model::*;
 
@@ -17,9 +17,6 @@ pub struct MimeTypeEntry {
 
     #[property(get, set)]
     pub id: RefCell<String>,
-
-    #[property(get, set)]
-    pub supported_application_entries: RefCell<gio::ListStore>,
 }
 
 // The central trait for subclassing a GObject
@@ -33,9 +30,6 @@ impl ObjectSubclass for MimeTypeEntry {
 impl ObjectImpl for MimeTypeEntry {
     fn constructed(&self) {
         Self::parent_constructed(self);
-
-        self.supported_application_entries
-            .replace(gio::ListStore::new(ApplicationEntry::static_type()));
     }
 
     fn properties() -> &'static [ParamSpec] {

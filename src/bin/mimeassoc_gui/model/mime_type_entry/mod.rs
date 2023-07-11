@@ -6,6 +6,7 @@ use std::rc::Rc;
 use adw::subclass::prelude::*;
 use glib::Object;
 use gtk::glib;
+use gtk::prelude::*;
 
 use crate::model::*;
 use mimeassoc::*;
@@ -29,22 +30,21 @@ impl MimeTypeEntry {
         MimeType::parse(&mime_type_string).unwrap()
     }
 
-    /// If `MimeTypeEntry::supported_application_entries` will be used (for example, by the Mime Associations pane)
-    /// this needs to be called to populate that list. Otherwise that list is empty by default.
-    pub fn update_supported_applications(&self) {
+    pub fn supported_application_entries(&self) -> gtk::gio::ListStore {
         let mime_type = self.mime_type();
         let stores = self.stores();
         let desktop_entry_store = &stores.borrow().desktop_entry_store;
 
-        let new_supported_application_entries = desktop_entry_store
+        let application_entries = desktop_entry_store
             .get_desktop_entries_for_mimetype(&mime_type)
             .iter()
             .map(|de| ApplicationEntry::new(de.id(), stores.clone()))
             .collect::<Vec<_>>();
 
-        let supported_application_entries = self.supported_application_entries();
-        supported_application_entries.remove_all();
-        supported_application_entries.extend_from_slice(&new_supported_application_entries);
+        let store = gtk::gio::ListStore::new(ApplicationEntry::static_type());
+        store.extend_from_slice(&application_entries);
+
+        store
     }
 
     fn stores(&self) -> Rc<RefCell<stores::MimeAssocStores>> {

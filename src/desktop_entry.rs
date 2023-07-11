@@ -272,6 +272,11 @@ impl DesktopEntryScope {
         P: AsRef<Path>,
     {
         let directory = dir.as_ref();
+
+        if cfg!(debug_assertions) {
+            println!("DesktopEntryScope::load {:?}", directory)
+        }
+
         let mut application_entries = HashMap::new();
         let contents = std::fs::read_dir(directory)?;
         for file in contents.flatten() {

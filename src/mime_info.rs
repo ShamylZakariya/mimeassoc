@@ -97,6 +97,14 @@ impl MimeTypeInfoStore {
         store: &mut Self,
     ) -> anyhow::Result<()> {
         let path = freedesktop_org_xml_path.as_ref();
+
+        if cfg!(debug_assertions) {
+            println!(
+                "MimeTypeInfoStore::load_single_xml_into_store {:?}",
+                path
+            )
+        }
+
         let file = File::open(path)?;
         let reader = BufReader::new(file);
         let parser = xml::EventReader::new(reader);

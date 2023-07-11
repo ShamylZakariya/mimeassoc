@@ -84,7 +84,6 @@ impl MainWindow {
     /// Populates self::mime_type_entries with the current state of self.stores()
     fn build_mime_type_entries_list_store(&self) {
         let stores = self.stores();
-        let apps = &stores.borrow().desktop_entry_store;
         let mime_associations_store = &stores.borrow().mime_associations_store;
 
         let mut all_mime_types = mime_associations_store.mime_types();
@@ -92,15 +91,9 @@ impl MainWindow {
 
         let mime_type_entries = all_mime_types
             .iter()
-            // Hide any mimetypes for which we have no applications
-            .filter(|mt| !apps.get_desktop_entries_for_mimetype(mt).is_empty())
             .map(|mt| MimeTypeEntry::new(mt, stores.clone()))
+            .filter(|e| e.supported_application_entries().n_items() > 0)
             .collect::<Vec<_>>();
-
-        // load the supported applications for each MimeType
-        mime_type_entries
-            .iter()
-            .for_each(|entry| entry.update_supported_applications());
 
         self.mime_type_entries()
             .extend_from_slice(&mime_type_entries);

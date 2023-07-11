@@ -82,6 +82,7 @@ impl MimeTypeEntryListRow {
         let applications_combobox = self.imp().applications_combo_box.get();
         let mime_type = &mime_type_entry.mime_type();
         let applications = mime_type_entry.supported_application_entries();
+        let mut assigned_id: Option<String> = None;
 
         // Populate application combobox
         for i in 0_u32..applications.n_items() {
@@ -107,6 +108,7 @@ impl MimeTypeEntryListRow {
 
                 if is_assigned {
                     applications_combobox.set_active_id(Some(&id));
+                    assigned_id = Some(id);
                 }
             }
         }
@@ -114,24 +116,31 @@ impl MimeTypeEntryListRow {
         // Set application combobox behavior based on whether there are options available to user
         match applications.n_items() {
             0 => {
-                // no applications support this mime type. Note, we should not be showing
-                // any mimetypes in this state, but it's worth handling in case things change.
-                applications_combobox.set_visible(false);
-                applications_combobox.set_sensitive(false);
+                unreachable!("Expected that unhandlable mimetype are hidden from the list");
             }
             1 => {
-                // only one application supports this mime type, disable the control
-                applications_combobox.set_visible(true);
-                applications_combobox.set_sensitive(false);
+                // if only one application can handle the mimetype, and that application
+                // is already assigned disable the combobox
+                let enabled: bool = if let Some(active_id) = applications_combobox.active_id() {
+                    let active_id = active_id.to_string();
+                    if Some(active_id) == assigned_id {
+                        false
+                    } else {
+                        true
+                    }
+                } else {
+                    true
+                };
+
+                applications_combobox.set_sensitive(enabled);
             }
             _ => {
-                // multiple applications support this mime type, show and enable control
-                applications_combobox.set_visible(true);
+                // multiple applications support this mime type, the combobox can be enabled
                 applications_combobox.set_sensitive(true);
             }
         }
 
-        // bind to changed event on combobox
+        // listen to `changed` event on combobox
         let callback_id = applications_combobox.connect_changed(clone!(@weak mime_type_entry, @weak stores, @weak self as window => move |a|{
             if let Some(active_id) = a.active_id() {
                 let active_id = active_id.as_str();

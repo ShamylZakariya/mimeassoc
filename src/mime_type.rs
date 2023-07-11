@@ -101,6 +101,11 @@ impl MimeAssociationScope {
         P: AsRef<Path>,
     {
         let mimeapps_file_path = mimeapps_file_path.as_ref();
+
+        if cfg!(debug_assertions) {
+            println!("MimeAssociationScope::load {:?}", mimeapps_file_path);
+        }
+
         let mimeapps_file = File::open(mimeapps_file_path)?;
         let line_buffer = io::BufReader::new(mimeapps_file).lines();
         let mut added_associations = HashMap::new();
@@ -284,6 +289,20 @@ pub struct MimeAssociationStore {
 }
 
 impl MimeAssociationStore {
+    /// Load MimeAssocations in order of the provided paths. MimeAssocations earlier in
+    /// the list will override ones later in the list.
+    pub fn load<P>(mimeapps_file_paths: &[P]) -> anyhow::Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        let mut scopes = Vec::new();
+        for file_path in mimeapps_file_paths.iter() {
+            scopes.push(MimeAssociationScope::load(file_path)?);
+        }
+
+        Ok(Self { scopes })
+    }
+
     /// Return zeroth scope; this is normally associated with the scope
     /// loaded from the user directory.
     /// TODO: Sanitize this - this is brittle. Having the user scope be zero
@@ -309,20 +328,6 @@ impl MimeAssociationStore {
             }
         }
         None
-    }
-
-    /// Load MimeAssocations in order of the provided paths. MimeAssocations earlier in
-    /// the list will override ones later in the list.
-    pub fn load<P>(mimeapps_file_paths: &[P]) -> anyhow::Result<Self>
-    where
-        P: AsRef<Path>,
-    {
-        let mut scopes = Vec::new();
-        for file_path in mimeapps_file_paths.iter() {
-            scopes.push(MimeAssociationScope::load(file_path)?);
-        }
-
-        Ok(Self { scopes })
     }
 
     /// Return all mimetypes represented, in no particular order.
