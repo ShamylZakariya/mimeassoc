@@ -278,9 +278,80 @@ impl MainWindow {
             window.show_page(MainWindowPage::Applications);
         }));
         self.add_action(&action_show_applications);
+
+        let action_reset_user_default_application_assignments =
+            gtk::gio::SimpleAction::new("reset-user-default-applications", None);
+        action_reset_user_default_application_assignments.connect_activate(
+            clone!(@weak self as window => move |_, _| {
+                window.query_reset_user_default_application_assignments();
+            }),
+        );
+        self.add_action(&action_reset_user_default_application_assignments);
     }
 
+    /// Show user a dialog asking if they want to reset application assignments.
+    fn query_reset_user_default_application_assignments(&self) {
+        println!("MainWindow::reset_user_default_application_assignments");
+
+        let cancel_response = "cancel";
+        let reset_response = "reset";
+
+        // Create new dialog
+        let dialog = adw::MessageDialog::builder()
+            .heading("Reset your application handler assignments?")
+            .body("Your application handler assignments will be reset to system defaults")
+            .transient_for(self)
+            .modal(true)
+            .destroy_with_parent(true)
+            .close_response(cancel_response)
+            .default_response(reset_response)
+            .build();
+        dialog.add_responses(&[(cancel_response, "Cancel"), (reset_response, "Reset")]);
+
+        dialog.set_response_appearance(reset_response, ResponseAppearance::Destructive);
+
+        dialog.connect_response(
+            None,
+            clone!(@weak self as window => move |dialog, response|{
+                dialog.destroy();
+                if response != reset_response {
+                    return;
+                }
+
+                window.reset_user_default_application_assignments();
+            }),
+        );
+
+        dialog.present();
+    }
+
+    fn reset_user_default_application_assignments(&self) {
+        println!("MainWindow::reset_user_default_application_assignments - Resetting user application handler assignments");
+
+        // 1) reset bindings: get the user scope from the MimeAssociationsStore and empty it.
+        // Note: We put `stores` in a scope so it will be dropped before reloading the active page.
+        {
+            let stores = self.stores();
+            let mime_associations = &mut stores.borrow_mut().mime_associations_store;
+
+            // TODO: Handle errors better, and in future accomodate rollback?
+            if let Err(e) = mime_associations.clear_assigned_applications() {
+                println!("An error occurred clearing assigned applications, should be presented to user. Error: {:?}", e);
+            }
+
+            if let Err(e) = mime_associations.save() {
+                println!("An error occurred saving the mimeassociations store, should be presented to user. Error: {:?}", e);
+            }
+        }
+
+        // 2) reload the active pane
+        self.reload_active_page();
+    }
+
+    /// Show one of the main window pages
     pub fn show_page(&self, page: MainWindowPage) {
+        // Note: we're treating the page selection model as single selection.
+        // TODO: Wrap it in a SingleSelection? Is this possible?
         let page_selection_model = self.imp().stack.pages();
         match page {
             MainWindowPage::MimeTypes => {
@@ -293,6 +364,18 @@ impl MainWindow {
                 self.build_application_entries_list_store();
                 page_selection_model.select_item(1, true);
             }
+        }
+    }
+
+    fn reload_active_page(&self) {
+        // Note: we're treating the page selection model as single selection
+        let page_selection_model = self.imp().stack.pages();
+        if page_selection_model.is_selected(0) {
+            self.build_mime_type_entries_list_store();
+        } else if page_selection_model.is_selected(1) {
+            self.build_application_entries_list_store();
+        } else {
+            unreachable!("Somehow the page selection model has a page other than [0,1] selected.")
         }
     }
 }

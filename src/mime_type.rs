@@ -369,6 +369,7 @@ impl MimeAssociationStore {
 
     /// Deletes the application assignment(s) for a given mime type. If the mime_type is a wildcard, will
     /// delete all matching assignments. E.g., image/* would delete assignment for image/png, image/tif, etc.
+    /// Note: Changes won't be commited until `MimeAssociationsStore::save` is called.
     /// Returns an error if there is no user-customizable scope to edit.
     pub fn remove_assigned_applications_for(&mut self, mime_type: &MimeType) -> anyhow::Result<()> {
         let Some(scope) = self.get_user_scope_mut() else {
@@ -394,6 +395,21 @@ impl MimeAssociationStore {
         Ok(())
     }
 
+    /// Removes all application assignments in the user scope, effectively resetting the user's
+    /// application assignments to system defaults.
+    /// Note: Changes won't be commited until `MimeAssociationsStore::save` is called.
+    /// Returns an error if there is no user-customizable scope to edit.
+    pub fn clear_assigned_applications(&mut self) -> anyhow::Result<()> {
+        let Some(scope) = self.get_user_scope_mut() else {
+            anyhow::bail!("No customizable user scopes available");
+        };
+
+        scope.default_applications.clear();
+        scope.is_dirty = true;
+
+        Ok(())
+    }
+
     pub fn added_associations_for(&self, mime_type: &MimeType) -> Option<&Vec<DesktopEntryId>> {
         for scope in self.scopes.iter() {
             if let Some(id) = scope.added_associations.get(mime_type) {
@@ -410,6 +426,7 @@ impl MimeAssociationStore {
     /// Note: If the assigned application is the default application (as specified by the system, minus
     /// user customization) the entry will be removed from the user scope. E.g., this case is equivalent
     /// to calling `delete_assigned_application_for` for the mime type.
+    /// Note: Changes won't be commited until `MimeAssociationsStore::save` is called.
     pub fn set_default_handler_for_mime_type(
         &mut self,
         mime_type: &MimeType,
@@ -434,22 +451,21 @@ impl MimeAssociationStore {
             return self.remove_assigned_applications_for(mime_type);
         }
 
-        for scope in self.scopes.iter_mut() {
-            if scope.is_user_customizable {
-                scope
-                    .default_applications
-                    .insert(mime_type.clone(), desktop_entry.id().clone());
-                scope.is_dirty = true;
-                return Ok(());
-            }
-        }
+        let Some(scope) = self.get_user_scope_mut() else {
+            anyhow::bail!("No customizable user scopes available");
+        };
 
-        anyhow::bail!("No user customizable scopes in MimeAssociation scope chain");
+        scope
+            .default_applications
+            .insert(mime_type.clone(), desktop_entry.id().clone());
+        scope.is_dirty = true;
+        Ok(())
     }
 
     /// Make the provided DesktopEnrtry the default handler for all its supported mimetypes.
     /// Will return an error if the desktop entry isn't a valid application, or if there are
     /// no user customizable scoped in the MimeAssociationScope chain
+    /// Note: Changes won't be commited until `MimeAssociationsStore::save` is called.
     pub fn make_desktop_entry_default_handler_of_its_supported_mime_types(
         &mut self,
         desktop_entry: &DesktopEntry,
@@ -460,7 +476,7 @@ impl MimeAssociationStore {
         Ok(())
     }
 
-    /// Save any unpersisted changes to user customizable scopes
+    /// Commit changes to user customizable scopes. This will write to the user's `mimeapps.list` file.
     pub fn save(&mut self) -> anyhow::Result<()> {
         for scope in self.scopes.iter_mut() {
             if scope.is_user_customizable && scope.is_dirty {
@@ -700,6 +716,32 @@ mod tests {
             associations.assigned_application_for(&image_bmp),
             Some(&eog_id)
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn remove_all_assigned_applications_works() -> anyhow::Result<()> {
+        let mut associations = MimeAssociationStore::load(&[
+            test_user_mimeapps_list(),
+            test_gnome_mimeapps_list(),
+            test_sys_mimeapps_list(),
+        ])?;
+
+        // we need to make first scope user writable for testing
+        associations.scopes[0].is_user_customizable = true;
+
+        // initial state: we should have default applications assigned
+        assert!(!associations.scopes[0].default_applications.is_empty());
+
+        // clear
+        associations
+            .clear_assigned_applications()
+            .expect("Expect to clear all assigned applications");
+
+        // post state: no default applications and scope is dirty
+        assert!(associations.scopes[0].default_applications.is_empty());
+        assert!(associations.scopes[0].is_dirty);
 
         Ok(())
     }

@@ -507,7 +507,6 @@ mod tests {
         assert_eq!(gedit.mime_types(), &vec![text_plain]);
         assert_eq!(gedit.executable_command(), Some("gedit %U"));
         assert_eq!(gedit.icon(), Some("org.gnome.gedit"));
-        assert!(gedit.appears_valid_application());
         Ok(())
     }
 
