@@ -244,17 +244,46 @@ impl MainWindow {
             row.unbind();
         });
 
-        let selection_model = NoSelection::new(Some(self.mime_type_entries()));
+        self.imp().mime_types_list_view.set_factory(Some(&factory));
+        self.bind_mime_types_pane_model();
+    }
 
+    fn bind_mime_types_pane_model(&self) {
+        let selection_model = NoSelection::new(Some(self.mime_type_entries()));
         let list_view = &self.imp().mime_types_list_view;
         list_view.set_model(Some(&selection_model));
-        list_view.set_factory(Some(&factory));
     }
 
     fn setup_applications_pane(&self) {
         println!("MainWindow::setup_applications_pane");
+        let application_list_box = &self.imp().application_list_box;
 
-        // Populate applications list
+        self.bind_applications_pane_model();
+
+        // Listen for selection
+        application_list_box.connect_row_activated(clone!(@weak self as window => move |_, row|{
+            let index = row.index();
+            let model = window.application_entries().item(index as u32)
+                .expect("Expected valid item index")
+                .downcast::<ApplicationEntry>()
+                .expect("MainWindow::application_entries should only contain ApplicationEntry");
+            window.show_application_mime_type_assignment(&model);
+        }));
+
+        // Select first entry
+        let row = application_list_box.row_at_index(0);
+        application_list_box.select_row(row.as_ref());
+        self.show_application_mime_type_assignment(
+            &self
+                .application_entries()
+                .item(0)
+                .expect("Expect non-empty application entries model")
+                .downcast::<ApplicationEntry>()
+                .expect("MainWindow::application_entries should only contain ApplicationEntry"),
+        );
+    }
+
+    fn bind_applications_pane_model(&self) {
         self.imp().application_list_box.bind_model(
             Some(&self.application_entries()),
             clone!(@weak self as window => @default-panic, move |obj| {
@@ -264,30 +293,6 @@ impl MainWindow {
                 let row = window.create_application_list_box_row(model);
                 row.upcast()
             }),
-        );
-
-        // Listen for selection
-        self.imp().application_list_box.connect_row_activated(
-            clone!(@weak self as window => move |_, row|{
-                let index = row.index();
-                let model = window.application_entries().item(index as u32)
-                    .expect("Expected valid item index")
-                    .downcast::<ApplicationEntry>()
-                    .expect("MainWindow::application_entries should only contain ApplicationEntry");
-                window.show_application_mime_type_assignment(&model);
-            }),
-        );
-
-        // Select first entry
-        let row = self.imp().application_list_box.row_at_index(0);
-        self.imp().application_list_box.select_row(row.as_ref());
-        self.show_application_mime_type_assignment(
-            &self
-                .application_entries()
-                .item(0)
-                .expect("Expect non-empty application entries model")
-                .downcast::<ApplicationEntry>()
-                .expect("MainWindow::application_entries should only contain ApplicationEntry"),
         );
     }
 
@@ -468,15 +473,14 @@ impl MainWindow {
         match page {
             MainWindowPage::MimeTypes => {
                 println!("MainWindow::show_page - MimeTypes");
-                self.build_mime_type_entries_list_store();
                 page_selection_model.select_item(0, true);
             }
             MainWindowPage::Applications => {
                 println!("MainWindow::show_page - Applications");
-                self.build_application_entries_list_store();
                 page_selection_model.select_item(1, true);
             }
         }
+        self.reload_active_page();
     }
 
     fn reload_active_page(&self) {
@@ -484,12 +488,10 @@ impl MainWindow {
         let page_selection_model = self.imp().stack.pages();
         if page_selection_model.is_selected(0) {
             self.build_mime_type_entries_list_store();
-
-            let selection_model = NoSelection::new(Some(self.mime_type_entries()));
-            let list_view = &self.imp().mime_types_list_view;
-            list_view.set_model(Some(&selection_model));
+            self.bind_mime_types_pane_model();
         } else if page_selection_model.is_selected(1) {
             self.build_application_entries_list_store();
+            self.bind_applications_pane_model();
         } else {
             unreachable!("Somehow the page selection model has a page other than [0,1] selected.")
         }
