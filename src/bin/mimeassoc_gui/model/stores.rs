@@ -21,4 +21,8 @@ impl MimeAssocStores {
             mime_info_store: MimeTypeInfoStore::load(&mimeinfo_paths()?)?,
         })
     }
+
+    pub fn reload_mime_associations(&mut self) -> anyhow::Result<()> {
+        self.mime_associations_store.reload()
+    }
 }

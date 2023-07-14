@@ -7,8 +7,9 @@ use adw::subclass::prelude::*;
 use adw::{prelude::*, *};
 
 use glib::Object;
-use gtk::glib::clone;
+use gtk::glib::*;
 use gtk::{gio, glib, *};
+use mimeassoc::{DesktopEntryId, MimeType};
 
 use crate::model::*;
 use crate::ui::MimeTypeEntryListRow;
@@ -65,7 +66,7 @@ impl MainWindow {
                     .set(Rc::new(RefCell::new(stores)))
                     .expect("MainWindow::setup_models() should only be set once");
             }
-            Err(e) => panic!("Failed to initialize MimeAssocStores, error: {}", e),
+            Err(e) => self.show_error("Uh oh", "Unable to load necessary data", &e),
         }
 
         let mime_types_list_store = gio::ListStore::new(MimeTypeEntry::static_type());
@@ -125,13 +126,15 @@ impl MainWindow {
         println!("MainWindow::setup_mime_types_pane");
         let stores = self.stores();
         let factory = SignalListItemFactory::new();
-        factory.connect_setup(move |_, list_item| {
-            let row = MimeTypeEntryListRow::new();
+        factory.connect_setup(clone!(@weak self as window => move |_, list_item| {
+            let row = MimeTypeEntryListRow::new(move |desktop_entry_id, mime_type| {
+                window.assign_application_to_mimetype(desktop_entry_id, mime_type);
+            });
             let list_item = list_item
                 .downcast_ref::<ListItem>()
                 .expect("Needs to be ListItem");
             list_item.set_child(Some(&row));
-        });
+        }));
 
         factory.connect_bind(move |_, list_item| {
             let model = list_item
@@ -289,6 +292,39 @@ impl MainWindow {
         self.add_action(&action_reset_user_default_application_assignments);
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /// User interaction callbacks
+
+    fn assign_application_to_mimetype(
+        &self,
+        desktop_entry_id: &DesktopEntryId,
+        mime_type: &MimeType,
+    ) {
+        println!(
+            "MainWindow::assign_application_to_mimetype application: {} mime_type: {}",
+            desktop_entry_id, mime_type
+        );
+
+        let stores = self.stores();
+        let desktop_entry = stores
+            .borrow()
+            .desktop_entry_store
+            .get_desktop_entry(desktop_entry_id)
+            .expect("Expect to find a desktop entry for the id")
+            .clone();
+
+        let mut stores = stores.borrow_mut();
+
+        if let Err(e) = stores
+            .mime_associations_store
+            .set_default_handler_for_mime_type(mime_type, &desktop_entry)
+        {
+            self.show_error("Error", "Unable to assign application to mimetype", &e);
+        } else {
+            self.mark_changes_were_made_to_stores();
+        }
+    }
+
     /// Show user a dialog asking if they want to reset application assignments.
     fn query_reset_user_default_application_assignments(&self) {
         println!("MainWindow::reset_user_default_application_assignments");
@@ -328,8 +364,8 @@ impl MainWindow {
     fn reset_user_default_application_assignments(&self) {
         println!("MainWindow::reset_user_default_application_assignments - Resetting user application handler assignments");
 
-        // 1) reset bindings: get the user scope from the MimeAssociationsStore and empty it.
-        // Note: We put `stores` in a scope so it will be dropped before reloading the active page.
+        // reset bindings: get the user scope from the MimeAssociationsStore and empty it.
+        // Note: We put `stores` in a scope so it will be dropped before further work.
         {
             let stores = self.stores();
             let mime_associations = &mut stores.borrow_mut().mime_associations_store;
@@ -338,13 +374,11 @@ impl MainWindow {
             if let Err(e) = mime_associations.clear_assigned_applications() {
                 println!("An error occurred clearing assigned applications, should be presented to user. Error: {:?}", e);
             }
-
-            if let Err(e) = mime_associations.save() {
-                println!("An error occurred saving the mimeassociations store, should be presented to user. Error: {:?}", e);
-            }
         }
 
-        // 2) reload the active pane
+        self.mark_changes_were_made_to_stores();
+
+        // reload our display
         self.reload_active_page();
     }
 
@@ -376,6 +410,38 @@ impl MainWindow {
             self.build_application_entries_list_store();
         } else {
             unreachable!("Somehow the page selection model has a page other than [0,1] selected.")
+        }
+    }
+
+    fn show_error(&self, title: &str, message: &str, error: &anyhow::Error) {
+        eprintln!(
+            "MainWindow::show_error title: {}, message: {} error: {:?}",
+            title, message, error
+        );
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    fn mark_changes_were_made_to_stores(&self) {
+        println!("MainWindow::mark_changes_were_made_to_stores");
+    }
+
+    fn reload_mime_associations(&self) {
+        println!("MainWindow::reload_mime_associations");
+
+        let stores = self.stores();
+        if let Err(e) = stores.borrow_mut().reload_mime_associations() {
+            self.show_error("Error", "Unable to reload mime associations", &e);
+        }
+        self.reload_active_page();
+    }
+
+    fn save_changes(&self) {
+        println!("MainWindow::save_changes");
+        let stores = self.stores();
+        let mut stores = stores.borrow_mut();
+        if let Err(e) = stores.mime_associations_store.save() {
+            self.show_error("Oh no", "Unable to save changes", &e);
         }
     }
 }

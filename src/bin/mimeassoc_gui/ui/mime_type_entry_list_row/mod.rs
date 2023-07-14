@@ -6,7 +6,7 @@ use std::rc::Rc;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::Object;
-use gtk::glib::{self, clone};
+use gtk::glib::{self, clone, *};
 use mimeassoc::{DesktopEntryId, MimeType};
 
 use crate::model::*;
@@ -19,13 +19,19 @@ glib::wrapper! {
 
 impl Default for MimeTypeEntryListRow {
     fn default() -> Self {
-        Self::new()
+        Object::builder().build()
     }
 }
 
 impl MimeTypeEntryListRow {
-    pub fn new() -> Self {
-        Object::builder().build()
+    pub fn new(
+        on_application_selected: impl Fn(&DesktopEntryId, &MimeType) -> () + 'static,
+    ) -> Self {
+        let obj: MimeTypeEntryListRow = Object::builder().build();
+        obj.imp()
+            .on_selection_changed
+            .set(Some(Box::new(on_application_selected)));
+        obj
     }
 
     pub fn bind(&self, mime_type_entry: &MimeTypeEntry, stores: Rc<RefCell<MimeAssocStores>>) {
@@ -141,12 +147,12 @@ impl MimeTypeEntryListRow {
         }
 
         // listen to `changed` event on combobox
-        let callback_id = applications_combobox.connect_changed(clone!(@weak mime_type_entry, @weak stores, @weak self as window => move |a|{
+        let callback_id = applications_combobox.connect_changed(clone!(@weak mime_type_entry, @weak stores, @weak self as row => move |a|{
             if let Some(active_id) = a.active_id() {
                 let active_id = active_id.as_str();
                 let mime_type = mime_type_entry.mime_type();
                 let desktop_entry_id = DesktopEntryId::parse(active_id).expect("Expected valid desktop entry id");
-                window.assign_handler_for_mimetype(&desktop_entry_id, &mime_type, stores);
+                row.on_application_selected(&desktop_entry_id, &mime_type);
             }
         }));
 
@@ -155,39 +161,9 @@ impl MimeTypeEntryListRow {
             .replace(Some(callback_id));
     }
 
-    fn assign_handler_for_mimetype(
-        &self,
-        desktop_entry_id: &DesktopEntryId,
-        mime_type: &MimeType,
-        stores: Rc<RefCell<MimeAssocStores>>,
-    ) {
-        let desktop_entry = stores
-            .borrow()
-            .desktop_entry_store
-            .get_desktop_entry(desktop_entry_id)
-            .expect("Expect to find a desktop entry for the id")
-            .clone();
-
-        let mut stores = stores.borrow_mut();
-
-        if let Err(e) = stores
-            .mime_associations_store
-            .set_default_handler_for_mime_type(mime_type, &desktop_entry)
-        {
-            // TODO: Error dialog?
-            println!(
-                "Unable to assign {} to open {}; error: {:?}",
-                desktop_entry_id, mime_type, e
-            );
-        } else {
-            println!(
-                "Assigned {} to be default handler for {}",
-                desktop_entry_id, mime_type
-            );
-            if let Err(e) = stores.mime_associations_store.save() {
-                // TODO: Error dialog?
-                println!("Unable to save mime associations database, error: {:?}", e);
-            }
+    fn on_application_selected(&self, desktop_entry_id: &DesktopEntryId, mime_type: &MimeType) {
+        if let Some(callback) = self.imp().on_selection_changed.borrow().as_ref() {
+            callback(desktop_entry_id, mime_type);
         }
     }
 }

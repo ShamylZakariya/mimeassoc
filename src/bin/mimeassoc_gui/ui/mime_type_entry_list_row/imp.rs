@@ -4,11 +4,14 @@ use gtk::glib::SignalHandlerId;
 use gtk::subclass::prelude::*;
 use gtk::traits::{BoxExt, WidgetExt};
 use gtk::{glib, *};
+use mimeassoc::*;
 
 // Object holding the state
 #[derive(Default, CompositeTemplate)]
 #[template(resource = "/org/zakariya/MimeAssoc/mime_type_entry_list_row.ui")]
 pub struct MimeTypeEntryListRow {
+    pub on_selection_changed:
+        RefCell<Option<std::boxed::Box<dyn Fn(&DesktopEntryId, &MimeType) -> ()>>>,
     pub combobox_changed_handler_id: RefCell<Option<SignalHandlerId>>,
 
     // UI Bindings

@@ -157,6 +157,17 @@ impl MimeAssociationScope {
         })
     }
 
+    fn reload(&mut self) -> anyhow::Result<()> {
+        // Caveman reload: make a new object, move its values to self
+        let mut associations = Self::load(&self.file_path)?;
+        self.is_user_customizable = associations.is_user_customizable;
+        self.is_dirty = false;
+        self.added_associations = std::mem::take(&mut associations.added_associations);
+        self.default_applications = std::mem::take(&mut associations.default_applications);
+
+        Ok(())
+    }
+
     /// Persist changes to this MimeAsociationScope.
     fn save(&mut self) -> anyhow::Result<()> {
         if !self.is_user_customizable {
@@ -301,6 +312,16 @@ impl MimeAssociationStore {
         }
 
         Ok(Self { scopes })
+    }
+
+    /// Reload the mime associations passed in to `MimeAssociationStore::load` during construction.
+    /// Effectively resets state, provided any changes to state weren't persisted via `MimeAssociationsStore::save`
+    pub fn reload(&mut self) -> anyhow::Result<()> {
+        for scope in self.scopes.iter_mut() {
+            scope.reload()?;
+        }
+
+        Ok(())
     }
 
     /// Return zeroth scope; this is normally associated with the scope
@@ -685,6 +706,45 @@ mod tests {
         assert_eq!(
             associations.default_application_for(&image_bmp),
             Some(&eog_id)
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn reload_works() -> anyhow::Result<()> {
+        let (entries, mut associations) = create_test_entries_and_associations()?;
+
+        // we need to make first scope user writable for testing
+        associations.scopes[0].is_user_customizable = true;
+
+        // we need to make first scope user writable for testing
+        associations.scopes[0].is_user_customizable = true;
+
+        let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
+        let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
+        let evince_id = DesktopEntryId::parse("org.gnome.Evince.desktop")?;
+        let image_tiff = MimeType::parse("image/tiff")?;
+
+        // we're going to verify Evince is set to image/tiff
+        assert_eq!(
+            associations.assigned_application_for(&image_tiff),
+            Some(&evince_id)
+        );
+
+        // assign photopea
+        associations.set_default_handler_for_mime_type(&image_tiff, &photopea)?;
+        assert_eq!(
+            associations.assigned_application_for(&image_tiff),
+            Some(&photopea_id)
+        );
+
+        // reload - after this, Evince should be the handler again
+        associations.reload()?;
+
+        assert_eq!(
+            associations.assigned_application_for(&image_tiff),
+            Some(&evince_id)
         );
 
         Ok(())
