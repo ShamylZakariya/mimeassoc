@@ -14,7 +14,7 @@ mod imp {
     use std::cell::OnceCell;
 
     #[derive(Properties, Default)]
-    #[properties(wrapper_type = mime_type_assignment_entry::MimeTypeAssignmentEntry)]
+    #[properties(wrapper_type = super::MimeTypeAssignmentEntry)]
     pub struct MimeTypeAssignmentEntry {
         pub stores: OnceCell<Rc<RefCell<MimeAssocStores>>>,
 
@@ -35,7 +35,7 @@ mod imp {
     #[glib::object_subclass]
     impl ObjectSubclass for MimeTypeAssignmentEntry {
         const NAME: &'static str = "MimeTypeAssignmentEntry";
-        type Type = mime_type_assignment_entry::MimeTypeAssignmentEntry;
+        type Type = super::MimeTypeAssignmentEntry;
     }
 
     // Trait shared by all GObjects
