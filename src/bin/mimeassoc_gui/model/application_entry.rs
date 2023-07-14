@@ -1,5 +1,3 @@
-mod imp;
-
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -9,6 +7,52 @@ use gtk::{gio, glib, prelude::*};
 use mimeassoc::*;
 
 use crate::model::*;
+
+mod imp {
+    use super::*;
+    use std::{
+        cell::{OnceCell, RefCell},
+        rc::Rc,
+    };
+
+    use glib::{ParamSpec, Properties, Value};
+    use gtk::glib;
+
+    #[derive(Properties, Default)]
+    #[properties(wrapper_type = super::ApplicationEntry)]
+    pub struct ApplicationEntry {
+        pub stores: OnceCell<Rc<RefCell<MimeAssocStores>>>,
+
+        #[property(get, set)]
+        pub id: RefCell<String>,
+    }
+
+    // The central trait for subclassing a GObject
+    #[glib::object_subclass]
+    impl ObjectSubclass for ApplicationEntry {
+        const NAME: &'static str = "ApplicationEntry";
+        type Type = super::ApplicationEntry;
+    }
+
+    // Trait shared by all GObjects
+    impl ObjectImpl for ApplicationEntry {
+        fn constructed(&self) {
+            Self::parent_constructed(self);
+        }
+
+        fn properties() -> &'static [ParamSpec] {
+            Self::derived_properties()
+        }
+
+        fn set_property(&self, id: usize, value: &Value, pspec: &ParamSpec) {
+            self.derived_set_property(id, value, pspec)
+        }
+
+        fn property(&self, id: usize, pspec: &ParamSpec) -> Value {
+            self.derived_property(id, pspec)
+        }
+    }
+}
 
 glib::wrapper! {
     pub struct ApplicationEntry(ObjectSubclass<imp::ApplicationEntry>);
