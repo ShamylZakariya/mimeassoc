@@ -4,7 +4,7 @@ use std::rc::Rc;
 use adw::subclass::prelude::*;
 use adw::{prelude::*, *};
 use glib::subclass::*;
-use gtk::{*, glib::*};
+use gtk::{glib::*, *};
 use mimeassoc::*;
 
 use crate::model::*;
@@ -30,6 +30,9 @@ mod imp {
 
         #[template_child]
         pub mime_types_scrolled_window: TemplateChild<ScrolledWindow>,
+
+        #[template_child]
+        pub mime_types_list_view: TemplateChild<ListView>,
 
         #[template_child]
         pub applications_page: TemplateChild<ViewStackPage>,
@@ -242,12 +245,10 @@ impl MainWindow {
         });
 
         let selection_model = NoSelection::new(Some(self.mime_type_entries()));
-        let list_view = ListView::new(Some(selection_model), Some(factory));
-        list_view.add_css_class("frame");
-        list_view.add_css_class("separators");
-        self.imp()
-            .mime_types_scrolled_window
-            .set_child(Some(&list_view));
+
+        let list_view = &self.imp().mime_types_list_view;
+        list_view.set_model(Some(&selection_model));
+        list_view.set_factory(Some(&factory));
     }
 
     fn setup_applications_pane(&self) {
@@ -483,6 +484,10 @@ impl MainWindow {
         let page_selection_model = self.imp().stack.pages();
         if page_selection_model.is_selected(0) {
             self.build_mime_type_entries_list_store();
+
+            let selection_model = NoSelection::new(Some(self.mime_type_entries()));
+            let list_view = &self.imp().mime_types_list_view;
+            list_view.set_model(Some(&selection_model));
         } else if page_selection_model.is_selected(1) {
             self.build_application_entries_list_store();
         } else {

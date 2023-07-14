@@ -54,7 +54,13 @@
                 <property name="hscrollbar-policy">never</property>
                 <property name="min-content-height">420</property>
                 <property name="vexpand">True</property>
-                <!-- we will insert the mimetypes list view here at runtime -->
+                <property name="child">
+                  <object class="GtkListView" id="mime_types_list_view">
+                    <style>
+                      <class name="separators" />
+                    </style>
+                  </object>
+                </property>
               </object>
 
             </property>
