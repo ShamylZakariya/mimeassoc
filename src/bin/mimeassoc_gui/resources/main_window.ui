@@ -32,6 +32,16 @@
             <property name="policy">wide</property>
           </object>
         </property>
+        <child type="start">
+          <object class="GtkButton" id="reset_button">
+            <property name="label">Reset</property>
+          </object>
+        </child>
+        <child type="start">
+          <object class="GtkButton" id="save_button">
+            <property name="label">Save</property>
+          </object>
+        </child>
         <child type="end">
           <object class="GtkMenuButton">
             <property name="icon-name">open-menu-symbolic</property>

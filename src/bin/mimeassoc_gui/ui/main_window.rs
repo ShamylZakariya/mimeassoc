@@ -23,6 +23,12 @@ mod imp {
 
         // UI bindings
         #[template_child]
+        pub save_button: TemplateChild<Button>,
+
+        #[template_child]
+        pub reset_button: TemplateChild<Button>,
+
+        #[template_child]
         pub stack: TemplateChild<ViewStack>,
 
         #[template_child]
@@ -76,8 +82,7 @@ mod imp {
             // Setup
             let obj = self.obj();
             obj.setup_models();
-            obj.setup_mime_types_pane();
-            obj.setup_applications_pane();
+            obj.setup_ui();
 
             // finally
             obj.setup_actions();
@@ -202,6 +207,23 @@ impl MainWindow {
             .extend_from_slice(&application_entries);
     }
 
+    fn setup_ui(&self) {
+        self.imp()
+            .save_button
+            .connect_clicked(clone!(@weak self as window => move |_|{
+                window.reload_mime_associations();
+            }));
+
+        self.imp()
+            .reset_button
+            .connect_clicked(clone!(@weak self as window => move |_|{
+                window.save_changes();
+            }));
+
+        self.setup_mime_types_pane();
+        self.setup_applications_pane();
+    }
+
     fn setup_mime_types_pane(&self) {
         println!("MainWindow::setup_mime_types_pane");
         let stores = self.stores();
@@ -248,6 +270,8 @@ impl MainWindow {
         self.bind_mime_types_pane_model();
     }
 
+    /// Binds the `MainWindow::mime_type_entries` list model to the `MainWindow::mime_types_list_view`,
+    /// this can be called any time to "reload" the list view contents.
     fn bind_mime_types_pane_model(&self) {
         let selection_model = NoSelection::new(Some(self.mime_type_entries()));
         let list_view = &self.imp().mime_types_list_view;
@@ -283,6 +307,8 @@ impl MainWindow {
         );
     }
 
+    /// Binds the `MainWindow::application_entries` list model to the `MainWindow::application_list_box`,
+    /// this can be called any time to "reload" the list view contents.
     fn bind_applications_pane_model(&self) {
         self.imp().application_list_box.bind_model(
             Some(&self.application_entries()),
@@ -404,6 +430,7 @@ impl MainWindow {
         {
             self.show_error("Error", "Unable to assign application to mimetype", &e);
         } else {
+            // Assignment was successful, mark changes were made
             self.mark_changes_were_made_to_stores();
         }
     }
@@ -442,27 +469,6 @@ impl MainWindow {
         );
 
         dialog.present();
-    }
-
-    fn reset_user_default_application_assignments(&self) {
-        println!("MainWindow::reset_user_default_application_assignments - Resetting user application handler assignments");
-
-        // reset bindings: get the user scope from the MimeAssociationsStore and empty it.
-        // Note: We put `stores` in a scope so it will be dropped before further work.
-        {
-            let stores = self.stores();
-            let mime_associations = &mut stores.borrow_mut().mime_associations_store;
-
-            // TODO: Handle errors better, and in future accomodate rollback?
-            if let Err(e) = mime_associations.clear_assigned_applications() {
-                println!("An error occurred clearing assigned applications, should be presented to user. Error: {:?}", e);
-            }
-        }
-
-        self.mark_changes_were_made_to_stores();
-
-        // reload our display
-        self.reload_active_page();
     }
 
     /// Show one of the main window pages
@@ -517,6 +523,33 @@ impl MainWindow {
         if let Err(e) = stores.borrow_mut().reload_mime_associations() {
             self.show_error("Error", "Unable to reload mime associations", &e);
         }
+        self.reload_active_page();
+    }
+
+    fn reset_user_default_application_assignments(&self) {
+        println!("MainWindow::reset_user_default_application_assignments - Resetting user application handler assignments");
+
+        // reset bindings: get the user scope from the MimeAssociationsStore and empty it.
+        // Note: We put `stores` in a scope so it will be dropped before further work.
+        {
+            let stores = self.stores();
+            let mime_associations = &mut stores.borrow_mut().mime_associations_store;
+
+            // TODO: Handle errors better, and in future accomodate rollback?
+            if let Err(e) = mime_associations.clear_assigned_applications() {
+                self.show_error(
+                    "Oh no",
+                    "Unable to reset assigned applications to sytem defaults.",
+                    &e,
+                );
+                return;
+            }
+        }
+
+        // Reset was successful; mark changes were made.
+        self.mark_changes_were_made_to_stores();
+
+        // reload our display
         self.reload_active_page();
     }
 
