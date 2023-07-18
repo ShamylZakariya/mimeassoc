@@ -10,6 +10,21 @@ use mimeassoc::*;
 use crate::model::*;
 use crate::ui::MimeTypeEntryListRow;
 
+/// Simpole enum to represent the "dirtyness" of the UI state.
+/// It could be a boolean, but there may be room for other states,
+/// and besides, this is more clear.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum DirtyState {
+    Clean,
+    ChangesStaged,
+}
+
+impl Default for DirtyState {
+    fn default() -> Self {
+        Self::Clean
+    }
+}
+
 mod imp {
     use super::*;
 
@@ -20,6 +35,7 @@ mod imp {
         pub stores: OnceCell<Rc<RefCell<MimeAssocStores>>>,
         pub mime_type_entries: RefCell<Option<gio::ListStore>>,
         pub application_entries: RefCell<Option<gio::ListStore>>,
+        pub dirty: RefCell<DirtyState>,
 
         // UI bindings
         #[template_child]
@@ -211,17 +227,18 @@ impl MainWindow {
         self.imp()
             .save_button
             .connect_clicked(clone!(@weak self as window => move |_|{
-                window.reload_mime_associations();
+                window.save_changes();
             }));
 
         self.imp()
             .reset_button
             .connect_clicked(clone!(@weak self as window => move |_|{
-                window.save_changes();
+                window.reload_mime_associations();
             }));
 
         self.setup_mime_types_pane();
         self.setup_applications_pane();
+        self.set_dirty_state(DirtyState::Clean);
     }
 
     fn setup_mime_types_pane(&self) {
@@ -512,8 +529,24 @@ impl MainWindow {
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
+    fn set_dirty_state(&self, dirty_state: DirtyState) {
+        self.imp().dirty.replace(dirty_state);
+
+        // I know: dirty_state could be a bool, and the tuple unwrapping could also be a
+        // single bool, but I'm leaving it this way until I'm confident of the UX.
+        let (reset_button_sensitive, save_button_sensitive) = match dirty_state {
+            DirtyState::Clean => (false, false),
+            DirtyState::ChangesStaged => (true, true),
+        };
+        self.imp()
+            .reset_button
+            .set_sensitive(reset_button_sensitive);
+        self.imp().save_button.set_sensitive(save_button_sensitive);
+    }
+
     fn mark_changes_were_made_to_stores(&self) {
         println!("MainWindow::mark_changes_were_made_to_stores");
+        self.set_dirty_state(DirtyState::ChangesStaged);
     }
 
     fn reload_mime_associations(&self) {
@@ -523,6 +556,8 @@ impl MainWindow {
         if let Err(e) = stores.borrow_mut().reload_mime_associations() {
             self.show_error("Error", "Unable to reload mime associations", &e);
         }
+
+        self.set_dirty_state(DirtyState::Clean);
         self.reload_active_page();
     }
 
@@ -546,10 +581,8 @@ impl MainWindow {
             }
         }
 
-        // Reset was successful; mark changes were made.
-        self.mark_changes_were_made_to_stores();
-
-        // reload our display
+        // Persist our changes and reload display
+        self.save_changes();
         self.reload_active_page();
     }
 
@@ -559,6 +592,8 @@ impl MainWindow {
         let mut stores = stores.borrow_mut();
         if let Err(e) = stores.mime_associations_store.save() {
             self.show_error("Oh no", "Unable to save changes", &e);
+        } else {
+            self.set_dirty_state(DirtyState::Clean);
         }
     }
 }
