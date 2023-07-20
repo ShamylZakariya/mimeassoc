@@ -14,6 +14,10 @@
       <attribute name="action">win.reset-user-default-applications</attribute>
     </item>
     <item>
+      <attribute name="label" translatable="yes">_Clear Oprhaned Application Assignments</attribute>
+      <attribute name="action">win.prune-orphaned-application-assignments</attribute>
+    </item>
+    <item>
       <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
       <attribute name="action">win.show-help-overlay</attribute>
     </item>

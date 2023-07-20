@@ -227,7 +227,7 @@ impl MainWindow {
         self.imp()
             .save_button
             .connect_clicked(clone!(@weak self as window => move |_|{
-                window.save_changes();
+                window.commit_changes();
             }));
 
         self.imp()
@@ -416,6 +416,15 @@ impl MainWindow {
             }),
         );
         self.add_action(&action_reset_user_default_application_assignments);
+
+        let action_clear_orphaned_application_assignments =
+            gtk::gio::SimpleAction::new("prune-orphaned-application-assignments", None);
+        action_clear_orphaned_application_assignments.connect_activate(
+            clone!(@weak self as window => move |_, _| {
+                window.query_prune_orphaned_application_assignments();
+            }),
+        );
+        self.add_action(&action_clear_orphaned_application_assignments);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -431,19 +440,10 @@ impl MainWindow {
             desktop_entry_id, mime_type
         );
 
-        let stores = self.stores();
-        let desktop_entry = stores
-            .borrow()
-            .desktop_entry_store
-            .get_desktop_entry(desktop_entry_id)
-            .expect("Expect to find a desktop entry for the id")
-            .clone();
-
-        let mut stores = stores.borrow_mut();
-
-        if let Err(e) = stores
-            .mime_associations_store
-            .set_default_handler_for_mime_type(mime_type, &desktop_entry)
+        if let Err(e) = self
+            .stores()
+            .borrow_mut()
+            .assign_application_to_mimetype(desktop_entry_id, mime_type)
         {
             self.show_error("Error", "Unable to assign application to mimetype", &e);
         } else {
@@ -462,14 +462,19 @@ impl MainWindow {
         // Create new dialog
         let dialog = adw::MessageDialog::builder()
             .heading("Reset your application handler assignments?")
-            .body("Your application handler assignments will be reset to system defaults")
+            .body(
+                "Would you like to reset your application handler assignments to system defaults? This will clear out any application assignments you have made.",
+            )
             .transient_for(self)
             .modal(true)
             .destroy_with_parent(true)
             .close_response(cancel_response)
             .default_response(reset_response)
             .build();
-        dialog.add_responses(&[(cancel_response, "Cancel"), (reset_response, "Reset")]);
+        dialog.add_responses(&[
+            (cancel_response, "Cancel"),
+            (reset_response, "Reset to System Defaults"),
+        ]);
 
         dialog.set_response_appearance(reset_response, ResponseAppearance::Destructive);
 
@@ -482,6 +487,42 @@ impl MainWindow {
                 }
 
                 window.reset_user_default_application_assignments();
+            }),
+        );
+
+        dialog.present();
+    }
+
+    /// Show user a dialog asking if they want to clear orphaned application assignments.
+    fn query_prune_orphaned_application_assignments(&self) {
+        println!("MainWindow::query_prune_orphaned_application_assignments");
+
+        let cancel_response = "cancel";
+        let clear_response = "clear";
+
+        // Create new dialog
+        let dialog = adw::MessageDialog::builder()
+            .heading("Clear orphaned application assignments?")
+            .body("Would you like to remove any left-over application assignments from uninstalled applications?")
+            .transient_for(self)
+            .modal(true)
+            .destroy_with_parent(true)
+            .close_response(cancel_response)
+            .default_response(clear_response)
+            .build();
+        dialog.add_responses(&[(cancel_response, "Cancel"), (clear_response, "Clear")]);
+
+        dialog.set_response_appearance(clear_response, ResponseAppearance::Suggested);
+
+        dialog.connect_response(
+            None,
+            clone!(@weak self as window => move |dialog, response|{
+                dialog.destroy();
+                if response != clear_response {
+                    return;
+                }
+
+                window.prune_orphaned_application_assignments();
             }),
         );
 
@@ -518,6 +559,10 @@ impl MainWindow {
         } else {
             unreachable!("Somehow the page selection model has a page other than [0,1] selected.")
         }
+    }
+
+    fn show_toast(&self, message: &str) {
+        println!("MainWindow::show_toast: {}", message);
     }
 
     fn show_error(&self, title: &str, message: &str, error: &anyhow::Error) {
@@ -562,37 +607,55 @@ impl MainWindow {
     }
 
     fn reset_user_default_application_assignments(&self) {
-        println!("MainWindow::reset_user_default_application_assignments - Resetting user application handler assignments");
+        println!("MainWindow::reset_user_default_application_assignments");
 
-        // reset bindings: get the user scope from the MimeAssociationsStore and empty it.
-        // Note: We put `stores` in a scope so it will be dropped before further work.
+        if let Err(e) = self
+            .stores()
+            .borrow_mut()
+            .reset_user_default_application_assignments()
         {
-            let stores = self.stores();
-            let mime_associations = &mut stores.borrow_mut().mime_associations_store;
-
-            // TODO: Handle errors better, and in future accomodate rollback?
-            if let Err(e) = mime_associations.clear_assigned_applications() {
-                self.show_error(
-                    "Oh no",
-                    "Unable to reset assigned applications to sytem defaults.",
-                    &e,
-                );
-                return;
-            }
+            self.show_error(
+                "Oh no",
+                "Unable to reset assigned applications to sytem defaults.",
+                &e,
+            );
+            return;
         }
 
         // Persist our changes and reload display
-        self.save_changes();
+        self.show_toast("Application assignments result to system default successfully");
+        self.commit_changes();
         self.reload_active_page();
     }
 
-    fn save_changes(&self) {
+    fn prune_orphaned_application_assignments(&self) {
+        println!("MainWindow::clear_orphaned_application_assignments - unimplemented...");
+
+        if let Err(e) = self
+            .stores()
+            .borrow_mut()
+            .prune_orphaned_application_assignments()
+        {
+            self.show_error(
+                "Oh no",
+                "Unable clear out orphaned application assignments.",
+                &e,
+            );
+            return;
+        }
+
+        // Persist our changes and reload display
+        self.show_toast("Orphaned application assignments cleared successfully");
+        self.commit_changes();
+        self.reload_active_page();
+    }
+
+    fn commit_changes(&self) {
         println!("MainWindow::save_changes");
-        let stores = self.stores();
-        let mut stores = stores.borrow_mut();
-        if let Err(e) = stores.mime_associations_store.save() {
+        if let Err(e) = self.stores().borrow_mut().save() {
             self.show_error("Oh no", "Unable to save changes", &e);
         } else {
+            self.show_toast("Committed changes successfully");
             self.set_dirty_state(DirtyState::Clean);
         }
     }

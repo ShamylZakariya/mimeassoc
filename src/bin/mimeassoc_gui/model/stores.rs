@@ -22,7 +22,35 @@ impl MimeAssocStores {
         })
     }
 
+    pub fn assign_application_to_mimetype(
+        &mut self,
+        desktop_entry_id: &DesktopEntryId,
+        mime_type: &MimeType,
+    ) -> anyhow::Result<()> {
+        let Some(desktop_entry) = self.desktop_entry_store.get_desktop_entry(&desktop_entry_id) else {
+            anyhow::bail!("Unrecognized desktop entry id")
+        };
+
+        self.mime_associations_store
+            .set_default_handler_for_mime_type(mime_type, desktop_entry)
+    }
+
     pub fn reload_mime_associations(&mut self) -> anyhow::Result<()> {
         self.mime_associations_store.reload()
+    }
+
+    pub fn reset_user_default_application_assignments(&mut self) -> anyhow::Result<()> {
+        self.mime_associations_store.clear_assigned_applications()
+    }
+
+    pub fn prune_orphaned_application_assignments(
+        &mut self,
+    ) -> anyhow::Result<Vec<DesktopEntryId>> {
+        self.mime_associations_store
+            .prune_orphaned_application_assignments(&self.desktop_entry_store)
+    }
+
+    pub fn save(&mut self) -> anyhow::Result<()> {
+        self.mime_associations_store.save()
     }
 }

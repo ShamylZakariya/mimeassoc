@@ -8,6 +8,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use crate::DesktopEntryStore;
+
 use super::desktop_entry::{DesktopEntry, DesktopEntryId};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
@@ -431,6 +433,38 @@ impl MimeAssociationStore {
         Ok(())
     }
 
+    /// Removes all application assignments in the user scope which
+    /// 1: cannot be found in `desktop_entry_store`, or
+    /// 2: when loaded to `DesktopEntry`, are invalid (e.g., no launchable binary can be found)
+    /// This only affects the user scope.
+    /// Note: Changes won't be commited until `MimeAssociationsStore::save` is called.
+    /// Returns a vector of pruned DesktopEntryIds, or an error if there is no user-customizable scope to edit.
+    pub fn prune_orphaned_application_assignments(
+        &mut self,
+        desktop_entry_store: &DesktopEntryStore,
+    ) -> anyhow::Result<Vec<DesktopEntryId>> {
+        let Some(scope) = self.get_user_scope_mut() else {
+            anyhow::bail!("No customizable user scopes available");
+        };
+
+        let mut orphaned_ids = vec![];
+        for desktop_entry_id in scope.default_applications.values() {
+            if let Some(desktop_entry) = desktop_entry_store.get_desktop_entry(&desktop_entry_id) {
+                if !desktop_entry.appears_valid_application() {
+                    orphaned_ids.push(desktop_entry_id.clone());
+                }
+            } else {
+                orphaned_ids.push(desktop_entry_id.clone());
+            }
+        }
+
+        scope
+            .default_applications
+            .retain(|_, id| !orphaned_ids.contains(id));
+
+        Ok(orphaned_ids)
+    }
+
     pub fn added_associations_for(&self, mime_type: &MimeType) -> Option<&Vec<DesktopEntryId>> {
         for scope in self.scopes.iter() {
             if let Some(id) = scope.added_associations.get(mime_type) {
@@ -802,6 +836,55 @@ mod tests {
         // post state: no default applications and scope is dirty
         assert!(associations.scopes[0].default_applications.is_empty());
         assert!(associations.scopes[0].is_dirty);
+
+        Ok(())
+    }
+
+    #[test]
+    fn prune_orphaned_application_assignments_workd() -> anyhow::Result<()> {
+        let mut associations = MimeAssociationStore::load(&[
+            test_user_mimeapps_list(),
+            test_gnome_mimeapps_list(),
+            test_sys_mimeapps_list(),
+        ])?;
+
+        let desktop_entry_store =
+            DesktopEntryStore::load(&[test_user_applications(), test_sys_applications()])?;
+
+        // we need to make first scope user writable for testing
+        associations.scopes[0].is_user_customizable = true;
+
+        // add some invalid assignments
+        let fake_pdf_assignment = (
+            MimeType::parse("application/pdf").unwrap(),
+            DesktopEntryId::parse("org.adobe.not-actually-acrobat.desktop").unwrap(),
+        );
+
+        let fake_psd_assignment = (
+            MimeType::parse("application/psd").unwrap(),
+            DesktopEntryId::parse("org.adobe.not-actually-photoshop.desktop").unwrap(),
+        );
+
+        associations.scopes[0]
+            .default_applications
+            .insert(fake_pdf_assignment.0, fake_pdf_assignment.1.clone());
+
+        associations.scopes[0]
+            .default_applications
+            .insert(fake_psd_assignment.0, fake_psd_assignment.1.clone());
+
+        let result = associations
+            .prune_orphaned_application_assignments(&desktop_entry_store)
+            .unwrap();
+
+        assert!(
+            result.contains(&fake_pdf_assignment.1),
+            "Expect result to contain our fake pdf app"
+        );
+        assert!(
+            result.contains(&fake_psd_assignment.1),
+            "Expect result to contain our fake psd app"
+        );
 
         Ok(())
     }
