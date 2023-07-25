@@ -7,8 +7,8 @@ use glib::subclass::*;
 use gtk::{glib::*, *};
 use mimeassoc::*;
 
-use crate::model::*;
 use crate::ui::MimeTypeEntryListRow;
+use crate::{model::*, *};
 
 /// Simpole enum to represent the "dirtyness" of the UI state.
 /// It could be a boolean, but there may be room for other states,
@@ -425,6 +425,11 @@ impl MainWindow {
             }),
         );
         self.add_action(&action_clear_orphaned_application_assignments);
+
+        let about_action = gtk::gio::SimpleAction::new("show-about", None);
+        about_action
+            .connect_activate(clone!(@weak self as window => move |_, _| { window.show_about(); }));
+        self.add_action(&about_action);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -545,6 +550,38 @@ impl MainWindow {
             }
         }
         self.reload_active_page();
+    }
+
+    pub fn show_about(&self) {
+        let about = adw::AboutWindow::builder()
+            .transient_for(self)
+            .application_name("MimeAssoc")
+            .application_icon(APP_ICON)
+            .developer_name("Shamyl Zakariya")
+            .version(APP_VERSION)
+            .issue_url("https://github.com/ShamylZakariya/mimeassoc/issues")
+            .copyright("© 2023 Shamyl Zakariya")
+            .license_type(gtk::License::MitX11)
+            .website("https://github.com/ShamylZakariya/mimeassoc")
+            .release_notes(
+                r#"<ul>
+    <li>Nothing to see here, yet.</li>
+</ul>"#,
+            )
+            .build();
+
+        about.add_credit_section(
+            Some("Standing on the shoulders of giants"),
+            &[
+                "GTK https://www.gtk.org/",
+                "GNOME https://www.gnome.org/",
+                "Libadwaita https://gitlab.gnome.org/GNOME/libadwaita",
+                "Workbench https://github.com/sonnyp/Workbench",
+                "And many more...",
+            ],
+        );
+
+        about.present();
     }
 
     fn reload_active_page(&self) {

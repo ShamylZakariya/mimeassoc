@@ -1,26 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <menu id="main-menu">
-    <item>
-      <attribute name="label" translatable="yes">Show _Mime Types</attribute>
-      <attribute name="action">win.show-mime-types</attribute>
-    </item>
-    <item>
-      <attribute name="label" translatable="yes">Show _Applications</attribute>
-      <attribute name="action">win.show-applications</attribute>
-    </item>
-    <item>
-      <attribute name="label" translatable="yes">_Reset User Default Application Assignments</attribute>
-      <attribute name="action">win.reset-user-default-applications</attribute>
-    </item>
-    <item>
-      <attribute name="label" translatable="yes">_Clear Oprhaned Application Assignments</attribute>
-      <attribute name="action">win.prune-orphaned-application-assignments</attribute>
-    </item>
-    <item>
-      <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
-      <attribute name="action">win.show-help-overlay</attribute>
-    </item>
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">Show _Mime Types</attribute>
+        <attribute name="action">win.show-mime-types</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Show _Applications</attribute>
+        <attribute name="action">win.show-applications</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Reset User Default Application Assignments</attribute>
+        <attribute name="action">win.reset-user-default-applications</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Clear Oprhaned Application Assignments</attribute>
+        <attribute name="action">win.prune-orphaned-application-assignments</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">About MimeAssoc</attribute>
+        <attribute name="action">win.show-about</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
+        <attribute name="action">win.show-help-overlay</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Quit</attribute>
+        <attribute name="action">app.quit</attribute>
+      </item>
+    </section>
   </menu>
 
   <template class="MainWindow" parent="GtkApplicationWindow">

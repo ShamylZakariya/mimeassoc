@@ -1,9 +1,11 @@
 mod model;
 mod ui;
 
-use gtk::{gdk::Display, glib::clone, prelude::*, *};
+use gtk::{gdk::Display, glib::*, prelude::*, *};
 
 const APP_ID: &str = "org.zakariya.MimeAssoc";
+const APP_VERSION: &str = "0.0.1";
+const APP_ICON: &str = "org.zakariya.MimeAssoc";
 
 fn main() -> glib::ExitCode {
     // Register and include resources
