@@ -449,7 +449,7 @@ impl MimeAssociationStore {
 
         let mut orphaned_ids = vec![];
         for desktop_entry_id in scope.default_applications.values() {
-            if let Some(desktop_entry) = desktop_entry_store.get_desktop_entry(&desktop_entry_id) {
+            if let Some(desktop_entry) = desktop_entry_store.get_desktop_entry(desktop_entry_id) {
                 if !desktop_entry.appears_valid_application() {
                     orphaned_ids.push(desktop_entry_id.clone());
                 }

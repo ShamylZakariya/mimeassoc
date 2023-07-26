@@ -76,7 +76,11 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "G_MESSAGES_DEBUG": "MimeAssoc", // space separated list of log domains
+                "G_MESSAGES_PREFIXED": "error warning critical message info debug",
+            }
         },
         {
             "type": "lldb",

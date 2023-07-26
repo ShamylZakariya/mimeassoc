@@ -7,8 +7,8 @@ use glib::subclass::*;
 use gtk::{glib::*, *};
 use mimeassoc::*;
 
+use crate::model::*;
 use crate::ui::MimeTypeEntryListRow;
-use crate::{model::*, *};
 
 /// Simpole enum to represent the "dirtyness" of the UI state.
 /// It could be a boolean, but there may be room for other states,
@@ -157,7 +157,7 @@ impl MainWindow {
     }
 
     fn setup_models(&self) {
-        println!("MainWindow::setup_models");
+        g_debug!(crate::common::APP_LOG_DOMAIN, "MainWindow::setup_models");
 
         // Create models
         match MimeAssocStores::new() {
@@ -242,7 +242,10 @@ impl MainWindow {
     }
 
     fn setup_mime_types_pane(&self) {
-        println!("MainWindow::setup_mime_types_pane");
+        g_debug!(
+            crate::common::APP_LOG_DOMAIN,
+            "MainWindow::setup_mime_types_pane",
+        );
         let stores = self.stores();
         let factory = SignalListItemFactory::new();
         factory.connect_setup(clone!(@weak self as window => move |_, list_item| {
@@ -296,7 +299,10 @@ impl MainWindow {
     }
 
     fn setup_applications_pane(&self) {
-        println!("MainWindow::setup_applications_pane");
+        g_debug!(
+            crate::common::APP_LOG_DOMAIN,
+            "MainWindow::setup_applications_pane",
+        );
         let application_list_box = &self.imp().application_list_box;
 
         self.bind_applications_pane_model();
@@ -340,9 +346,10 @@ impl MainWindow {
     }
 
     fn show_application_mime_type_assignment(&self, application_entry: &ApplicationEntry) {
-        println!(
+        g_debug!(
+            crate::common::APP_LOG_DOMAIN,
             "MainWindow::show_application_mime_type_assignment application_entry: {}",
-            application_entry.id()
+            application_entry.id(),
         );
         let model = NoSelection::new(Some(application_entry.mime_type_assignments()));
         self.imp().application_mime_type_assignment_list_box.bind_model(Some(&model),
@@ -394,7 +401,7 @@ impl MainWindow {
     }
 
     fn setup_actions(&self) {
-        println!("MainWindow::setup_actions");
+        g_debug!(crate::common::APP_LOG_DOMAIN, "MainWindow::setup_actions");
 
         let action_show_mime_types = gtk::gio::SimpleAction::new("show-mime-types", None);
         action_show_mime_types.connect_activate(clone!(@weak self as window => move |_, _|{
@@ -440,9 +447,11 @@ impl MainWindow {
         desktop_entry_id: &DesktopEntryId,
         mime_type: &MimeType,
     ) {
-        println!(
+        g_debug!(
+            crate::common::APP_LOG_DOMAIN,
             "MainWindow::assign_application_to_mimetype application: {} mime_type: {}",
-            desktop_entry_id, mime_type
+            desktop_entry_id,
+            mime_type,
         );
 
         if let Err(e) = self
@@ -459,7 +468,10 @@ impl MainWindow {
 
     /// Show user a dialog asking if they want to reset application assignments.
     fn query_reset_user_default_application_assignments(&self) {
-        println!("MainWindow::reset_user_default_application_assignments");
+        g_debug!(
+            crate::common::APP_LOG_DOMAIN,
+            "MainWindow::reset_user_default_application_assignments",
+        );
 
         let cancel_response = "cancel";
         let reset_response = "reset";
@@ -500,7 +512,10 @@ impl MainWindow {
 
     /// Show user a dialog asking if they want to clear orphaned application assignments.
     fn query_prune_orphaned_application_assignments(&self) {
-        println!("MainWindow::query_prune_orphaned_application_assignments");
+        g_debug!(
+            crate::common::APP_LOG_DOMAIN,
+            "MainWindow::query_prune_orphaned_application_assignments",
+        );
 
         let cancel_response = "cancel";
         let clear_response = "clear";
@@ -541,11 +556,17 @@ impl MainWindow {
         let page_selection_model = self.imp().stack.pages();
         match page {
             MainWindowPage::MimeTypes => {
-                println!("MainWindow::show_page - MimeTypes");
+                g_debug!(
+                    crate::common::APP_LOG_DOMAIN,
+                    "MainWindow::show_page - MimeTypes",
+                );
                 page_selection_model.select_item(0, true);
             }
             MainWindowPage::Applications => {
-                println!("MainWindow::show_page - Applications");
+                g_debug!(
+                    crate::common::APP_LOG_DOMAIN,
+                    "MainWindow::show_page - Applications",
+                );
                 page_selection_model.select_item(1, true);
             }
         }
@@ -556,9 +577,9 @@ impl MainWindow {
         let about = adw::AboutWindow::builder()
             .transient_for(self)
             .application_name("MimeAssoc")
-            .application_icon(APP_ICON)
+            .application_icon(crate::common::APP_ICON)
             .developer_name("Shamyl Zakariya")
-            .version(APP_VERSION)
+            .version(crate::common::APP_VERSION)
             .issue_url("https://github.com/ShamylZakariya/mimeassoc/issues")
             .copyright("© 2023 Shamyl Zakariya")
             .license_type(gtk::License::MitX11)
@@ -599,13 +620,20 @@ impl MainWindow {
     }
 
     fn show_toast(&self, message: &str) {
-        println!("MainWindow::show_toast: {}", message);
+        g_debug!(
+            crate::common::APP_LOG_DOMAIN,
+            "MainWindow::show_toast: {}",
+            message,
+        );
     }
 
     fn show_error(&self, title: &str, message: &str, error: &anyhow::Error) {
-        eprintln!(
+        g_critical!(
+            crate::common::APP_LOG_DOMAIN,
             "MainWindow::show_error title: {}, message: {} error: {:?}",
-            title, message, error
+            title,
+            message,
+            error
         );
     }
 
@@ -627,12 +655,18 @@ impl MainWindow {
     }
 
     fn mark_changes_were_made_to_stores(&self) {
-        println!("MainWindow::mark_changes_were_made_to_stores");
+        g_debug!(
+            crate::common::APP_LOG_DOMAIN,
+            "MainWindow::mark_changes_were_made_to_stores",
+        );
         self.set_dirty_state(DirtyState::ChangesStaged);
     }
 
     fn reload_mime_associations(&self) {
-        println!("MainWindow::reload_mime_associations");
+        g_debug!(
+            crate::common::APP_LOG_DOMAIN,
+            "MainWindow::reload_mime_associations",
+        );
 
         let stores = self.stores();
         if let Err(e) = stores.borrow_mut().reload_mime_associations() {
@@ -644,7 +678,10 @@ impl MainWindow {
     }
 
     fn reset_user_default_application_assignments(&self) {
-        println!("MainWindow::reset_user_default_application_assignments");
+        g_debug!(
+            crate::common::APP_LOG_DOMAIN,
+            "MainWindow::reset_user_default_application_assignments",
+        );
 
         if let Err(e) = self
             .stores()
@@ -666,7 +703,10 @@ impl MainWindow {
     }
 
     fn prune_orphaned_application_assignments(&self) {
-        println!("MainWindow::clear_orphaned_application_assignments - unimplemented...");
+        g_debug!(
+            crate::common::APP_LOG_DOMAIN,
+            "MainWindow::clear_orphaned_application_assignments - unimplemented...",
+        );
 
         if let Err(e) = self
             .stores()
@@ -688,7 +728,7 @@ impl MainWindow {
     }
 
     fn commit_changes(&self) {
-        println!("MainWindow::save_changes");
+        g_debug!(crate::common::APP_LOG_DOMAIN, "MainWindow::save_changes");
         if let Err(e) = self.stores().borrow_mut().save() {
             self.show_error("Oh no", "Unable to save changes", &e);
         } else {

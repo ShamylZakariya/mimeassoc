@@ -1,13 +1,12 @@
+mod common;
 mod model;
 mod ui;
 
 use gtk::{gdk::Display, glib::*, prelude::*, *};
 
-const APP_ID: &str = "org.zakariya.MimeAssoc";
-const APP_VERSION: &str = "0.0.1";
-const APP_ICON: &str = "org.zakariya.MimeAssoc";
-
 fn main() -> glib::ExitCode {
+    use crate::common::*;
+
     // Register and include resources
     gio::resources_register_include!("mimeassoc.gresource").expect("Failed to register resources.");
 
@@ -23,7 +22,7 @@ fn main() -> glib::ExitCode {
 }
 
 fn load_css() {
-    println!("main::load_css");
+    g_debug!(crate::common::APP_LOG_DOMAIN, "main::load_css");
 
     let provider = CssProvider::new();
     provider.load_from_resource("/org/zakariya/MimeAssoc/style.css");
@@ -36,7 +35,7 @@ fn load_css() {
 }
 
 fn setup_shortcuts(app: &adw::Application) {
-    println!("main::setup_shortcuts");
+    g_debug!(crate::common::APP_LOG_DOMAIN, "main::setup_shortcuts");
 
     // I presume `app` has an `app.quit` but I couldn't find documentation for it, so make our own
     let action_close = gio::SimpleAction::new("quit", None);
@@ -53,7 +52,7 @@ fn setup_shortcuts(app: &adw::Application) {
 }
 
 fn build_ui(app: &adw::Application) {
-    println!("main::build_ui");
+    g_debug!(crate::common::APP_LOG_DOMAIN, "main::build_ui");
 
     let window = ui::MainWindow::new(app);
     //window.show_page(ui::MainWindowPage::Applications);

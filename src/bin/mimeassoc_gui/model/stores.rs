@@ -27,7 +27,7 @@ impl MimeAssocStores {
         desktop_entry_id: &DesktopEntryId,
         mime_type: &MimeType,
     ) -> anyhow::Result<()> {
-        let Some(desktop_entry) = self.desktop_entry_store.get_desktop_entry(&desktop_entry_id) else {
+        let Some(desktop_entry) = self.desktop_entry_store.get_desktop_entry(desktop_entry_id) else {
             anyhow::bail!("Unrecognized desktop entry id")
         };
 

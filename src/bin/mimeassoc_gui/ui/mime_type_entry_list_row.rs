@@ -22,7 +22,7 @@ mod imp {
     #[template(resource = "/org/zakariya/MimeAssoc/mime_type_entry_list_row.ui")]
     pub struct MimeTypeEntryListRow {
         pub on_selection_changed:
-            RefCell<Option<std::boxed::Box<dyn Fn(&DesktopEntryId, &MimeType) -> ()>>>,
+            RefCell<Option<std::boxed::Box<dyn Fn(&DesktopEntryId, &MimeType)>>>,
         pub combobox_changed_handler_id: RefCell<Option<SignalHandlerId>>,
 
         // UI Bindings
@@ -90,9 +90,7 @@ impl Default for MimeTypeEntryListRow {
 }
 
 impl MimeTypeEntryListRow {
-    pub fn new(
-        on_application_selected: impl Fn(&DesktopEntryId, &MimeType) -> () + 'static,
-    ) -> Self {
+    pub fn new(on_application_selected: impl Fn(&DesktopEntryId, &MimeType) + 'static) -> Self {
         let obj: MimeTypeEntryListRow = Object::builder().build();
         obj.imp()
             .on_selection_changed
@@ -192,14 +190,10 @@ impl MimeTypeEntryListRow {
             }
             1 => {
                 // if only one application can handle the mimetype, and that application
-                // is already assigned disable the combobox
+                // is already assigned; disable the combobox
                 let enabled: bool = if let Some(active_id) = applications_combobox.active_id() {
                     let active_id = active_id.to_string();
-                    if Some(active_id) == assigned_id {
-                        false
-                    } else {
-                        true
-                    }
+                    Some(active_id) != assigned_id
                 } else {
                     true
                 };
