@@ -11,6 +11,16 @@
         <attribute name="action">win.show-applications</attribute>
       </item>
       <item>
+        <attribute name="label" translatable="yes">Undo</attribute>
+        <attribute name="action">win.undo</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Discard Uncommitted Changes</attribute>
+        <attribute name="action">win.discard-uncommitted-changes</attribute>
+      </item>
+      <item>
         <attribute name="label" translatable="yes">_Reset User Default Application Assignments</attribute>
         <attribute name="action">win.reset-user-default-applications</attribute>
       </item>
@@ -49,31 +59,11 @@
           </object>
         </property>
         <child type="start">
-          <object class="GtkButton" id="save_button">
+          <object class="GtkButton" id="commit_button">
             <property name="label">Commit</property>
             <style>
               <class name="suggested-action" />
             </style>
-          </object>
-        </child>
-        <child type="start">
-          <object class="GtkButton" id="reset_button">
-            <property name="child">
-              <object class="GtkBox">
-                <property name="spacing">6
-                </property>
-                <child>
-                  <object class="GtkImage">
-                    <property name="icon-name">edit-undo-symbolic</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="label">Reset</property>
-                  </object>
-                </child>
-              </object>
-            </property>
           </object>
         </child>
         <child type="end">

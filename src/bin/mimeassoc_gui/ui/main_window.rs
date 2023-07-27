@@ -36,13 +36,11 @@ mod imp {
         pub mime_type_entries: RefCell<Option<gio::ListStore>>,
         pub application_entries: RefCell<Option<gio::ListStore>>,
         pub dirty: RefCell<DirtyState>,
+        pub undo_action: OnceCell<gtk::gio::SimpleAction>,
 
         // UI bindings
         #[template_child]
-        pub save_button: TemplateChild<Button>,
-
-        #[template_child]
-        pub reset_button: TemplateChild<Button>,
+        pub commit_button: TemplateChild<Button>,
 
         #[template_child]
         pub stack: TemplateChild<ViewStack>,
@@ -98,10 +96,8 @@ mod imp {
             // Setup
             let obj = self.obj();
             obj.setup_models();
-            obj.setup_ui();
-
-            // finally
             obj.setup_actions();
+            obj.setup_ui();
         }
     }
 
@@ -225,15 +221,9 @@ impl MainWindow {
 
     fn setup_ui(&self) {
         self.imp()
-            .save_button
+            .commit_button
             .connect_clicked(clone!(@weak self as window => move |_|{
                 window.commit_changes();
-            }));
-
-        self.imp()
-            .reset_button
-            .connect_clicked(clone!(@weak self as window => move |_|{
-                window.reload_mime_associations();
             }));
 
         self.setup_mime_types_pane();
@@ -437,6 +427,25 @@ impl MainWindow {
         about_action
             .connect_activate(clone!(@weak self as window => move |_, _| { window.show_about(); }));
         self.add_action(&about_action);
+
+        let discard_uncommited_changes_action =
+            gtk::gio::SimpleAction::new("discard-uncommitted-changes", None);
+        discard_uncommited_changes_action.connect_activate(
+            clone!(@weak self as window => move |_, _| {
+                window.discard_uncommitted_changes();
+            }),
+        );
+        self.add_action(&discard_uncommited_changes_action);
+
+        let undo_action = gtk::gio::SimpleAction::new("undo", None);
+        undo_action.connect_activate(clone!(@weak self as window => move |_, _| {
+            window.undo();
+        }));
+        self.add_action(&undo_action);
+        self.imp()
+            .undo_action
+            .set(undo_action)
+            .expect("MainWindow::setup_actions must only be executed once");
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -642,14 +651,18 @@ impl MainWindow {
     fn set_dirty_state(&self, dirty_state: DirtyState) {
         self.imp().dirty.replace(dirty_state);
 
-        // I know: dirty_state could be a bool, and the tuple unwrapping could also be a
-        // single bool, but I'm leaving it this way until I'm confident of the UX.
-        let (reset_button_visible, save_button_visible) = match dirty_state {
+        let (commit_button_visible, enable_undo_action) = match dirty_state {
             DirtyState::Clean => (false, false),
             DirtyState::ChangesStaged => (true, true),
         };
-        self.imp().reset_button.set_visible(reset_button_visible);
-        self.imp().save_button.set_visible(save_button_visible);
+
+        self.imp().commit_button.set_visible(commit_button_visible);
+
+        self.imp()
+            .undo_action
+            .get()
+            .expect("Expect MainWindow::setup_actions to have run already")
+            .set_enabled(enable_undo_action);
     }
 
     fn mark_changes_were_made_to_stores(&self) {
@@ -660,19 +673,23 @@ impl MainWindow {
         self.set_dirty_state(DirtyState::ChangesStaged);
     }
 
-    fn reload_mime_associations(&self) {
+    fn discard_uncommitted_changes(&self) {
         g_debug!(
             crate::common::APP_LOG_DOMAIN,
-            "MainWindow::reload_mime_associations",
+            "MainWindow::discard_uncommitted_changes",
         );
 
         let stores = self.stores();
-        if let Err(e) = stores.borrow_mut().reload_mime_associations() {
+        if let Err(e) = stores.borrow_mut().discard_uncommitted_changes() {
             self.show_error("Error", "Unable to reload mime associations", &e);
         }
 
         self.set_dirty_state(DirtyState::Clean);
         self.reload_active_page();
+    }
+
+    fn undo(&self) {
+        g_debug!(crate::common::APP_LOG_DOMAIN, "MainWindow::undo",);
     }
 
     fn reset_user_default_application_assignments(&self) {

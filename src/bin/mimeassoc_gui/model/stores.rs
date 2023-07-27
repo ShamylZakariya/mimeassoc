@@ -35,7 +35,7 @@ impl MimeAssocStores {
             .set_default_handler_for_mime_type(mime_type, desktop_entry)
     }
 
-    pub fn reload_mime_associations(&mut self) -> anyhow::Result<()> {
+    pub fn discard_uncommitted_changes(&mut self) -> anyhow::Result<()> {
         self.mime_associations_store.reload()
     }
 
