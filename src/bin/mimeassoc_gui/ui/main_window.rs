@@ -644,14 +644,12 @@ impl MainWindow {
 
         // I know: dirty_state could be a bool, and the tuple unwrapping could also be a
         // single bool, but I'm leaving it this way until I'm confident of the UX.
-        let (reset_button_sensitive, save_button_sensitive) = match dirty_state {
+        let (reset_button_visible, save_button_visible) = match dirty_state {
             DirtyState::Clean => (false, false),
             DirtyState::ChangesStaged => (true, true),
         };
-        self.imp()
-            .reset_button
-            .set_sensitive(reset_button_sensitive);
-        self.imp().save_button.set_sensitive(save_button_sensitive);
+        self.imp().reset_button.set_visible(reset_button_visible);
+        self.imp().save_button.set_visible(save_button_visible);
     }
 
     fn mark_changes_were_made_to_stores(&self) {

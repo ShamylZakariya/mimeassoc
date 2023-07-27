@@ -49,13 +49,31 @@
           </object>
         </property>
         <child type="start">
-          <object class="GtkButton" id="reset_button">
-            <property name="label">Reset</property>
+          <object class="GtkButton" id="save_button">
+            <property name="label">Commit</property>
+            <style>
+              <class name="suggested-action" />
+            </style>
           </object>
         </child>
         <child type="start">
-          <object class="GtkButton" id="save_button">
-            <property name="label">Save</property>
+          <object class="GtkButton" id="reset_button">
+            <property name="child">
+              <object class="GtkBox">
+                <property name="spacing">6
+                </property>
+                <child>
+                  <object class="GtkImage">
+                    <property name="icon-name">edit-undo-symbolic</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel">
+                    <property name="label">Reset</property>
+                  </object>
+                </child>
+              </object>
+            </property>
           </object>
         </child>
         <child type="end">
