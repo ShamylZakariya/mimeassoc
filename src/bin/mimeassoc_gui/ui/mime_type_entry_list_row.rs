@@ -98,7 +98,7 @@ impl MimeTypeEntryListRow {
         obj
     }
 
-    pub fn bind(&self, mime_type_entry: &MimeTypeEntry, stores: Rc<RefCell<MimeAssocStores>>) {
+    pub fn bind(&self, mime_type_entry: &MimeTypeEntry, stores: Rc<RefCell<Stores>>) {
         self.set_spacing(12);
 
         self.bind_labels(mime_type_entry, stores.clone());
@@ -114,7 +114,7 @@ impl MimeTypeEntryListRow {
         }
     }
 
-    fn bind_labels(&self, mime_type_entry: &MimeTypeEntry, stores: Rc<RefCell<MimeAssocStores>>) {
+    fn bind_labels(&self, mime_type_entry: &MimeTypeEntry, stores: Rc<RefCell<Stores>>) {
         let mime_type = &mime_type_entry.mime_type();
         let content_label = self.imp().content_label.get();
         content_label.set_text(&mime_type.to_string());
@@ -147,7 +147,7 @@ impl MimeTypeEntryListRow {
     fn bind_default_handler_combobox(
         &self,
         mime_type_entry: &MimeTypeEntry,
-        stores: Rc<RefCell<MimeAssocStores>>,
+        stores: Rc<RefCell<Stores>>,
     ) {
         let applications_combobox = self.imp().applications_combo_box.get();
         let mime_type = &mime_type_entry.mime_type();

@@ -10,21 +10,6 @@ use mimeassoc::*;
 use crate::model::*;
 use crate::ui::MimeTypeEntryListRow;
 
-/// Simpole enum to represent the "dirtyness" of the UI state.
-/// It could be a boolean, but there may be room for other states,
-/// and besides, this is more clear.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum DirtyState {
-    Clean,
-    ChangesStaged,
-}
-
-impl Default for DirtyState {
-    fn default() -> Self {
-        Self::Clean
-    }
-}
-
 mod imp {
     use super::*;
 
@@ -32,10 +17,9 @@ mod imp {
     #[template(resource = "/org/zakariya/MimeAssoc/main_window.ui")]
     pub struct MainWindow {
         // Models
-        pub stores: OnceCell<Rc<RefCell<MimeAssocStores>>>,
+        pub stores: OnceCell<Rc<RefCell<Stores>>>,
         pub mime_type_entries: RefCell<Option<gio::ListStore>>,
         pub application_entries: RefCell<Option<gio::ListStore>>,
-        pub dirty: RefCell<DirtyState>,
         pub undo_action: OnceCell<gtk::gio::SimpleAction>,
 
         // UI bindings
@@ -128,7 +112,7 @@ impl MainWindow {
         Object::builder().property("application", app).build()
     }
 
-    fn stores(&self) -> Rc<RefCell<MimeAssocStores>> {
+    fn stores(&self) -> Rc<RefCell<Stores>> {
         self.imp()
             .stores
             .get()
@@ -156,7 +140,7 @@ impl MainWindow {
         g_debug!(crate::common::APP_LOG_DOMAIN, "MainWindow::setup_models");
 
         // Create models
-        match MimeAssocStores::new() {
+        match Stores::new() {
             Ok(stores) => {
                 self.imp()
                     .stores
@@ -228,7 +212,7 @@ impl MainWindow {
 
         self.setup_mime_types_pane();
         self.setup_applications_pane();
-        self.set_dirty_state(DirtyState::Clean);
+        self.store_dirty_state_changed();
     }
 
     fn setup_mime_types_pane(&self) {
@@ -469,10 +453,11 @@ impl MainWindow {
             .assign_application_to_mimetype(desktop_entry_id, mime_type)
         {
             self.show_error("Error", "Unable to assign application to mimetype", &e);
-        } else {
-            // Assignment was successful, mark changes were made
-            self.mark_changes_were_made_to_stores();
+            return;
         }
+
+        // Assignment was successful, mark changes were made
+        self.store_dirty_state_changed();
     }
 
     /// Show user a dialog asking if they want to reset application assignments.
@@ -648,29 +633,21 @@ impl MainWindow {
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    fn set_dirty_state(&self, dirty_state: DirtyState) {
-        self.imp().dirty.replace(dirty_state);
+    fn store_dirty_state_changed(&self) {
+        let is_dirty = self.stores().borrow().is_dirty();
 
-        let (commit_button_visible, enable_undo_action) = match dirty_state {
-            DirtyState::Clean => (false, false),
-            DirtyState::ChangesStaged => (true, true),
-        };
+        g_debug!(
+            crate::common::APP_LOG_DOMAIN,
+            "MainWindow::store_dirty_state_changed is_dirty: {}",
+            is_dirty,
+        );
 
-        self.imp().commit_button.set_visible(commit_button_visible);
-
+        self.imp().commit_button.set_visible(is_dirty);
         self.imp()
             .undo_action
             .get()
             .expect("Expect MainWindow::setup_actions to have run already")
-            .set_enabled(enable_undo_action);
-    }
-
-    fn mark_changes_were_made_to_stores(&self) {
-        g_debug!(
-            crate::common::APP_LOG_DOMAIN,
-            "MainWindow::mark_changes_were_made_to_stores",
-        );
-        self.set_dirty_state(DirtyState::ChangesStaged);
+            .set_enabled(is_dirty);
     }
 
     fn discard_uncommitted_changes(&self) {
@@ -684,12 +661,24 @@ impl MainWindow {
             self.show_error("Error", "Unable to reload mime associations", &e);
         }
 
-        self.set_dirty_state(DirtyState::Clean);
+        self.store_dirty_state_changed();
         self.reload_active_page();
     }
 
     fn undo(&self) {
         g_debug!(crate::common::APP_LOG_DOMAIN, "MainWindow::undo",);
+
+        let stores = self.stores();
+        let mut stores = stores.borrow_mut();
+        let result = stores.undo();
+        drop(stores);
+
+        self.store_dirty_state_changed();
+        if let Err(e) = result {
+            self.show_error("Oh bother!", "Unable to perform undo", &e);
+        } else {
+            self.reload_active_page();
+        }
     }
 
     fn reset_user_default_application_assignments(&self) {
@@ -748,7 +737,7 @@ impl MainWindow {
             self.show_error("Oh no", "Unable to save changes", &e);
         } else {
             self.show_toast("Committed changes successfully");
-            self.set_dirty_state(DirtyState::Clean);
         }
+        self.store_dirty_state_changed();
     }
 }

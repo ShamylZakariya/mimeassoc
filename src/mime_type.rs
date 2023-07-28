@@ -170,6 +170,18 @@ impl MimeAssociationScope {
         Ok(())
     }
 
+    /// Returns true if this MimeAssociationScope differs from the version on disk it was loaded from
+    /// This is similar to the `is_dirty` but different. `is_dirty` is set when mutations have been made,
+    /// but will not account for a series of transformations which result in the original state.
+    fn differs_from_file_representation(&self) -> bool {
+        if let Ok(file_representation) = Self::load(&self.file_path) {
+            self.default_applications != file_representation.default_applications
+                || self.added_associations != file_representation.added_associations
+        } else {
+            true
+        }
+    }
+
     /// Persist changes to this MimeAsociationScope.
     fn save(&mut self) -> anyhow::Result<()> {
         if !self.is_user_customizable {
@@ -531,6 +543,16 @@ impl MimeAssociationStore {
         Ok(())
     }
 
+    /// Returns true if any user customizable scope is dirty
+    pub fn is_dirty(&self) -> bool {
+        for scope in self.scopes.iter() {
+            if scope.is_user_customizable && scope.is_dirty {
+                return scope.differs_from_file_representation();
+            }
+        }
+        false
+    }
+
     /// Commit changes to user customizable scopes. This will write to the user's `mimeapps.list` file.
     pub fn save(&mut self) -> anyhow::Result<()> {
         for scope in self.scopes.iter_mut() {
@@ -836,6 +858,40 @@ mod tests {
         // post state: no default applications and scope is dirty
         assert!(associations.scopes[0].default_applications.is_empty());
         assert!(associations.scopes[0].is_dirty);
+
+        Ok(())
+    }
+
+    #[test]
+    fn is_dirty_works() -> anyhow::Result<()> {
+        let mut associations = MimeAssociationStore::load(&[
+            test_user_mimeapps_list(),
+            test_gnome_mimeapps_list(),
+            test_sys_mimeapps_list(),
+        ])?;
+
+        let desktop_entry_store =
+            DesktopEntryStore::load(&[test_user_applications(), test_sys_applications()])?;
+
+        // we need to make first scope user writable for testing
+        associations.scopes[0].is_user_customizable = true;
+
+        let image_bmp = MimeType::parse("image/bmp")?;
+        let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
+
+        assert_eq!(
+            associations.assigned_application_for(&image_bmp),
+            Some(&photopea_id)
+        );
+
+        associations.remove_assigned_applications_for(&image_bmp)?;
+
+        assert!(associations.is_dirty());
+
+        let photopea = desktop_entry_store.get_desktop_entry(&photopea_id).unwrap();
+        associations.set_default_handler_for_mime_type(&image_bmp, &photopea);
+
+        assert!(!associations.is_dirty());
 
         Ok(())
     }

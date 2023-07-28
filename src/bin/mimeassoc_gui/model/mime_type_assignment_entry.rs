@@ -16,7 +16,7 @@ mod imp {
     #[derive(Properties, Default)]
     #[properties(wrapper_type = super::MimeTypeAssignmentEntry)]
     pub struct MimeTypeAssignmentEntry {
-        pub stores: OnceCell<Rc<RefCell<MimeAssocStores>>>,
+        pub stores: OnceCell<Rc<RefCell<Stores>>>,
 
         #[property(get, set)]
         pub id: RefCell<String>,
@@ -76,11 +76,7 @@ glib::wrapper! {
 }
 
 impl MimeTypeAssignmentEntry {
-    pub fn new(
-        mime_type: &MimeType,
-        is_handled: bool,
-        stores: Rc<RefCell<MimeAssocStores>>,
-    ) -> Self {
+    pub fn new(mime_type: &MimeType, is_handled: bool, stores: Rc<RefCell<Stores>>) -> Self {
         let entry: MimeTypeAssignmentEntry = Object::builder()
             .property("id", mime_type.to_string())
             .property("assigned", is_handled)
@@ -95,7 +91,7 @@ impl MimeTypeAssignmentEntry {
         MimeType::parse(&mime_type_string).unwrap()
     }
 
-    fn _stores(&self) -> Rc<RefCell<stores::MimeAssocStores>> {
+    fn _stores(&self) -> Rc<RefCell<stores::Stores>> {
         self.imp()
             .stores
             .get()

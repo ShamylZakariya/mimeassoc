@@ -21,7 +21,7 @@ mod imp {
     #[derive(Properties, Default)]
     #[properties(wrapper_type = super::ApplicationEntry)]
     pub struct ApplicationEntry {
-        pub stores: OnceCell<Rc<RefCell<MimeAssocStores>>>,
+        pub stores: OnceCell<Rc<RefCell<Stores>>>,
 
         #[property(get, set)]
         pub id: RefCell<String>,
@@ -59,7 +59,7 @@ glib::wrapper! {
 }
 
 impl ApplicationEntry {
-    pub fn new(desktop_entry_id: &DesktopEntryId, stores: Rc<RefCell<MimeAssocStores>>) -> Self {
+    pub fn new(desktop_entry_id: &DesktopEntryId, stores: Rc<RefCell<Stores>>) -> Self {
         let entry: ApplicationEntry = Object::builder()
             .property("id", desktop_entry_id.to_string())
             .build();
@@ -105,7 +105,7 @@ impl ApplicationEntry {
         store
     }
 
-    fn stores(&self) -> Rc<RefCell<MimeAssocStores>> {
+    fn stores(&self) -> Rc<RefCell<Stores>> {
         self.imp()
             .stores
             .get()
