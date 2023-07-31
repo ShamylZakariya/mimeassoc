@@ -58,7 +58,7 @@ impl Commands {
         &self,
         mime_associations_store: &mut MimeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
-        mime_info_store: &MimeTypeInfoStore,
+        mime_info_store: &MimeInfoStore,
     ) -> CommandOutput {
         match self {
             Commands::MimeTypes => Self::get_mime_types(mime_associations_store, mime_info_store),
@@ -104,7 +104,7 @@ impl Commands {
 
     fn get_mime_types(
         mime_associations_store: &MimeAssociationStore,
-        mime_info_store: &MimeTypeInfoStore,
+        mime_info_store: &MimeInfoStore,
     ) -> CommandOutput {
         let mut mime_types = mime_associations_store.mime_types();
         mime_types.sort();
@@ -123,7 +123,7 @@ impl Commands {
     fn get_mime_type(
         mime_associations_store: &MimeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
-        mime_info_store: &MimeTypeInfoStore,
+        mime_info_store: &MimeInfoStore,
         id: Option<&str>,
     ) -> CommandOutput {
         let Some(id) = id else {
@@ -152,7 +152,7 @@ impl Commands {
     fn get_single_mime_type(
         mime_associations_store: &MimeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
-        mime_info_store: &MimeTypeInfoStore,
+        mime_info_store: &MimeInfoStore,
         mime_type: &MimeType,
     ) -> MimeTypeCommandOutput {
         let desktop_entries = desktop_entry_store.get_desktop_entries_for_mimetype(mime_type);

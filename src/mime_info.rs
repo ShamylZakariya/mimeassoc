@@ -68,7 +68,7 @@ impl MimeTypeInfo {
     }
 }
 
-pub struct MimeTypeInfoStore {
+pub struct MimeInfoStore {
     mime_types: HashMap<MimeType, MimeTypeInfo>,
 
     /// map of aliases to mime types stored in Self::mime_types. For example,
@@ -77,7 +77,7 @@ pub struct MimeTypeInfoStore {
     aliases: HashMap<MimeType, MimeType>,
 }
 
-impl MimeTypeInfoStore {
+impl MimeInfoStore {
     pub fn load<P: AsRef<Path>>(mime_info_xml_paths: &[P]) -> anyhow::Result<Self> {
         let mut store = Self {
             mime_types: HashMap::new(),
@@ -262,7 +262,7 @@ mod tests {
     fn loads_and_contains_expected_data<P: AsRef<Path>>(
         freedesktop_org_xml_path: P,
     ) -> anyhow::Result<()> {
-        let store = MimeTypeInfoStore::load(&[freedesktop_org_xml_path])?;
+        let store = MimeInfoStore::load(&[freedesktop_org_xml_path])?;
 
         // look up atari 7800 ROM mime type
         let atari_7800_mime_type = MimeType::parse("application/x-atari-7800-rom")?;
@@ -326,7 +326,7 @@ mod tests {
     #[test]
     fn merges_multiple_sources() -> anyhow::Result<()> {
         let sources = vec![tiny_freedesktop_org_xml_path(), code_workspace_xml_path()];
-        let store = MimeTypeInfoStore::load(&sources)?;
+        let store = MimeInfoStore::load(&sources)?;
 
         let mobi_mime_type = MimeType::parse("application/vnd.amazon.mobi8-ebook")?;
         let code_workspace_mime_type = MimeType::parse("application/x-code-workspace")?;

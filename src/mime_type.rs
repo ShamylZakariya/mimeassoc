@@ -1,3 +1,4 @@
+use anyhow::bail;
 use serde::Serialize;
 use std::{
     collections::{HashMap, HashSet},
@@ -88,7 +89,7 @@ impl MimeAssociationsSections {
     }
 }
 
-#[derive(Default, PartialEq, Eq)]
+#[derive(Default, PartialEq, Eq, Clone)]
 pub struct MimeAssociationScope {
     file_path: PathBuf,
     is_user_customizable: bool,
@@ -343,7 +344,7 @@ impl MimeAssociationStore {
     /// TODO: Sanitize this - this is brittle. Having the user scope be zero
     /// is fine, as a convention, but easily misconfigured.
     #[allow(dead_code)]
-    fn get_user_scope(&self) -> Option<&MimeAssociationScope> {
+    pub fn get_user_scope(&self) -> Option<&MimeAssociationScope> {
         if let Some(scope) = self.scopes.get(0) {
             if scope.is_user_customizable {
                 return Some(scope);
@@ -356,13 +357,30 @@ impl MimeAssociationStore {
     /// loaded from the user directory.
     /// TODO: Sanitize this - this is brittle. Having the user scope be zero
     /// is fine, as a convention, but easily misconfigured.
-    fn get_user_scope_mut(&mut self) -> Option<&mut MimeAssociationScope> {
+    pub fn get_user_scope_mut(&mut self) -> Option<&mut MimeAssociationScope> {
         if let Some(scope) = self.scopes.get_mut(0) {
             if scope.is_user_customizable {
                 return Some(scope);
             }
         }
         None
+    }
+
+    /// Overwrite the user scope with the contents of the provided MimeAssociationScope, returning
+    /// an error if this store has no user scope.
+    pub fn overwrite_user_scope(
+        &mut self,
+        new_user_scope: &MimeAssociationScope,
+    ) -> anyhow::Result<()> {
+        if let Some(scope) = self.scopes.get_mut(0) {
+            if scope.is_user_customizable {
+                scope.added_associations = new_user_scope.added_associations.clone();
+                scope.default_applications = new_user_scope.default_applications.clone();
+
+                return Ok(());
+            }
+        }
+        bail!("No user customizable user scope to overwrite")
     }
 
     /// Return all mimetypes represented, in no particular order.
@@ -547,7 +565,7 @@ impl MimeAssociationStore {
     pub fn is_dirty(&self) -> bool {
         for scope in self.scopes.iter() {
             if scope.is_user_customizable && scope.is_dirty {
-                return scope.differs_from_file_representation();
+                return true;
             }
         }
         false
@@ -889,7 +907,7 @@ mod tests {
         assert!(associations.is_dirty());
 
         let photopea = desktop_entry_store.get_desktop_entry(&photopea_id).unwrap();
-        associations.set_default_handler_for_mime_type(&image_bmp, &photopea);
+        associations.set_default_handler_for_mime_type(&image_bmp, &photopea)?;
 
         assert!(!associations.is_dirty());
 

@@ -78,7 +78,8 @@ impl ApplicationEntry {
     pub fn desktop_entry(&self) -> DesktopEntry {
         let id = self.desktop_entry_id();
         let stores = self.stores();
-        let desktop_entry_store = &stores.borrow().desktop_entry_store;
+        let stores = stores.borrow();
+        let desktop_entry_store = stores.desktop_entry_store();
 
         desktop_entry_store.get_desktop_entry(&id).cloned().expect(
             "Expect all ApplicationEntry instances to be backed by a valid DesktopEntry instance",
@@ -90,7 +91,8 @@ impl ApplicationEntry {
         let desktop_entry = self.desktop_entry();
         let mime_types = desktop_entry.mime_types();
         let stores = self.stores();
-        let mime_db = &stores.borrow().mime_associations_store;
+        let borrowed_stores = stores.borrow();
+        let mime_db = borrowed_stores.mime_associations_store();
         let supported_mime_types = mime_types
             .iter()
             .map(|mt| {

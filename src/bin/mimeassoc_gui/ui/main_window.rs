@@ -166,7 +166,8 @@ impl MainWindow {
     /// Populates self::mime_type_entries with the current state of self.stores()
     fn build_mime_type_entries_list_store(&self) {
         let stores = self.stores();
-        let mime_associations_store = &stores.borrow().mime_associations_store;
+        let borrowed_stores = stores.borrow();
+        let mime_associations_store = borrowed_stores.mime_associations_store();
 
         let mut all_mime_types = mime_associations_store.mime_types();
         all_mime_types.sort();
@@ -184,7 +185,8 @@ impl MainWindow {
     /// Populates self::application_entries with the current state of self.stores()
     fn build_application_entries_list_store(&self) {
         let stores = self.stores();
-        let apps = &stores.borrow().desktop_entry_store;
+        let borrowed_stores = stores.borrow();
+        let apps = borrowed_stores.desktop_entry_store();
 
         let mut all_desktop_entries = apps.desktop_entries();
         all_desktop_entries.sort_by(|a, b| {
@@ -212,7 +214,7 @@ impl MainWindow {
 
         self.setup_mime_types_pane();
         self.setup_applications_pane();
-        self.store_dirty_state_changed();
+        self.store_was_mutated();
     }
 
     fn setup_mime_types_pane(&self) {
@@ -457,7 +459,7 @@ impl MainWindow {
         }
 
         // Assignment was successful, mark changes were made
-        self.store_dirty_state_changed();
+        self.store_was_mutated();
     }
 
     /// Show user a dialog asking if they want to reset application assignments.
@@ -633,21 +635,25 @@ impl MainWindow {
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    fn store_dirty_state_changed(&self) {
-        let is_dirty = self.stores().borrow().is_dirty();
+    fn store_was_mutated(&self) {
+        let stores = self.stores();
+        let stores = stores.borrow();
+
+        let can_undo = stores.can_undo();
+        let can_save = stores.is_dirty();
 
         g_debug!(
             crate::common::APP_LOG_DOMAIN,
             "MainWindow::store_dirty_state_changed is_dirty: {}",
-            is_dirty,
+            can_undo,
         );
 
-        self.imp().commit_button.set_visible(is_dirty);
+        self.imp().commit_button.set_visible(can_save);
         self.imp()
             .undo_action
             .get()
             .expect("Expect MainWindow::setup_actions to have run already")
-            .set_enabled(is_dirty);
+            .set_enabled(can_undo);
     }
 
     fn discard_uncommitted_changes(&self) {
@@ -661,7 +667,7 @@ impl MainWindow {
             self.show_error("Error", "Unable to reload mime associations", &e);
         }
 
-        self.store_dirty_state_changed();
+        self.store_was_mutated();
         self.reload_active_page();
     }
 
@@ -673,7 +679,7 @@ impl MainWindow {
         let result = stores.undo();
         drop(stores);
 
-        self.store_dirty_state_changed();
+        self.store_was_mutated();
         if let Err(e) = result {
             self.show_error("Oh bother!", "Unable to perform undo", &e);
         } else {
@@ -738,6 +744,6 @@ impl MainWindow {
         } else {
             self.show_toast("Committed changes successfully");
         }
-        self.store_dirty_state_changed();
+        self.store_was_mutated();
     }
 }

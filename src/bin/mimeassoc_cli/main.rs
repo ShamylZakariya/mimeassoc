@@ -26,7 +26,7 @@ impl Cli {
         &self,
         mime_associations_store: &mut MimeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
-        mime_info_store: &MimeTypeInfoStore,
+        mime_info_store: &MimeInfoStore,
     ) {
         if let Some(command) = &self.command {
             let command_output = command.process(
@@ -77,7 +77,7 @@ fn main() {
         Err(e) => panic!("Unable to load DesktopEntryStore: {:?}", e),
     };
 
-    let mime_info_store = match MimeTypeInfoStore::load(&mimetype_info_paths) {
+    let mime_info_store = match MimeInfoStore::load(&mimetype_info_paths) {
         Ok(s) => s,
         Err(e) => panic!("Unable to load MimeTypeInfoStore: {:?}", e),
     };

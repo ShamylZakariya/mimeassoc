@@ -6,12 +6,21 @@ enum HistoryEntry {
         previous_desktop_entry_id: Option<DesktopEntryId>,
         new_desktop_entry_id: DesktopEntryId,
     },
+    DiscardUncommittedChanges {
+        previous_user_scope: MimeAssociationScope,
+    },
+    ResetUserDefaultApplicationAssignments {
+        previous_user_scope: MimeAssociationScope,
+    },
+    PruneOrphanedApplicationAssignments {
+        previous_user_scope: MimeAssociationScope,
+    },
 }
 
 pub struct Stores {
-    pub mime_associations_store: MimeAssociationStore,
-    pub desktop_entry_store: DesktopEntryStore,
-    pub mime_info_store: MimeTypeInfoStore,
+    mime_associations_store: MimeAssociationStore,
+    desktop_entry_store: DesktopEntryStore,
+    mime_info_store: MimeInfoStore,
 
     history: Vec<HistoryEntry>,
 }
@@ -28,9 +37,21 @@ impl Stores {
         Ok(Self {
             mime_associations_store: MimeAssociationStore::load(&mimeapps_lists_paths()?)?,
             desktop_entry_store: DesktopEntryStore::load(&desktop_entry_dirs()?)?,
-            mime_info_store: MimeTypeInfoStore::load(&mimeinfo_paths()?)?,
+            mime_info_store: MimeInfoStore::load(&mimeinfo_paths()?)?,
             history: vec![],
         })
+    }
+
+    pub fn mime_associations_store(&self) -> &MimeAssociationStore {
+        &self.mime_associations_store
+    }
+
+    pub fn desktop_entry_store(&self) -> &DesktopEntryStore {
+        &self.desktop_entry_store
+    }
+
+    pub fn mime_info_store(&self) -> &MimeInfoStore {
+        &self.mime_info_store
     }
 
     pub fn assign_application_to_mimetype(
@@ -70,38 +91,67 @@ impl Stores {
     }
 
     pub fn discard_uncommitted_changes(&mut self) -> anyhow::Result<()> {
-        self.mime_associations_store.reload()?;
+        if let Some(user_scope) = self.mime_associations_store.get_user_scope().cloned() {
+            self.history.push(HistoryEntry::DiscardUncommittedChanges {
+                previous_user_scope: user_scope,
+            });
+        }
 
-        // TODO: Push a copy of the old MimeAssociationStore's user scope into history???
-        self.history.clear();
-
-        Ok(())
+        // attempt to reload; if there's an error pop the change, which will re-assign the user scope state
+        if let Err(e) = self.mime_associations_store.reload() {
+            self.undo()?;
+            Err(e)
+        } else {
+            Ok(())
+        }
     }
 
     pub fn reset_user_default_application_assignments(&mut self) -> anyhow::Result<()> {
-        self.mime_associations_store.clear_assigned_applications()?;
+        if let Some(user_scope) = self.mime_associations_store.get_user_scope().cloned() {
+            self.history
+                .push(HistoryEntry::ResetUserDefaultApplicationAssignments {
+                    previous_user_scope: user_scope,
+                });
+        }
 
-        // TODO: Push a copy of the old MimeAssociationStore's user scope into history???
-        self.history.clear();
-
-        Ok(())
+        // attempt to clear; if there's an error pop the change, which will re-assign the user scope state
+        if let Err(e) = self.mime_associations_store.clear_assigned_applications() {
+            self.undo()?;
+            Err(e)
+        } else {
+            Ok(())
+        }
     }
 
     pub fn prune_orphaned_application_assignments(
         &mut self,
     ) -> anyhow::Result<Vec<DesktopEntryId>> {
-        let result = self
+        if let Some(user_scope) = self.mime_associations_store.get_user_scope().cloned() {
+            self.history
+                .push(HistoryEntry::PruneOrphanedApplicationAssignments {
+                    previous_user_scope: user_scope,
+                });
+        }
+
+        match self
             .mime_associations_store
-            .prune_orphaned_application_assignments(&self.desktop_entry_store)?;
-
-        // TODO: Push a copy of the old MimeAssociationStore's user scope into history???
-        self.history.clear();
-
-        Ok(result)
+            .prune_orphaned_application_assignments(&self.desktop_entry_store)
+        {
+            Ok(result) => Ok(result),
+            Err(e) => {
+                // the pruning failed; restore previous user scope
+                self.undo()?;
+                Err(e)
+            }
+        }
     }
 
     pub fn save(&mut self) -> anyhow::Result<()> {
         self.mime_associations_store.save()
+    }
+
+    pub fn can_undo(&self) -> bool {
+        !self.history.is_empty()
     }
 
     pub fn is_dirty(&self) -> bool {
@@ -109,6 +159,7 @@ impl Stores {
     }
 
     pub fn undo(&mut self) -> anyhow::Result<()> {
+        // pop one off the history stack, and apply the reversing change
         if let Some(entry) = self.history.pop() {
             match entry {
                 HistoryEntry::DesktopEntryAssignment {
@@ -125,6 +176,24 @@ impl Stores {
                         self.mime_associations_store
                             .remove_assigned_applications_for(&mime_type)?;
                     }
+                }
+                HistoryEntry::DiscardUncommittedChanges {
+                    previous_user_scope: user_scope,
+                } => {
+                    self.mime_associations_store
+                        .overwrite_user_scope(&user_scope)?;
+                }
+                HistoryEntry::ResetUserDefaultApplicationAssignments {
+                    previous_user_scope: user_scope,
+                } => {
+                    self.mime_associations_store
+                        .overwrite_user_scope(&user_scope)?;
+                }
+                HistoryEntry::PruneOrphanedApplicationAssignments {
+                    previous_user_scope: user_scope,
+                } => {
+                    self.mime_associations_store
+                        .overwrite_user_scope(&user_scope)?;
                 }
             }
         }

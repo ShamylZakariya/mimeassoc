@@ -120,7 +120,8 @@ impl MimeTypeEntryListRow {
         content_label.set_text(&mime_type.to_string());
 
         let info_label = self.imp().info_label.get();
-        let mime_info_store = &stores.borrow().mime_info_store;
+        let borrowed_stores = stores.borrow();
+        let mime_info_store = borrowed_stores.mime_info_store();
         let info_label_text: Option<String> =
             if let Some(mime_info) = mime_info_store.get_info_for_mime_type(mime_type) {
                 info_label.set_visible(true);
@@ -166,7 +167,7 @@ impl MimeTypeEntryListRow {
 
                 let is_assigned = if let Some(assigned_desktop_entry) = stores
                     .borrow()
-                    .mime_associations_store
+                    .mime_associations_store()
                     .assigned_application_for(mime_type)
                 {
                     assigned_desktop_entry == &desktop_entry_id

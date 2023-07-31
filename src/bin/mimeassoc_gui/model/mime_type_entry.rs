@@ -71,7 +71,8 @@ impl MimeTypeEntry {
     pub fn supported_application_entries(&self) -> gtk::gio::ListStore {
         let mime_type = self.mime_type();
         let stores = self.stores();
-        let desktop_entry_store = &stores.borrow().desktop_entry_store;
+        let borrowed_stores = stores.borrow();
+        let desktop_entry_store = borrowed_stores.desktop_entry_store();
 
         let application_entries = desktop_entry_store
             .get_desktop_entries_for_mimetype(&mime_type)
