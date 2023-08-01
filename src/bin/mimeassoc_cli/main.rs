@@ -2,6 +2,7 @@ mod command_output;
 mod commands;
 
 use clap::Parser;
+use log::{Level, LevelFilter, Metadata, Record};
 
 use command_output::*;
 use commands::*;
@@ -51,7 +52,46 @@ impl Cli {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+struct StdoutLogger {
+    threshold: Level,
+}
+
+impl log::Log for StdoutLogger {
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        metadata.level() <= self.threshold
+    }
+
+    fn log(&self, record: &Record) {
+        if self.enabled(record.metadata()) {
+            println!(
+                "{} - {} - {}",
+                LIB_LOG_DOMAIN,
+                record.level(),
+                record.args()
+            );
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+static LOGGER: StdoutLogger = StdoutLogger {
+    threshold: Level::Debug,
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 fn main() {
+    let log_level_filter = if cfg!(debug_assertions) {
+        LevelFilter::Debug
+    } else {
+        LevelFilter::Off
+    };
+
+    log::set_logger(&LOGGER)
+        .map(|()| log::set_max_level(log_level_filter))
+        .expect("Expect to set up logger");
+
     let desktop_entry_dirs = match desktop_entry_dirs() {
         Ok(desktop_entry_dirs) => desktop_entry_dirs,
         Err(e) => panic!("Unable to load desktop_entry_dirs: {:?}", e),

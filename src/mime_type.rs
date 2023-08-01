@@ -104,10 +104,7 @@ impl MimeAssociationScope {
         P: AsRef<Path>,
     {
         let mimeapps_file_path = mimeapps_file_path.as_ref();
-
-        if cfg!(debug_assertions) {
-            println!("MimeAssociationScope::load {:?}", mimeapps_file_path);
-        }
+        log::info!("MimeAssociationScope::load {:?}", mimeapps_file_path);
 
         let mimeapps_file = File::open(mimeapps_file_path)?;
         let line_buffer = io::BufReader::new(mimeapps_file).lines();

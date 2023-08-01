@@ -272,10 +272,7 @@ impl DesktopEntryScope {
         P: AsRef<Path>,
     {
         let directory = dir.as_ref();
-
-        if cfg!(debug_assertions) {
-            println!("DesktopEntryScope::load {:?}", directory)
-        }
+        log::info!("DesktopEntryScope::load {:?}", directory);
 
         let mut application_entries = HashMap::new();
         let contents = std::fs::read_dir(directory)?;

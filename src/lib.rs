@@ -11,6 +11,8 @@ pub use desktop_entry::*;
 pub use mime_info::*;
 pub use mime_type::*;
 
+pub const LIB_LOG_DOMAIN: &str = "LibMimeAssoc";
+
 /// Return a vector of paths to the application dirs for the user.
 #[allow(dead_code)]
 pub fn desktop_entry_dirs() -> anyhow::Result<Vec<PathBuf>> {
