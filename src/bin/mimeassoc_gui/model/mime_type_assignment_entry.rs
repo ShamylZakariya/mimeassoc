@@ -50,8 +50,7 @@ mod imp {
 
         fn set_property(&self, id: usize, value: &Value, pspec: &ParamSpec) {
             if self.ready() {
-                g_debug!(
-                    crate::common::APP_LOG_DOMAIN,
+                log::debug!(
                     "MimeTypeAssignmentEntry[{}]::set_property id:{} value: {:?} pspec: {:?}",
                     self.id.borrow(),
                     id,

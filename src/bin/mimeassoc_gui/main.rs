@@ -4,8 +4,47 @@ mod ui;
 
 use gtk::{gdk::Display, glib::*, prelude::*, *};
 
+use crate::common::APP_LOG_DOMAIN;
+
+///////////////////////////////////////////////////////////////////////////////
+
+struct StdoutLogger;
+
+impl log::Log for StdoutLogger {
+    fn enabled(&self, _metadata: &log::Metadata) -> bool {
+        true
+    }
+
+    fn log(&self, record: &log::Record) {
+        if self.enabled(record.metadata()) {
+            println!(
+                "{} - {}\t- {}",
+                APP_LOG_DOMAIN,
+                record.level(),
+                record.args()
+            );
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+static LOGGER: StdoutLogger = StdoutLogger;
+
+///////////////////////////////////////////////////////////////////////////////
+
 fn main() -> glib::ExitCode {
     use crate::common::*;
+
+    let log_level_filter = if cfg!(debug_assertions) {
+        log::LevelFilter::Debug
+    } else {
+        log::LevelFilter::Off
+    };
+
+    log::set_logger(&LOGGER)
+        .map(|()| log::set_max_level(log_level_filter))
+        .expect("Expect to set up logger");
 
     // Register and include resources
     gio::resources_register_include!("mimeassoc.gresource").expect("Failed to register resources.");
@@ -22,7 +61,7 @@ fn main() -> glib::ExitCode {
 }
 
 fn load_css() {
-    g_debug!(crate::common::APP_LOG_DOMAIN, "main::load_css");
+    log::debug!("main::load_css");
 
     let provider = CssProvider::new();
     provider.load_from_resource("/org/zakariya/MimeAssoc/style.css");
@@ -35,7 +74,7 @@ fn load_css() {
 }
 
 fn setup_shortcuts(app: &adw::Application) {
-    g_debug!(crate::common::APP_LOG_DOMAIN, "main::setup_shortcuts");
+    log::debug!("main::setup_shortcuts");
 
     // I presume `app` has an `app.quit` but I couldn't find documentation for it, so make our own
     let action_close = gio::SimpleAction::new("quit", None);
@@ -53,7 +92,7 @@ fn setup_shortcuts(app: &adw::Application) {
 }
 
 fn build_ui(app: &adw::Application) {
-    g_debug!(crate::common::APP_LOG_DOMAIN, "main::build_ui");
+    log::debug!("main::build_ui");
 
     let window = ui::MainWindow::new(app);
     //window.show_page(ui::MainWindowPage::Applications);

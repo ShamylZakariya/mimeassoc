@@ -137,7 +137,7 @@ impl MainWindow {
     }
 
     fn setup_models(&self) {
-        g_debug!(crate::common::APP_LOG_DOMAIN, "MainWindow::setup_models");
+        log::debug!("MainWindow::setup_models");
 
         // Create models
         match Stores::new() {
@@ -218,10 +218,7 @@ impl MainWindow {
     }
 
     fn setup_mime_types_pane(&self) {
-        g_debug!(
-            crate::common::APP_LOG_DOMAIN,
-            "MainWindow::setup_mime_types_pane",
-        );
+        log::debug!("MainWindow::setup_mime_types_pane",);
         let stores = self.stores();
         let factory = SignalListItemFactory::new();
         factory.connect_setup(clone!(@weak self as window => move |_, list_item| {
@@ -275,10 +272,7 @@ impl MainWindow {
     }
 
     fn setup_applications_pane(&self) {
-        g_debug!(
-            crate::common::APP_LOG_DOMAIN,
-            "MainWindow::setup_applications_pane",
-        );
+        log::debug!("MainWindow::setup_applications_pane",);
         let application_list_box = &self.imp().application_list_box;
 
         self.bind_applications_pane_model();
@@ -322,8 +316,7 @@ impl MainWindow {
     }
 
     fn show_application_mime_type_assignment(&self, application_entry: &ApplicationEntry) {
-        g_debug!(
-            crate::common::APP_LOG_DOMAIN,
+        log::debug!(
             "MainWindow::show_application_mime_type_assignment application_entry: {}",
             application_entry.id(),
         );
@@ -377,7 +370,7 @@ impl MainWindow {
     }
 
     fn setup_actions(&self) {
-        g_debug!(crate::common::APP_LOG_DOMAIN, "MainWindow::setup_actions");
+        log::debug!("MainWindow::setup_actions");
 
         let action_show_mime_types = gtk::gio::SimpleAction::new("show-mime-types", None);
         action_show_mime_types.connect_activate(clone!(@weak self as window => move |_, _|{
@@ -442,8 +435,7 @@ impl MainWindow {
         desktop_entry_id: &DesktopEntryId,
         mime_type: &MimeType,
     ) {
-        g_debug!(
-            crate::common::APP_LOG_DOMAIN,
+        log::debug!(
             "MainWindow::assign_application_to_mimetype application: {} mime_type: {}",
             desktop_entry_id,
             mime_type,
@@ -464,10 +456,7 @@ impl MainWindow {
 
     /// Show user a dialog asking if they want to reset application assignments.
     fn query_reset_user_default_application_assignments(&self) {
-        g_debug!(
-            crate::common::APP_LOG_DOMAIN,
-            "MainWindow::reset_user_default_application_assignments",
-        );
+        log::debug!("MainWindow::reset_user_default_application_assignments",);
 
         let cancel_response = "cancel";
         let reset_response = "reset";
@@ -508,10 +497,7 @@ impl MainWindow {
 
     /// Show user a dialog asking if they want to clear orphaned application assignments.
     fn query_prune_orphaned_application_assignments(&self) {
-        g_debug!(
-            crate::common::APP_LOG_DOMAIN,
-            "MainWindow::query_prune_orphaned_application_assignments",
-        );
+        log::debug!("MainWindow::query_prune_orphaned_application_assignments",);
 
         let cancel_response = "cancel";
         let clear_response = "clear";
@@ -552,17 +538,11 @@ impl MainWindow {
         let page_selection_model = self.imp().stack.pages();
         match page {
             MainWindowPage::MimeTypes => {
-                g_debug!(
-                    crate::common::APP_LOG_DOMAIN,
-                    "MainWindow::show_page - MimeTypes",
-                );
+                log::debug!("MainWindow::show_page - MimeTypes",);
                 page_selection_model.select_item(0, true);
             }
             MainWindowPage::Applications => {
-                g_debug!(
-                    crate::common::APP_LOG_DOMAIN,
-                    "MainWindow::show_page - Applications",
-                );
+                log::debug!("MainWindow::show_page - Applications",);
                 page_selection_model.select_item(1, true);
             }
         }
@@ -616,16 +596,11 @@ impl MainWindow {
     }
 
     fn show_toast(&self, message: &str) {
-        g_debug!(
-            crate::common::APP_LOG_DOMAIN,
-            "MainWindow::show_toast: {}",
-            message,
-        );
+        log::debug!("MainWindow::show_toast: {}", message,);
     }
 
     fn show_error(&self, title: &str, message: &str, error: &anyhow::Error) {
-        g_critical!(
-            crate::common::APP_LOG_DOMAIN,
+        log::error!(
             "MainWindow::show_error title: {}, message: {} error: {:?}",
             title,
             message,
@@ -642,8 +617,7 @@ impl MainWindow {
         let can_undo = stores.can_undo();
         let can_save = stores.is_dirty();
 
-        g_debug!(
-            crate::common::APP_LOG_DOMAIN,
+        log::debug!(
             "MainWindow::store_dirty_state_changed is_dirty: {}",
             can_undo,
         );
@@ -657,8 +631,7 @@ impl MainWindow {
     }
 
     fn discard_uncommitted_changes(&self) {
-        g_debug!(
-            crate::common::APP_LOG_DOMAIN,
+        log::debug!(
             "MainWindow::discard_uncommitted_changes",
         );
 
@@ -672,7 +645,7 @@ impl MainWindow {
     }
 
     fn undo(&self) {
-        g_debug!(crate::common::APP_LOG_DOMAIN, "MainWindow::undo",);
+        log::debug!("MainWindow::undo",);
 
         let stores = self.stores();
         let mut stores = stores.borrow_mut();
@@ -688,8 +661,7 @@ impl MainWindow {
     }
 
     fn reset_user_default_application_assignments(&self) {
-        g_debug!(
-            crate::common::APP_LOG_DOMAIN,
+        log::debug!(
             "MainWindow::reset_user_default_application_assignments",
         );
 
@@ -713,8 +685,7 @@ impl MainWindow {
     }
 
     fn prune_orphaned_application_assignments(&self) {
-        g_debug!(
-            crate::common::APP_LOG_DOMAIN,
+        log::debug!(
             "MainWindow::clear_orphaned_application_assignments - unimplemented...",
         );
 
@@ -738,7 +709,7 @@ impl MainWindow {
     }
 
     fn commit_changes(&self) {
-        g_debug!(crate::common::APP_LOG_DOMAIN, "MainWindow::save_changes");
+        log::debug!("MainWindow::save_changes");
         if let Err(e) = self.stores().borrow_mut().save() {
             self.show_error("Oh no", "Unable to save changes", &e);
         } else {
