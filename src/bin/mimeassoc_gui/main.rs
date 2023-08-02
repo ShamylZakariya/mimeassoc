@@ -4,8 +4,6 @@ mod ui;
 
 use gtk::{gdk::Display, glib::*, prelude::*, *};
 
-use crate::common::APP_LOG_DOMAIN;
-
 ///////////////////////////////////////////////////////////////////////////////
 
 struct StdoutLogger;
@@ -17,27 +15,68 @@ impl log::Log for StdoutLogger {
 
     fn log(&self, record: &log::Record) {
         if self.enabled(record.metadata()) {
-            println!(
-                "{} - {}\t- {}",
-                APP_LOG_DOMAIN,
-                record.level(),
-                record.args()
-            );
+            let use_glib_logging = false;
+            if use_glib_logging {
+                // glib logging needs a domain for filtering
+                static GLIB_LOG_DOMAIN: &str = "MimeAssoc";
+
+                let level = match record.level() {
+                    log::Level::Error => glib::LogLevel::Error,
+                    log::Level::Warn => glib::LogLevel::Warning,
+                    log::Level::Info => glib::LogLevel::Info,
+                    log::Level::Debug => glib::LogLevel::Debug,
+                    log::Level::Trace => glib::LogLevel::Debug, // glib doesn't have a "trace" level
+                };
+
+                // this almost works; we get output and correct log levels, but
+                // the g_log! macro inserts this module (mimeassoc_gui) as the source,
+                // not the module where the trace was created (record.target()).
+                // TODO: Work out how to write directly to glib logging APIs.
+                if let Some(message) = record.args().as_str() {
+                    g_log!(GLIB_LOG_DOMAIN, level, "{}", message);
+                } else {
+                    g_log!(GLIB_LOG_DOMAIN, level, "{}", record.args().to_string());
+                }
+            } else {
+                println!(
+                    "[{} - {}]: {}",
+                    record.level(),
+                    record.target(),
+                    record.args()
+                );
+            }
         }
     }
 
     fn flush(&self) {}
 }
 
-static LOGGER: StdoutLogger = StdoutLogger;
+fn set_logger() {
+    static LOGGER: StdoutLogger = StdoutLogger;
 
-///////////////////////////////////////////////////////////////////////////////
-
-fn main() -> glib::ExitCode {
-    use crate::common::*;
-
-    let log_level_filter = if cfg!(debug_assertions) {
-        log::LevelFilter::Debug
+    // check "LOG_LEVEL_FILTER" env var. It can be an int corresponding to level (0,1,2,3,4,5), or a string e.g.,
+    // "Error", "Warn", etc. If empty, default to log level of Off
+    let log_level_filter = if let Ok(log_level_filter_str) = std::env::var("LOG_LEVEL_FILTER") {
+        if let Ok(log_level_filter) = log_level_filter_str.parse() {
+            match log_level_filter {
+                5 => log::LevelFilter::Trace,
+                4 => log::LevelFilter::Debug,
+                3 => log::LevelFilter::Info,
+                2 => log::LevelFilter::Warn,
+                1 => log::LevelFilter::Error,
+                _ => log::LevelFilter::Off,
+            }
+        } else {
+            let log_level_filter_str = log_level_filter_str.trim().to_lowercase();
+            match log_level_filter_str.as_str() {
+                "all" | "trace" => log::LevelFilter::Trace,
+                "debug" => log::LevelFilter::Debug,
+                "info" => log::LevelFilter::Info,
+                "warn" => log::LevelFilter::Warn,
+                "error" => log::LevelFilter::Error,
+                _ => log::LevelFilter::Off,
+            }
+        }
     } else {
         log::LevelFilter::Off
     };
@@ -45,11 +84,18 @@ fn main() -> glib::ExitCode {
     log::set_logger(&LOGGER)
         .map(|()| log::set_max_level(log_level_filter))
         .expect("Expect to set up logger");
+}
 
-    // Register and include resources
+///////////////////////////////////////////////////////////////////////////////
+
+fn main() -> glib::ExitCode {
+    // get logging set up and load resources
+    set_logger();
     gio::resources_register_include!("mimeassoc.gresource").expect("Failed to register resources.");
 
-    let app = adw::Application::builder().application_id(APP_ID).build();
+    let app = adw::Application::builder()
+        .application_id(crate::common::APP_ID)
+        .build();
 
     app.connect_startup(|app| {
         setup_shortcuts(app);

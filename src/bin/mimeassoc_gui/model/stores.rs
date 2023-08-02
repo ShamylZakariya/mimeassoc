@@ -1,5 +1,6 @@
 use mimeassoc::*;
 
+#[allow(dead_code)]
 enum HistoryEntry {
     DesktopEntryAssignment {
         mime_type: MimeType,

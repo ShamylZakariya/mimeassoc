@@ -171,6 +171,7 @@ impl MimeAssociationScope {
     /// Returns true if this MimeAssociationScope differs from the version on disk it was loaded from
     /// This is similar to the `is_dirty` but different. `is_dirty` is set when mutations have been made,
     /// but will not account for a series of transformations which result in the original state.
+    #[allow(dead_code)]
     fn differs_from_file_representation(&self) -> bool {
         if let Ok(file_representation) = Self::load(&self.file_path) {
             self.default_applications != file_representation.default_applications
@@ -340,7 +341,6 @@ impl MimeAssociationStore {
     /// loaded from the user directory.
     /// TODO: Sanitize this - this is brittle. Having the user scope be zero
     /// is fine, as a convention, but easily misconfigured.
-    #[allow(dead_code)]
     pub fn get_user_scope(&self) -> Option<&MimeAssociationScope> {
         if let Some(scope) = self.scopes.get(0) {
             if scope.is_user_customizable {

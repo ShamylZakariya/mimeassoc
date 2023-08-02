@@ -78,8 +78,12 @@
             "args": [],
             "cwd": "${workspaceFolder}",
             "env": {
-                "G_MESSAGES_DEBUG": "MimeAssoc", // space separated list of log domains
-                "G_MESSAGES_PREFIXED": "error warning critical message info debug",
+                // Set the log level
+                "LOG_LEVEL_FILTER": "debug" // [off, error, warn, info, debug, trace]
+                // G_MESSAGES_DEBUG and G_MESSAGES_PREFIXED are if we're using glib logging,
+                // which at present, we are not.
+                // "G_MESSAGES_DEBUG": "MimeAssoc", // space separated list of log domains
+                // "G_MESSAGES_PREFIXED": "error warning critical message info debug",
             }
         },
         {
