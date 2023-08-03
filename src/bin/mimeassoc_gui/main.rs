@@ -39,7 +39,7 @@ impl log::Log for StdoutLogger {
                 }
             } else {
                 println!(
-                    "[{} - {}]: {}",
+                    "{} - {}: {}",
                     record.level(),
                     record.target(),
                     record.args()

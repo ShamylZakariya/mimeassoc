@@ -47,7 +47,7 @@
 
   <template class="MainWindow" parent="GtkApplicationWindow">
     <property name="title" translatable="yes">MimeAssoc</property>
-    <property name="default_width">650</property>
+    <property name="default_width">720</property>
     <property name="default_height">550</property>
 
     <child type="titlebar">
@@ -84,18 +84,54 @@
             <property name="icon-name">emblem-documents-symbolic</property>
             <property name="child">
 
-              <object class="GtkScrolledWindow" id="mime_types_scrolled_window">
-                <property name="hscrollbar-policy">never</property>
-                <property name="min-content-height">420</property>
-                <property name="vexpand">True</property>
-                <property name="child">
-                  <object class="GtkListView" id="mime_types_list_view">
-                    <style>
-                      <class name="separators" />
-                    </style>
+              <object class="GtkBox" id="mime_types_box">
+                <property name="orientation">horizontal</property>
+                <child>
+
+                  <!-- MimeTypes Page left-hand side, showing mime types list -->
+                  <object class="GtkScrolledWindow" id="mime_types_scrolled_window">
+                    <property name="hscrollbar-policy">never</property>
+                    <property name="min-content-height">420</property>
+                    <property name="width-request">320</property>
+                    <property name="vexpand">True</property>
+                    <property name="child">
+                      <object class="GtkListBox" id="mime_types_list_box">
+                        <property name="valign">start</property>
+                        <style>
+                          <class name="navigation-sidebar" />
+                        </style>
+                      </object>
+                    </property>
                   </object>
-                </property>
+
+                </child>
+
+                <child>
+
+                  <!-- MimeTypes Page right-hand side, showing application assignment list box -->
+                  <object class="GtkScrolledWindow"
+                    id="mime_type_to_application_assignment_scrolled_window">
+                    <property name="hscrollbar-policy">never</property>
+                    <property name="min-content-height">420</property>
+                    <property name="vexpand">True</property>
+                    <property name="hexpand">True</property>
+                    <property name="child">
+                      <object class="GtkListBox" id="mime_type_to_application_assignment_list_box">
+                        <property name="valign">start</property>
+                        <property name="margin-start">12</property>
+                        <property name="margin-end">12</property>
+                        <property name="margin-top">12</property>
+                        <property name="margin-bottom">12</property>
+                        <style>
+                          <class name="boxed-list" />
+                        </style>
+                      </object>
+                    </property>
+                  </object>
+
+                </child>
               </object>
+
 
             </property>
           </object>
@@ -115,7 +151,7 @@
                   <object class="GtkScrolledWindow" id="applications_scrolled_window">
                     <property name="hscrollbar-policy">never</property>
                     <property name="min-content-height">420</property>
-                    <property name="width-request">220</property>
+                    <property name="width-request">320</property>
                     <property name="vexpand">True</property>
                     <property name="child">
                       <object class="GtkListBox" id="application_list_box">
@@ -128,17 +164,18 @@
                   </object>
 
                 </child>
+
                 <child>
 
                   <!-- Applications Page right-hand side, showing mime assignment list box -->
                   <object class="GtkScrolledWindow"
-                    id="application_mime_type_assignment_scrolled_window">
+                    id="application_to_mime_type_assignment_scrolled_window">
                     <property name="hscrollbar-policy">never</property>
                     <property name="min-content-height">420</property>
                     <property name="vexpand">True</property>
                     <property name="hexpand">True</property>
                     <property name="child">
-                      <object class="GtkListBox" id="application_mime_type_assignment_list_box">
+                      <object class="GtkListBox" id="application_to_mime_type_assignment_list_box">
                         <property name="valign">start</property>
                         <property name="margin-start">12</property>
                         <property name="margin-end">12</property>

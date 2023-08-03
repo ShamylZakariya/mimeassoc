@@ -32,12 +32,20 @@ mod imp {
         #[template_child]
         pub mime_types_page: TemplateChild<ViewStackPage>,
 
+        // mime types page UI bindings
         #[template_child]
         pub mime_types_scrolled_window: TemplateChild<ScrolledWindow>,
 
         #[template_child]
-        pub mime_types_list_view: TemplateChild<ListView>,
+        pub mime_types_list_box: TemplateChild<ListBox>,
 
+        #[template_child]
+        pub mime_type_to_application_assignment_scrolled_window: TemplateChild<ScrolledWindow>,
+
+        #[template_child]
+        pub mime_type_to_application_assignment_list_box: TemplateChild<ListBox>,
+
+        // applications page UI bindings
         #[template_child]
         pub applications_page: TemplateChild<ViewStackPage>,
 
@@ -48,10 +56,10 @@ mod imp {
         pub application_list_box: TemplateChild<ListBox>,
 
         #[template_child]
-        pub application_mime_type_assignment_scrolled_window: TemplateChild<ScrolledWindow>,
+        pub application_to_mime_type_assignment_scrolled_window: TemplateChild<ScrolledWindow>,
 
         #[template_child]
-        pub application_mime_type_assignment_list_box: TemplateChild<ListBox>,
+        pub application_to_mime_type_assignment_list_box: TemplateChild<ListBox>,
     }
 
     // The central trait for subclassing a GObject
@@ -219,56 +227,64 @@ impl MainWindow {
 
     fn setup_mime_types_pane(&self) {
         log::debug!("MainWindow::setup_mime_types_pane",);
-        let stores = self.stores();
-        let factory = SignalListItemFactory::new();
-        factory.connect_setup(clone!(@weak self as window => move |_, list_item| {
-            let row = MimeTypeEntryListRow::new(move |desktop_entry_id, mime_type| {
-                window.assign_application_to_mimetype(desktop_entry_id, mime_type);
-            });
-            let list_item = list_item
-                .downcast_ref::<ListItem>()
-                .expect("Needs to be ListItem");
-            list_item.set_child(Some(&row));
+
+        let mime_types_list_box = &self.imp().mime_types_list_box;
+        self.bind_mime_types_pane_model();
+
+        // bind to selection events
+        mime_types_list_box.connect_row_activated(clone!(@weak self as window => move |_, row|{
+            let index = row.index();
+            let model = window.mime_type_entries().item(index as u32)
+                .expect("Expected a valid row index")
+                .downcast::<MimeTypeEntry>()
+                .expect("MainWindow::mime_type_entries() model should contain instances of MimeTypeEntry only");
+            window.show_mime_type_to_application_assignment(&model);
         }));
 
-        factory.connect_bind(move |_, list_item| {
-            let model = list_item
-                .downcast_ref::<ListItem>()
-                .expect("Needs to be ListItem")
-                .item()
-                .and_downcast::<MimeTypeEntry>()
-                .expect("The item has to be an `MimeTypeEntry`.");
-
-            let row = list_item
-                .downcast_ref::<ListItem>()
-                .expect("Needs to be ListItem")
-                .child()
-                .and_downcast::<MimeTypeEntryListRow>()
-                .expect("The child has to be a `MimeTypeEntryListRow`.");
-
-            row.bind(&model, stores.clone());
-        });
-
-        factory.connect_unbind(move |_, list_item| {
-            let row = list_item
-                .downcast_ref::<ListItem>()
-                .expect("Needs to be ListItem")
-                .child()
-                .and_downcast::<MimeTypeEntryListRow>()
-                .expect("The child has to be a `MimeTypeEntryListRow`.");
-            row.unbind();
-        });
-
-        self.imp().mime_types_list_view.set_factory(Some(&factory));
-        self.bind_mime_types_pane_model();
+        // Select first entry
+        let row = mime_types_list_box.row_at_index(0);
+        mime_types_list_box.select_row(row.as_ref());
+        self.show_mime_type_to_application_assignment(
+            &self
+                .mime_type_entries()
+                .item(0)
+                .expect("Expect non-empty mime type entries model")
+                .downcast::<MimeTypeEntry>()
+                .expect(
+                    "MainWindow::mime_type_entries() model should contain instances of MimeTypeEntry only",
+                ));
     }
 
     /// Binds the `MainWindow::mime_type_entries` list model to the `MainWindow::mime_types_list_view`,
     /// this can be called any time to "reload" the list view contents.
     fn bind_mime_types_pane_model(&self) {
-        let selection_model = NoSelection::new(Some(self.mime_type_entries()));
-        let list_view = &self.imp().mime_types_list_view;
-        list_view.set_model(Some(&selection_model));
+        self.imp().mime_types_list_box.bind_model(
+            Some(&self.mime_type_entries()),
+            clone!(@weak self as window => @default-panic, move | obj | {
+                let model = obj.downcast_ref().unwrap();
+                let row = Self::create_mime_type_list_box_row(model);
+                row.upcast()
+            }),
+        );
+    }
+
+    fn create_mime_type_list_box_row(model: &MimeTypeEntry) -> ListBoxRow {
+        let label = Label::builder()
+            .ellipsize(pango::EllipsizeMode::End)
+            .xalign(0.0)
+            .build();
+
+        let mime_type = &model.mime_type();
+        label.set_text(&mime_type.to_string());
+
+        ListBoxRow::builder().child(&label).build()
+    }
+
+    fn show_mime_type_to_application_assignment(&self, mime_type_entry: &MimeTypeEntry) {
+        log::warn!(
+            "MainWindow::show_mime_type_to_application_assignment mime_type_entry: {} - UNIMPLEMENTED",
+            mime_type_entry.mime_type(),
+        );
     }
 
     fn setup_applications_pane(&self) {
@@ -284,13 +300,13 @@ impl MainWindow {
                 .expect("Expected valid item index")
                 .downcast::<ApplicationEntry>()
                 .expect("MainWindow::application_entries should only contain ApplicationEntry");
-            window.show_application_mime_type_assignment(&model);
+            window.show_application_to_mime_type_assignment(&model);
         }));
 
         // Select first entry
         let row = application_list_box.row_at_index(0);
         application_list_box.select_row(row.as_ref());
-        self.show_application_mime_type_assignment(
+        self.show_application_to_mime_type_assignment(
             &self
                 .application_entries()
                 .item(0)
@@ -309,19 +325,19 @@ impl MainWindow {
                 let model = obj
                     .downcast_ref()
                     .unwrap();
-                let row = window.create_application_list_box_row(model);
+                let row = Self::create_application_list_box_row(model);
                 row.upcast()
             }),
         );
     }
 
-    fn show_application_mime_type_assignment(&self, application_entry: &ApplicationEntry) {
+    fn show_application_to_mime_type_assignment(&self, application_entry: &ApplicationEntry) {
         log::debug!(
             "MainWindow::show_application_mime_type_assignment application_entry: {}",
             application_entry.id(),
         );
         let model = NoSelection::new(Some(application_entry.mime_type_assignments()));
-        self.imp().application_mime_type_assignment_list_box.bind_model(Some(&model),
+        self.imp().application_to_mime_type_assignment_list_box.bind_model(Some(&model),
             clone!(@weak self as window => @default-panic, move |obj| {
                 let model = obj.downcast_ref().expect("The object should be of type `MimeTypeAssignmentEntry`.");
                 let row = Self::create_mime_type_assignment_row(model);
@@ -357,7 +373,7 @@ impl MainWindow {
         row
     }
 
-    fn create_application_list_box_row(&self, model: &ApplicationEntry) -> ListBoxRow {
+    fn create_application_list_box_row(model: &ApplicationEntry) -> ListBoxRow {
         let label = Label::builder()
             .ellipsize(pango::EllipsizeMode::End)
             .xalign(0.0)
@@ -631,9 +647,7 @@ impl MainWindow {
     }
 
     fn discard_uncommitted_changes(&self) {
-        log::debug!(
-            "MainWindow::discard_uncommitted_changes",
-        );
+        log::debug!("MainWindow::discard_uncommitted_changes",);
 
         let stores = self.stores();
         if let Err(e) = stores.borrow_mut().discard_uncommitted_changes() {
@@ -661,9 +675,7 @@ impl MainWindow {
     }
 
     fn reset_user_default_application_assignments(&self) {
-        log::debug!(
-            "MainWindow::reset_user_default_application_assignments",
-        );
+        log::debug!("MainWindow::reset_user_default_application_assignments",);
 
         if let Err(e) = self
             .stores()
@@ -685,9 +697,7 @@ impl MainWindow {
     }
 
     fn prune_orphaned_application_assignments(&self) {
-        log::debug!(
-            "MainWindow::clear_orphaned_application_assignments - unimplemented...",
-        );
+        log::debug!("MainWindow::clear_orphaned_application_assignments - unimplemented...",);
 
         if let Err(e) = self
             .stores()
