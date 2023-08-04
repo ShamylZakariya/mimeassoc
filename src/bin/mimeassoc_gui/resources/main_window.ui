@@ -47,8 +47,8 @@
 
   <template class="MainWindow" parent="GtkApplicationWindow">
     <property name="title" translatable="yes">MimeAssoc</property>
-    <property name="default_width">720</property>
-    <property name="default_height">550</property>
+    <property name="default_width">920</property>
+    <property name="default_height">600</property>
 
     <child type="titlebar">
       <object class="AdwHeaderBar">

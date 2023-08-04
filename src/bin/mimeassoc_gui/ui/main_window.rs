@@ -60,6 +60,9 @@ mod imp {
 
         #[template_child]
         pub application_to_mime_type_assignment_list_box: TemplateChild<ListBox>,
+
+        //
+        pub application_check_button_group: RefCell<Option<CheckButton>>,
     }
 
     // The central trait for subclassing a GObject
@@ -282,9 +285,65 @@ impl MainWindow {
 
     fn show_mime_type_to_application_assignment(&self, mime_type_entry: &MimeTypeEntry) {
         log::warn!(
-            "MainWindow::show_mime_type_to_application_assignment mime_type_entry: {} - UNIMPLEMENTED",
+            "MainWindow::show_mime_type_to_application_assignment mime_type_entry: {}",
             mime_type_entry.mime_type(),
         );
+
+        let model = NoSelection::new(Some(mime_type_entry.supported_application_entries()));
+        let list_box = &self.imp().mime_type_to_application_assignment_list_box;
+
+        /*
+           This approach isn't working. Can't mutate the group object, and I don't now how to pass it
+           safely into the closure. One option is to maintain a check_box_group object in the window,
+           which can be None. In the create_application_assignment_row method I add the checkbox to that group,
+           or create the new group the first time.
+
+           Need to clear that object before bdinding the model.
+
+        */
+
+        // clear the application check button group before building the list
+        self.imp()
+            .application_check_button_group
+            .borrow_mut()
+            .take();
+
+        list_box.bind_model(Some(&model),
+            clone!(@weak self as window => @default-panic, move |obj| {
+                let model = obj.downcast_ref().expect("The object should be of type `ApplicationEntry`.");
+                window.create_application_assignment_row(model).upcast()
+            }));
+    }
+
+    fn create_application_assignment_row(&self, application_entry: &ApplicationEntry) -> ActionRow {
+        let check_button = CheckButton::builder()
+            .valign(Align::Center)
+            .can_focus(false)
+            .build();
+
+        let row = ActionRow::builder()
+            .activatable_widget(&check_button)
+            .build();
+        row.add_prefix(&check_button);
+
+        let desktop_entry = application_entry.desktop_entry();
+        let title = desktop_entry.name().unwrap_or("<Unnamed Application>");
+        row.set_title(title);
+
+        // RadioButtons work by putting check buttons in a group; we check if the group exists
+        // and add this check button if it does; otherwise, we need to make a new group from
+        // our first check button. It's ugly holding this state in the window, but here we are.
+        if let Some(group) = self.imp().application_check_button_group.borrow().as_ref() {
+            check_button.set_group(Some(group));
+            return row;
+        }
+
+        self.imp()
+            .application_check_button_group
+            .borrow_mut()
+            .replace(check_button);
+
+        row
     }
 
     fn setup_applications_pane(&self) {
@@ -601,10 +660,8 @@ impl MainWindow {
         // Note: we're treating the page selection model as single selection
         let page_selection_model = self.imp().stack.pages();
         if page_selection_model.is_selected(0) {
-            self.build_mime_type_entries_list_store();
             self.bind_mime_types_pane_model();
         } else if page_selection_model.is_selected(1) {
-            self.build_application_entries_list_store();
             self.bind_applications_pane_model();
         } else {
             unreachable!("Somehow the page selection model has a page other than [0,1] selected.")
