@@ -97,6 +97,7 @@
                     <property name="child">
                       <object class="GtkListBox" id="mime_types_list_box">
                         <property name="valign">start</property>
+                        <property name="name">mime_types_list_box</property>
                         <style>
                           <class name="navigation-sidebar" />
                         </style>
@@ -118,10 +119,7 @@
                     <property name="child">
                       <object class="GtkListBox" id="mime_type_to_application_assignment_list_box">
                         <property name="valign">start</property>
-                        <property name="margin-start">12</property>
-                        <property name="margin-end">12</property>
-                        <property name="margin-top">12</property>
-                        <property name="margin-bottom">12</property>
+                        <property name="name">mime_type_to_application_assignment_list_box</property>
                         <style>
                           <class name="boxed-list" />
                         </style>
@@ -156,6 +154,7 @@
                     <property name="child">
                       <object class="GtkListBox" id="application_list_box">
                         <property name="valign">start</property>
+                        <property name="name">application_list_box</property>
                         <style>
                           <class name="navigation-sidebar" />
                         </style>
@@ -177,10 +176,7 @@
                     <property name="child">
                       <object class="GtkListBox" id="application_to_mime_type_assignment_list_box">
                         <property name="valign">start</property>
-                        <property name="margin-start">12</property>
-                        <property name="margin-end">12</property>
-                        <property name="margin-top">12</property>
-                        <property name="margin-bottom">12</property>
+                        <property name="name">application_to_mime_type_assignment_list_box</property>
                         <style>
                           <class name="boxed-list" />
                         </style>

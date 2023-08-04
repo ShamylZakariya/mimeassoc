@@ -265,22 +265,51 @@ impl MainWindow {
             Some(&self.mime_type_entries()),
             clone!(@weak self as window => @default-panic, move | obj | {
                 let model = obj.downcast_ref().unwrap();
-                let row = Self::create_mime_type_list_box_row(model);
+                let row = window.create_mime_type_list_box_row(model);
                 row.upcast()
             }),
         );
     }
 
-    fn create_mime_type_list_box_row(model: &MimeTypeEntry) -> ListBoxRow {
-        let label = Label::builder()
-            .ellipsize(pango::EllipsizeMode::End)
-            .xalign(0.0)
-            .build();
+    fn create_mime_type_list_box_row(&self, model: &MimeTypeEntry) -> ListBoxRow {
+        let stores = self.stores();
+        let stores = stores.borrow();
+        let mime_info_store = stores.mime_info_store();
 
         let mime_type = &model.mime_type();
-        label.set_text(&mime_type.to_string());
+        let mime_info = mime_info_store.get_info_for_mime_type(mime_type);
 
-        ListBoxRow::builder().child(&label).build()
+        let mime_type_label = Label::builder()
+            .ellipsize(pango::EllipsizeMode::End)
+            .xalign(0.0)
+            .css_classes(vec!["mime-type"])
+            .build();
+
+        mime_type_label.set_text(&mime_type.to_string());
+
+        let content = Box::builder()
+            .orientation(Orientation::Vertical)
+            .margin_start(8)
+            .margin_end(8)
+            .margin_top(8)
+            .margin_bottom(8)
+            .build();
+
+        content.append(&mime_type_label);
+
+        if let Some(name) = mime_info.and_then(|info| info.comment()) {
+            let file_type_name_label = Label::builder()
+                .ellipsize(pango::EllipsizeMode::End)
+                .xalign(0.0)
+                .css_classes(vec!["mime-type-description"])
+                .build();
+
+            file_type_name_label.set_text(name);
+
+            content.append(&file_type_name_label);
+        }
+
+        ListBoxRow::builder().child(&content).build()
     }
 
     fn show_mime_type_to_application_assignment(&self, mime_type_entry: &MimeTypeEntry) {
@@ -292,17 +321,7 @@ impl MainWindow {
         let model = NoSelection::new(Some(mime_type_entry.supported_application_entries()));
         let list_box = &self.imp().mime_type_to_application_assignment_list_box;
 
-        /*
-           This approach isn't working. Can't mutate the group object, and I don't now how to pass it
-           safely into the closure. One option is to maintain a check_box_group object in the window,
-           which can be None. In the create_application_assignment_row method I add the checkbox to that group,
-           or create the new group the first time.
-
-           Need to clear that object before bdinding the model.
-
-        */
-
-        // clear the application check button group before building the list
+        // Reset the application check button group before building the list
         self.imp()
             .application_check_button_group
             .borrow_mut()

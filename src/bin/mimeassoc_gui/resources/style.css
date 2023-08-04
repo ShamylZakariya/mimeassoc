@@ -1,0 +1,31 @@
+/*
+    Mime Types Pane
+*/
+
+#mime_types_list_box {}
+
+#mime_types_list_box .mime-type {
+    font-weight: bold;
+}
+
+#mime_types_list_box .mime-type-description {
+    opacity: 0.7;
+}
+
+#mime_type_to_application_assignment_list_box {
+    margin-top: 12pt;
+    margin-bottom: 12pt;
+    margin-left: 12pt;
+    margin-right: 12pt;
+}
+
+/*
+    Applications Pane
+*/
+
+#application_to_mime_type_assignment_list_box {
+    margin-top: 12pt;
+    margin-bottom: 12pt;
+    margin-left: 12pt;
+    margin-right: 12pt;
+}
