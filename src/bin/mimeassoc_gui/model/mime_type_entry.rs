@@ -80,7 +80,7 @@ impl MimeTypeEntry {
             .map(|de| ApplicationEntry::new(de.id(), stores.clone()))
             .collect::<Vec<_>>();
 
-        let store = gtk::gio::ListStore::new(ApplicationEntry::static_type());
+        let store = gtk::gio::ListStore::with_type(ApplicationEntry::static_type());
         store.extend_from_slice(&application_entries);
 
         store

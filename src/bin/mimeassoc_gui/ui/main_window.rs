@@ -161,13 +161,13 @@ impl MainWindow {
             Err(e) => self.show_error("Uh oh", "Unable to load necessary data", &e),
         }
 
-        let mime_types_list_store = gio::ListStore::new(MimeTypeEntry::static_type());
+        let mime_types_list_store = gio::ListStore::with_type(MimeTypeEntry::static_type());
         self.imp()
             .mime_type_entries
             .replace(Some(mime_types_list_store));
         self.build_mime_type_entries_list_store();
 
-        let applications_list_store = gio::ListStore::new(ApplicationEntry::static_type());
+        let applications_list_store = gio::ListStore::with_type(ApplicationEntry::static_type());
         self.imp()
             .application_entries
             .replace(Some(applications_list_store));

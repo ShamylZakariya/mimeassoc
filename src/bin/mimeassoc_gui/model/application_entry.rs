@@ -101,7 +101,7 @@ impl ApplicationEntry {
             })
             .collect::<Vec<_>>();
 
-        let store = gio::ListStore::new(MimeTypeAssignmentEntry::static_type());
+        let store = gio::ListStore::with_type(MimeTypeAssignmentEntry::static_type());
         store.extend_from_slice(&supported_mime_types);
 
         store
