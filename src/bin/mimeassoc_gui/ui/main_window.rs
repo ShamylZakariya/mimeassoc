@@ -690,6 +690,7 @@ impl MainWindow {
 
         let model = NoSelection::new(Some(mime_type_entry.supported_application_entries()));
         let list_box = &self.imp().mime_type_to_application_assignment_list_box;
+        list_box.set_selection_mode(SelectionMode::None);
 
         // Reset the application check button group before building the list
         self.imp()
@@ -709,6 +710,16 @@ impl MainWindow {
             .valign(Align::Center)
             .can_focus(false)
             .build();
+
+        check_button.connect_toggled(
+            clone!(@weak self as window, @strong application_entry => move |check_button| {
+                if check_button.is_active() {
+                    println!("Selected: {}", application_entry.id());
+                } else {
+                    println!("DE-Selected: {}", application_entry.id());
+                }
+            }),
+        );
 
         let row = ActionRow::builder()
             .activatable_widget(&check_button)
@@ -791,12 +802,17 @@ impl MainWindow {
             application_entry.id(),
         );
         let model = NoSelection::new(Some(application_entry.mime_type_assignments()));
+
         self.imp().application_to_mime_type_assignment_list_box.bind_model(Some(&model),
             clone!(@weak self as window => @default-panic, move |obj| {
                 let model = obj.downcast_ref().expect("The object should be of type `MimeTypeAssignmentEntry`.");
                 let row = Self::create_mime_type_assignment_row(model);
                 row.upcast()
             }));
+
+        self.imp()
+            .application_to_mime_type_assignment_list_box
+            .set_selection_mode(SelectionMode::None);
     }
 
     fn create_mime_type_assignment_row(
