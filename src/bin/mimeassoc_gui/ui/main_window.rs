@@ -60,8 +60,10 @@ mod imp {
         #[template_child]
         pub application_to_mime_type_assignment_list_box: TemplateChild<ListBox>,
 
-        // Run-time Bound UI Elements
+        // Run-time Bound UI Elements and state
         pub application_check_button_group: RefCell<Option<CheckButton>>,
+        pub currently_selected_mime_type_entry: RefCell<Option<MimeTypeEntry>>,
+        pub currently_selected_application_entry: RefCell<Option<ApplicationEntry>>,
     }
 
     // The central trait for subclassing a GObject
@@ -555,9 +557,23 @@ impl MainWindow {
         // Note: we're treating the page selection model as single selection
         let page_selection_model = self.imp().stack.pages();
         if page_selection_model.is_selected(0) {
-            self.bind_mime_types_pane_model();
+            if let Some(mime_type_entry) = self
+                .imp()
+                .currently_selected_mime_type_entry
+                .borrow()
+                .as_ref()
+            {
+                self.show_mime_type_to_application_assignment(mime_type_entry);
+            }
         } else if page_selection_model.is_selected(1) {
-            self.bind_applications_pane_model();
+            if let Some(application_entry) = self
+                .imp()
+                .currently_selected_application_entry
+                .borrow()
+                .as_ref()
+            {
+                self.show_application_to_mime_type_assignment(application_entry);
+            }
         } else {
             unreachable!("Somehow the page selection model has a page other than [0,1] selected.")
         }
