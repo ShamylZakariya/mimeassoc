@@ -23,7 +23,8 @@
             </child>
             <child>
               <object class="GtkShortcutsShortcut">
-                <property name="title" translatable="yes" context="shortcut window">Show applications</property>
+                <property name="title" translatable="yes" context="shortcut window">Show
+                  applications</property>
                 <property name="action-name">win.show-applications</property>
               </object>
             </child>
@@ -33,6 +34,13 @@
                 <property name="action-name">win.undo</property>
               </object>
             </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="title" translatable="yes" context="shortcut window">Log History Stack</property>
+                <property name="action-name">win.log-history-stack</property>
+              </object>
+            </child>
+
           </object>
         </child>
       </object>

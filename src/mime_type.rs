@@ -397,7 +397,19 @@ impl MimeAssociationStore {
         self.scopes.iter().map(|s| s.file_path.deref()).collect()
     }
 
-    /// Returns the assigned application to handle a given mime type.
+    /// Returns the application assigned to the mime type in the user scope;
+    /// For disambiguation, this does NOT go up the scope chain to find the system assigned
+    /// application.
+    pub fn user_assigned_application_for(&self, mime_type: &MimeType) -> Option<&DesktopEntryId> {
+        if let Some(scope) = self.get_user_scope() {
+            scope.default_applications.get(mime_type)
+        } else {
+            None
+        }
+    }
+
+    /// Returns the assigned application to handle a given mime type. This is the application
+    /// that will be used by the File manager to open a file.
     pub fn assigned_application_for(&self, mime_type: &MimeType) -> Option<&DesktopEntryId> {
         for scope in self.scopes.iter() {
             if let Some(id) = scope.default_applications.get(mime_type) {
@@ -408,6 +420,8 @@ impl MimeAssociationStore {
     }
 
     /// Returns the default (e.g., not considering the user's assignment) application to handle a given mime type.
+    /// This is not necessarily what would be opened by the file manager; it is what would be used to open
+    /// a file if we deleted the user's assignments.
     pub fn default_application_for(&self, mime_type: &MimeType) -> Option<&DesktopEntryId> {
         for scope in self.scopes.iter().skip(1) {
             if let Some(id) = scope.default_applications.get(mime_type) {

@@ -28,6 +28,10 @@
         <attribute name="label" translatable="yes">_Clear Oprhaned Application Assignments</attribute>
         <attribute name="action">win.prune-orphaned-application-assignments</attribute>
       </item>
+      <item>
+        <attribute name="label" translatable="yes">_Log History Stack</attribute>
+        <attribute name="action">win.log-history-stack</attribute>
+      </item>
     </section>
     <section>
       <item>

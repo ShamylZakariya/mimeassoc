@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use mimeassoc::*;
 
 #[allow(dead_code)]
@@ -6,6 +8,10 @@ enum HistoryEntry {
         mime_type: MimeType,
         previous_desktop_entry_id: Option<DesktopEntryId>,
         new_desktop_entry_id: DesktopEntryId,
+    },
+    DesktopEntryUnassignment {
+        mime_type: MimeType,
+        previous_desktop_entry_id: Option<DesktopEntryId>,
     },
     DiscardUncommittedChanges {
         previous_user_scope: MimeAssociationScope,
@@ -16,6 +22,49 @@ enum HistoryEntry {
     PruneOrphanedApplicationAssignments {
         previous_user_scope: MimeAssociationScope,
     },
+}
+
+impl Debug for HistoryEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::DesktopEntryAssignment {
+                mime_type,
+                previous_desktop_entry_id,
+                new_desktop_entry_id,
+            } => f
+                .debug_struct("DesktopEntryAssignment")
+                .field("mime_type", mime_type)
+                .field("previous_desktop_entry_id", previous_desktop_entry_id)
+                .field("new_desktop_entry_id", new_desktop_entry_id)
+                .finish(),
+            Self::DesktopEntryUnassignment {
+                mime_type,
+                previous_desktop_entry_id,
+            } => f
+                .debug_struct("DesktopEntryUnassignment")
+                .field("mime_type", mime_type)
+                .field("previous_desktop_entry_id", previous_desktop_entry_id)
+                .finish(),
+            Self::DiscardUncommittedChanges {
+                previous_user_scope: _,
+            } => f
+                .debug_struct("DiscardUncommittedChanges")
+                // .field("previous_user_scope", previous_user_scope)
+                .finish(),
+            Self::ResetUserDefaultApplicationAssignments {
+                previous_user_scope: _,
+            } => f
+                .debug_struct("ResetUserDefaultApplicationAssignments")
+                // .field("previous_user_scope", previous_user_scope)
+                .finish(),
+            Self::PruneOrphanedApplicationAssignments {
+                previous_user_scope: _,
+            } => f
+                .debug_struct("PruneOrphanedApplicationAssignments")
+                // .field("previous_user_scope", previous_user_scope)
+                .finish(),
+        }
+    }
 }
 
 pub struct Stores {
@@ -57,36 +106,61 @@ impl Stores {
 
     pub fn assign_application_to_mimetype(
         &mut self,
-        desktop_entry_id: &DesktopEntryId,
         mime_type: &MimeType,
+        desktop_entry_id: &DesktopEntryId,
     ) -> anyhow::Result<()> {
-        let previous_default_handler = self
+        let previous_assigned_handler = self
             .mime_associations_store
-            .default_application_for(mime_type)
+            .assigned_application_for(mime_type)
             .cloned();
 
-        self.assign_application_to_mimetype_no_history(desktop_entry_id, mime_type)?;
-
-        self.history.push(HistoryEntry::DesktopEntryAssignment {
-            mime_type: mime_type.clone(),
-            previous_desktop_entry_id: previous_default_handler,
-            new_desktop_entry_id: desktop_entry_id.clone(),
-        });
-
-        Ok(())
-    }
-
-    fn assign_application_to_mimetype_no_history(
-        &mut self,
-        desktop_entry_id: &DesktopEntryId,
-        mime_type: &MimeType,
-    ) -> anyhow::Result<()> {
         let Some(desktop_entry) = self.desktop_entry_store.get_desktop_entry(desktop_entry_id) else {
             anyhow::bail!("Unrecognized desktop entry id")
         };
 
         self.mime_associations_store
             .set_default_handler_for_mime_type(mime_type, desktop_entry)?;
+
+        self.history.push(HistoryEntry::DesktopEntryAssignment {
+            mime_type: mime_type.clone(),
+            previous_desktop_entry_id: previous_assigned_handler,
+            new_desktop_entry_id: desktop_entry_id.clone(),
+        });
+
+        Ok(())
+    }
+
+    fn assign_application_to_mimetype_without_history(
+        &mut self,
+        mime_type: &MimeType,
+        previous_desktop_entry: &DesktopEntryId,
+    ) -> anyhow::Result<()> {
+        let Some(desktop_entry) = self.desktop_entry_store.get_desktop_entry(previous_desktop_entry) else {
+            anyhow::bail!("Unrecognized desktop entry id")
+        };
+
+        self.mime_associations_store
+            .set_default_handler_for_mime_type(mime_type, desktop_entry)?;
+
+        Ok(())
+    }
+
+    pub fn remove_assigned_application_from_mimetype(
+        &mut self,
+        mime_type: &MimeType,
+    ) -> anyhow::Result<()> {
+        let previous_assigned_handler = self
+            .mime_associations_store
+            .assigned_application_for(mime_type)
+            .cloned();
+
+        self.mime_associations_store
+            .remove_assigned_applications_for(mime_type)?;
+
+        self.history.push(HistoryEntry::DesktopEntryUnassignment {
+            mime_type: mime_type.clone(),
+            previous_desktop_entry_id: previous_assigned_handler,
+        });
 
         Ok(())
     }
@@ -169,15 +243,30 @@ impl Stores {
                     ..
                 } => {
                     if let Some(previous_desktop_entry_id) = previous_desktop_entry_id {
-                        self.assign_application_to_mimetype_no_history(
-                            &previous_desktop_entry_id,
+                        self.assign_application_to_mimetype_without_history(
                             &mime_type,
+                            &previous_desktop_entry_id,
                         )?;
                     } else {
                         self.mime_associations_store
                             .remove_assigned_applications_for(&mime_type)?;
                     }
                 }
+                HistoryEntry::DesktopEntryUnassignment {
+                    mime_type,
+                    previous_desktop_entry_id,
+                } => {
+                    if let Some(previous_desktop_entry_id) = previous_desktop_entry_id {
+                        self.assign_application_to_mimetype_without_history(
+                            &mime_type,
+                            &previous_desktop_entry_id,
+                        )?;
+                    } else {
+                        self.mime_associations_store
+                            .remove_assigned_applications_for(&mime_type)?;
+                    }
+                }
+
                 HistoryEntry::DiscardUncommittedChanges {
                     previous_user_scope: user_scope,
                 } => {
@@ -200,5 +289,9 @@ impl Stores {
         }
 
         Ok(())
+    }
+
+    pub fn debug_log_history_stack(&self) {
+        log::debug!("\nhistory:\n{:#?}\n", self.history);
     }
 }
