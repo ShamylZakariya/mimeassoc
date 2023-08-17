@@ -19,6 +19,14 @@
     margin-right: 12pt;
 }
 
+#system-default-handler-warning-message {
+    margin-top: 8pt;
+    margin-bottom: 8pt;
+    margin-left: 18pt;
+    margin-right: 18pt;
+    opacity: 0.75;
+}
+
 /*
     Applications Pane
 */

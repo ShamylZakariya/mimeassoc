@@ -121,13 +121,33 @@
                     <property name="vexpand">True</property>
                     <property name="hexpand">True</property>
                     <property name="child">
-                      <object class="GtkListBox" id="mime_type_to_application_assignment_list_box">
-                        <property name="valign">start</property>
-                        <property name="name">mime_type_to_application_assignment_list_box</property>
-                        <style>
-                          <class name="boxed-list" />
-                        </style>
+
+                      <object class="GtkBox" id="mime_type_to_application_assignment_box">
+                        <property name="orientation">vertical</property>
+                        <child>
+                          <object class="GtkListBox"
+                            id="mime_type_to_application_assignment_list_box">
+                            <property name="valign">start</property>
+                            <property name="name">mime_type_to_application_assignment_list_box</property>
+                            <style>
+                              <class name="boxed-list" />
+                            </style>
+                          </object>
+
+                        </child>
+                        <child>
+                          <object class="GtkLabel"
+                            id="mime_type_to_application_assignment_info_label">
+                            <property name="name">system-default-handler-warning-message</property>
+                            <property name="label">This is the system default, and no other application handling this mimetype is installed.</property>
+                            <property name="wrap">true</property>
+                            <property name="lines">-1</property>
+                          </object>
+
+                        </child>
                       </object>
+
+
                     </property>
                   </object>
 

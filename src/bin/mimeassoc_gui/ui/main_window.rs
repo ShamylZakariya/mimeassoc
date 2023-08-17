@@ -9,6 +9,8 @@ use mimeassoc::*;
 
 use crate::model::*;
 
+use super::strings::Strings;
+
 mod imp {
     use super::*;
 
@@ -43,6 +45,9 @@ mod imp {
 
         #[template_child]
         pub mime_type_to_application_assignment_list_box: TemplateChild<ListBox>,
+
+        #[template_child]
+        pub mime_type_to_application_assignment_info_label: TemplateChild<Label>,
 
         // applications page UI bindings
         #[template_child]
@@ -702,10 +707,18 @@ impl MainWindow {
     }
 
     fn show_mime_type_to_application_assignment(&self, mime_type_entry: &MimeTypeEntry) {
+        // flag that we're currently viewing this mime type
+        self.imp()
+            .currently_selected_mime_type_entry
+            .borrow_mut()
+            .replace(mime_type_entry.clone());
+
         let list_box = &self.imp().mime_type_to_application_assignment_list_box;
         list_box.set_selection_mode(SelectionMode::None);
 
-        // Reset the application check button group before building the list
+        // Reset the application check button group before building the list; it will be
+        // assigned to the first created list item, and if there are subsequent items, they
+        // will use it as a group, making them into radio buttons.
         self.imp()
             .application_check_button_group
             .borrow_mut()
@@ -719,10 +732,42 @@ impl MainWindow {
                 window.create_application_assignment_row(&mime_type_entry, application_entry, model_count).upcast()
             }));
 
-        self.imp()
-            .currently_selected_mime_type_entry
-            .borrow_mut()
-            .replace(mime_type_entry.clone());
+        // Update the info label - basically, if only one application is shown, and it is the
+        // system default handler for the mime type, it will be presented in a disabled state
+        // in ::create_application_row, and here we show an info label to explain why
+
+        let info_label = &self.imp().mime_type_to_application_assignment_info_label;
+        let show_info_label = if model_count == 1 {
+            // if the number of items is 1, and that item is the system default, show the info message
+            let desktop_entry = model
+                .item(0)
+                .unwrap()
+                .downcast_ref::<ApplicationEntry>()
+                .unwrap()
+                .desktop_entry();
+
+            let mime_type = mime_type_entry.mime_type();
+
+            let stores = self.stores();
+            let stores = stores.borrow();
+            let mime_association_store = stores.mime_associations_store();
+            let is_system_default = mime_association_store.default_application_for(&mime_type)
+                == Some(desktop_entry.id());
+
+            if is_system_default {
+                // TODO: Move this into some kind of string table
+                let info_message =
+                    Strings::single_default_application_info_message(&desktop_entry, &mime_type);
+                info_label.set_label(&info_message);
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        info_label.set_visible(show_info_label);
     }
 
     fn create_application_assignment_row(
