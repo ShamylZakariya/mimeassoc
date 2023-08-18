@@ -57,7 +57,7 @@ mod imp {
         pub applications_scrolled_window: TemplateChild<ScrolledWindow>,
 
         #[template_child]
-        pub application_list_box: TemplateChild<ListBox>,
+        pub applications_list_box: TemplateChild<ListBox>,
 
         #[template_child]
         pub application_to_mime_type_assignment_scrolled_window: TemplateChild<ScrolledWindow>,
@@ -293,8 +293,8 @@ impl MainWindow {
         let mut all_desktop_entries = apps.desktop_entries();
         all_desktop_entries.sort_by(|a, b| {
             a.name()
-                .unwrap_or(&a.id().to_string())
-                .cmp(b.name().unwrap_or(&b.id().to_string()))
+                .unwrap_or(a.id().id())
+                .cmp(b.name().unwrap_or(&b.id().id()))
         });
 
         let application_entries = all_desktop_entries
@@ -674,7 +674,8 @@ impl MainWindow {
         let mime_info = mime_info_store.get_info_for_mime_type(mime_type);
 
         let mime_type_label = Label::builder()
-            .ellipsize(pango::EllipsizeMode::End)
+            .wrap(true)
+            .wrap_mode(pango::WrapMode::Word)
             .xalign(0.0)
             .css_classes(vec!["mime-type"])
             .build();
@@ -683,17 +684,15 @@ impl MainWindow {
 
         let content = Box::builder()
             .orientation(Orientation::Vertical)
-            .margin_start(8)
-            .margin_end(8)
-            .margin_top(8)
-            .margin_bottom(8)
+            .css_classes(vec!["content"])
             .build();
 
         content.append(&mime_type_label);
 
         if let Some(name) = mime_info.and_then(|info| info.comment()) {
             let file_type_name_label = Label::builder()
-                .ellipsize(pango::EllipsizeMode::End)
+                .wrap(true)
+                .wrap_mode(pango::WrapMode::Word)
                 .xalign(0.0)
                 .css_classes(vec!["mime-type-description"])
                 .build();
@@ -848,7 +847,7 @@ impl MainWindow {
 impl MainWindow {
     fn setup_applications_pane(&self) {
         log::debug!("MainWindow::setup_applications_pane",);
-        let application_list_box = &self.imp().application_list_box;
+        let application_list_box = &self.imp().applications_list_box;
 
         self.bind_applications_pane_model();
 
@@ -878,7 +877,7 @@ impl MainWindow {
     /// Binds the `MainWindow::application_entries` list model to the `MainWindow::application_list_box`,
     /// this can be called any time to "reload" the list view contents.
     fn bind_applications_pane_model(&self) {
-        self.imp().application_list_box.bind_model(
+        self.imp().applications_list_box.bind_model(
             Some(&self.application_entries()),
             clone!(@weak self as window => @default-panic, move |obj| {
                 let model = obj
@@ -939,14 +938,32 @@ impl MainWindow {
     }
 
     fn create_application_list_box_row(model: &ApplicationEntry) -> ListBoxRow {
-        let label = Label::builder()
-            .ellipsize(pango::EllipsizeMode::End)
+        let application_name_label = Label::builder()
+            .wrap(true)
+            .wrap_mode(pango::WrapMode::Word)
             .xalign(0.0)
+            .css_classes(vec!["display_name"])
             .build();
 
-        let desktop_entry = &model.desktop_entry();
-        label.set_text(desktop_entry.name().unwrap_or("<Unnamed Application>"));
+        let desktop_entry_id_label = Label::builder()
+            .wrap(true)
+            .wrap_mode(pango::WrapMode::Word)
+            .xalign(0.0)
+            .css_classes(vec!["desktop_entry_id"])
+            .build();
 
-        ListBoxRow::builder().child(&label).build()
+        let content = Box::builder()
+            .orientation(Orientation::Vertical)
+            .css_classes(vec!["content"])
+            .build();
+
+        content.append(&application_name_label);
+        content.append(&desktop_entry_id_label);
+
+        let desktop_entry = &model.desktop_entry();
+        application_name_label.set_text(desktop_entry.name().unwrap_or("<Unnamed Application>"));
+        desktop_entry_id_label.set_text(desktop_entry.id().id());
+
+        ListBoxRow::builder().child(&content).build()
     }
 }

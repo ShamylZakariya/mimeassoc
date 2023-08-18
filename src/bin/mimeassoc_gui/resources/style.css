@@ -4,6 +4,13 @@
 
 #mime_types_list_box {}
 
+#mime_types_list_box .content {
+    margin-top: 8pt;
+    margin-bottom: 8pt;
+    margin-left: 8pt;
+    margin-right: 8pt;
+}
+
 #mime_types_list_box .mime-type {
     font-weight: bold;
 }
@@ -36,4 +43,19 @@
     margin-bottom: 12pt;
     margin-left: 12pt;
     margin-right: 12pt;
+}
+
+#applications_list_box .content {
+    margin-top: 8pt;
+    margin-bottom: 8pt;
+    margin-left: 8pt;
+    margin-right: 8pt;
+}
+
+#applications_list_box .display_name {
+    font-weight: bold;
+}
+
+#applications_list_box .desktop_entry_id {
+    opacity: 0.7;
 }

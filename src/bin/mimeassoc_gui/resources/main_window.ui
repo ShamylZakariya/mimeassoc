@@ -176,9 +176,9 @@
                     <property name="width-request">320</property>
                     <property name="vexpand">True</property>
                     <property name="child">
-                      <object class="GtkListBox" id="application_list_box">
+                      <object class="GtkListBox" id="applications_list_box">
                         <property name="valign">start</property>
-                        <property name="name">application_list_box</property>
+                        <property name="name">applications_list_box</property>
                         <style>
                           <class name="navigation-sidebar" />
                         </style>
