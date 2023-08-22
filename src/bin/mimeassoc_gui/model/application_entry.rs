@@ -86,25 +86,21 @@ impl ApplicationEntry {
         )
     }
 
-    /// Get the mime type assignments to this application
+    /// Creates and populates a ListStore of MimeTypeEntry representing
+    /// all the mime types which this application reports to handle
     pub fn mime_type_assignments(&self) -> gio::ListStore {
         let desktop_entry = self.desktop_entry();
-        let mime_types = desktop_entry.mime_types();
+        let supported_mime_types = desktop_entry.mime_types();
         let stores = self.stores();
-        let borrowed_stores = stores.borrow();
-        let mime_db = borrowed_stores.mime_associations_store();
-        let supported_mime_types = mime_types
+        let supported_mime_type_entries = supported_mime_types
             .iter()
-            .map(|mt| {
-                let assigned = mime_db.assigned_application_for(mt) == Some(desktop_entry.id());
-                MimeTypeAssignmentEntry::new(mt, assigned, stores.clone())
-            })
+            .map(|mt| MimeTypeEntry::new(mt, stores.clone()))
             .collect::<Vec<_>>();
 
-        let store = gio::ListStore::with_type(MimeTypeAssignmentEntry::static_type());
-        store.extend_from_slice(&supported_mime_types);
+        let mime_type_assignments_store = gio::ListStore::with_type(MimeTypeEntry::static_type());
+        mime_type_assignments_store.extend_from_slice(&supported_mime_type_entries);
 
-        store
+        mime_type_assignments_store
     }
 
     fn stores(&self) -> Rc<RefCell<Stores>> {

@@ -146,6 +146,8 @@ impl MimeAssociationScope {
             }
         }
 
+        log::error!("I'm setting is_user_customizable by checking the URL. I should be checking if the file is writeable");
+
         let is_user_customizable = mimeapps_file_path == super::user_mimeapps_list_path()?;
 
         Ok(MimeAssociationScope {
@@ -422,7 +424,7 @@ impl MimeAssociationStore {
     /// Returns the default (e.g., not considering the user's assignment) application to handle a given mime type.
     /// This is not necessarily what would be opened by the file manager; it is what would be used to open
     /// a file if we deleted the user's assignments.
-    pub fn default_application_for(&self, mime_type: &MimeType) -> Option<&DesktopEntryId> {
+    pub fn system_default_application_for(&self, mime_type: &MimeType) -> Option<&DesktopEntryId> {
         for scope in self.scopes.iter().skip(1) {
             if let Some(id) = scope.default_applications.get(mime_type) {
                 return Some(id);
@@ -543,7 +545,7 @@ impl MimeAssociationStore {
             );
         }
 
-        if self.default_application_for(mime_type) == Some(desktop_entry.id()) {
+        if self.system_default_application_for(mime_type) == Some(desktop_entry.id()) {
             return self.remove_assigned_applications_for(mime_type);
         }
 
@@ -789,7 +791,7 @@ mod tests {
         let image_bmp = MimeType::parse("image/bmp")?;
         let eog_id = DesktopEntryId::parse("org.gnome.eog.desktop")?;
         assert_eq!(
-            associations.default_application_for(&image_bmp),
+            associations.system_default_application_for(&image_bmp),
             Some(&eog_id)
         );
 

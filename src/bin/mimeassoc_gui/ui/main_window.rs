@@ -750,7 +750,8 @@ impl MainWindow {
             let stores = self.stores();
             let stores = stores.borrow();
             let mime_association_store = stores.mime_associations_store();
-            let is_system_default = mime_association_store.default_application_for(&mime_type)
+            let is_system_default = mime_association_store
+                .system_default_application_for(&mime_type)
                 == Some(desktop_entry.id());
 
             if is_system_default {
@@ -787,7 +788,7 @@ impl MainWindow {
             let mime_associations_store = stores.mime_associations_store();
 
             let is_default_application = mime_associations_store
-                .default_application_for(&mime_type)
+                .system_default_application_for(&mime_type)
                 == Some(&application_entry.desktop_entry_id());
             let is_assigned_application = mime_associations_store
                 .assigned_application_for(&mime_type)
@@ -893,9 +894,9 @@ impl MainWindow {
         let model = NoSelection::new(Some(application_entry.mime_type_assignments()));
 
         self.imp().application_to_mime_type_assignment_list_box.bind_model(Some(&model),
-            clone!(@weak self as window => @default-panic, move |obj| {
-                let model = obj.downcast_ref().expect("The object should be of type `MimeTypeAssignmentEntry`.");
-                let row = Self::create_mime_type_assignment_row(model);
+            clone!(@weak self as window, @strong application_entry => @default-panic, move |obj| {
+                let model = obj.downcast_ref().expect("The object should be of type `MimeTypeEntry`.");
+                let row = window.create_mime_type_assignment_row(&application_entry, model);
                 row.upcast()
             }));
 
@@ -910,29 +911,53 @@ impl MainWindow {
     }
 
     fn create_mime_type_assignment_row(
-        mime_type_assignment_entry: &MimeTypeAssignmentEntry,
+        self,
+        application_entry: &ApplicationEntry,
+        mime_type_entry: &MimeTypeEntry,
     ) -> ActionRow {
         let check_button = CheckButton::builder()
             .valign(Align::Center)
             .can_focus(false)
             .build();
 
-        // Create row
         let row = ActionRow::builder()
             .activatable_widget(&check_button)
             .build();
         row.add_prefix(&check_button);
 
-        // Bind properties
-        mime_type_assignment_entry
-            .bind_property("assigned", &check_button, "active")
-            .bidirectional()
-            .sync_create()
-            .build();
-        mime_type_assignment_entry
-            .bind_property("id", &row, "title")
-            .sync_create()
-            .build();
+        let mime_type = mime_type_entry.mime_type();
+        let desktop_entry = application_entry.desktop_entry();
+        let (is_default_application, is_assigned_application) = {
+            let stores = self.stores();
+            let stores = stores.borrow();
+            let mime_associations_store = stores.mime_associations_store();
+
+            let is_default_application = mime_associations_store
+                .system_default_application_for(&mime_type)
+                == Some(desktop_entry.id());
+            let is_assigned_application = mime_associations_store
+                .assigned_application_for(&mime_type)
+                == Some(desktop_entry.id());
+            (is_default_application, is_assigned_application)
+        };
+
+        row.set_title(mime_type.to_string().as_str());
+
+        if is_default_application {
+            check_button.set_sensitive(false);
+            check_button.set_active(true);
+            row.set_sensitive(false);
+            row.set_subtitle(
+                &Strings::application_is_system_default_handler_for_mimetype(
+                    &desktop_entry,
+                    &mime_type,
+                ),
+            );
+        }
+
+        if is_assigned_application {
+            check_button.set_active(true);
+        }
 
         row
     }

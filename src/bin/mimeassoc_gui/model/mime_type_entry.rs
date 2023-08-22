@@ -68,6 +68,8 @@ impl MimeTypeEntry {
         MimeType::parse(&mime_type_string).unwrap()
     }
 
+    /// Creates and populates a ListStore of ApplicationEntry representing
+    /// all the applications which support opening this MimeType
     pub fn supported_application_entries(&self) -> gtk::gio::ListStore {
         let mime_type = self.mime_type();
         let stores = self.stores();
