@@ -294,7 +294,7 @@ impl MainWindow {
         all_desktop_entries.sort_by(|a, b| {
             a.name()
                 .unwrap_or(a.id().id())
-                .cmp(b.name().unwrap_or(&b.id().id()))
+                .cmp(b.name().unwrap_or(b.id().id()))
         });
 
         let application_entries = all_desktop_entries
@@ -433,15 +433,13 @@ impl MainWindow {
                 self.show_error("Error", "Unable to assign application to mimetype", &e);
                 return;
             }
-        } else {
-            if let Err(e) = self
-                .stores()
-                .borrow_mut()
-                .remove_assigned_application_from_mimetype(mime_type)
-            {
-                self.show_error("Error", "Unable to un-assign application from mimetype", &e);
-                return;
-            }
+        } else if let Err(e) = self
+            .stores()
+            .borrow_mut()
+            .remove_assigned_application_from_mimetype(mime_type)
+        {
+            self.show_error("Error", "Unable to un-assign application from mimetype", &e);
+            return;
         }
 
         // Assignment was successful, mark changes were made
