@@ -150,7 +150,7 @@ impl MimeAssociationScope {
         // This file is user customizable iff it's in the user's dir and writable
         let home_dir = PathBuf::from(std::env::var("HOME")?);
         let is_user_customizable =
-            mimeapps_file_path.starts_with(&home_dir) && !permissions.readonly();
+            mimeapps_file_path.starts_with(home_dir) && !permissions.readonly();
 
         Ok(MimeAssociationScope {
             file_path: PathBuf::from(mimeapps_file_path),
@@ -555,10 +555,15 @@ impl MimeAssociationStore {
             anyhow::bail!("No customizable user scopes available");
         };
 
-        scope
+        let new_desktop_entry_id = desktop_entry.id().clone();
+        let previous = scope
             .default_applications
-            .insert(mime_type.clone(), desktop_entry.id().clone());
-        scope.is_dirty = true;
+            .insert(mime_type.clone(), new_desktop_entry_id.clone());
+
+        if previous != Some(new_desktop_entry_id) {
+            scope.is_dirty = true;
+        }
+
         Ok(())
     }
 
@@ -662,16 +667,29 @@ mod tests {
         }
     }
 
+    /// Creates a MimeAssociationStore with the first scope user editable, the others not
+    fn create_test_associations() -> anyhow::Result<MimeAssociationStore> {
+        let mut associations = MimeAssociationStore::load(&[
+            test_user_mimeapps_list(),
+            test_gnome_mimeapps_list(),
+            test_sys_mimeapps_list(),
+        ])?;
+
+        // we need to make first scope user writable for testing
+        associations.scopes[0].is_user_customizable = true;
+        associations.scopes[1].is_user_customizable = false;
+        associations.scopes[2].is_user_customizable = false;
+
+        Ok(associations)
+    }
+
+    /// Creates a DesktopEntryStore, and MimeAssociationStore with the first scope user editable, the others not
     fn create_test_entries_and_associations(
     ) -> anyhow::Result<(DesktopEntryStore, MimeAssociationStore)> {
         let entries =
             DesktopEntryStore::load(&[test_user_applications(), test_sys_applications()])?;
 
-        let associations = MimeAssociationStore::load(&[
-            test_user_mimeapps_list(),
-            test_gnome_mimeapps_list(),
-            test_sys_mimeapps_list(),
-        ])?;
+        let associations = create_test_associations()?;
         Ok((entries, associations))
     }
 
@@ -754,24 +772,14 @@ mod tests {
 
     #[test]
     fn mime_assocations_loads() -> anyhow::Result<()> {
-        let _ = MimeAssociationStore::load(&[
-            test_sys_mimeapps_list(),
-            test_gnome_mimeapps_list(),
-            test_user_mimeapps_list(),
-        ])?;
-
+        let _ = create_test_associations()?;
         Ok(())
     }
 
     #[test]
     fn assigned_application_prefers_user_default_application_over_system_associations(
     ) -> anyhow::Result<()> {
-        let associations = MimeAssociationStore::load(&[
-            test_user_mimeapps_list(),
-            test_gnome_mimeapps_list(),
-            test_sys_mimeapps_list(),
-        ])?;
-
+        let associations = create_test_associations()?;
         let html = MimeType::parse("text/html")?;
         let firefox_id = DesktopEntryId::parse("org.mozilla.firefox.desktop")?;
         assert_eq!(
@@ -784,11 +792,7 @@ mod tests {
 
     #[test]
     fn default_application_skips_user_associations() -> anyhow::Result<()> {
-        let associations = MimeAssociationStore::load(&[
-            test_user_mimeapps_list(),
-            test_gnome_mimeapps_list(),
-            test_sys_mimeapps_list(),
-        ])?;
+        let associations = create_test_associations()?;
 
         let image_bmp = MimeType::parse("image/bmp")?;
         let eog_id = DesktopEntryId::parse("org.gnome.eog.desktop")?;
@@ -841,14 +845,7 @@ mod tests {
 
     #[test]
     fn remove_assigned_application_works() -> anyhow::Result<()> {
-        let mut associations = MimeAssociationStore::load(&[
-            test_user_mimeapps_list(),
-            test_gnome_mimeapps_list(),
-            test_sys_mimeapps_list(),
-        ])?;
-
-        // we need to make first scope user writable for testing
-        associations.scopes[0].is_user_customizable = true;
+        let mut associations = create_test_associations()?;
 
         let image_bmp = MimeType::parse("image/bmp")?;
         let eog_id = DesktopEntryId::parse("org.gnome.eog.desktop")?;
@@ -871,14 +868,7 @@ mod tests {
 
     #[test]
     fn remove_all_assigned_applications_works() -> anyhow::Result<()> {
-        let mut associations = MimeAssociationStore::load(&[
-            test_user_mimeapps_list(),
-            test_gnome_mimeapps_list(),
-            test_sys_mimeapps_list(),
-        ])?;
-
-        // we need to make first scope user writable for testing
-        associations.scopes[0].is_user_customizable = true;
+        let mut associations = create_test_associations()?;
 
         // initial state: we should have default applications assigned
         assert!(!associations.scopes[0].default_applications.is_empty());
@@ -896,18 +886,8 @@ mod tests {
     }
 
     #[test]
-    fn is_dirty_works() -> anyhow::Result<()> {
-        let mut associations = MimeAssociationStore::load(&[
-            test_user_mimeapps_list(),
-            test_gnome_mimeapps_list(),
-            test_sys_mimeapps_list(),
-        ])?;
-
-        let desktop_entry_store =
-            DesktopEntryStore::load(&[test_user_applications(), test_sys_applications()])?;
-
-        // we need to make first scope user writable for testing
-        associations.scopes[0].is_user_customizable = true;
+    fn non_mutating_assignment_doesnt_dirty_store() -> anyhow::Result<()> {
+        let (desktop_entry_store, mut associations) = create_test_entries_and_associations()?;
 
         let image_bmp = MimeType::parse("image/bmp")?;
         let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
@@ -917,31 +897,45 @@ mod tests {
             Some(&photopea_id)
         );
 
-        associations.remove_assigned_applications_for(&image_bmp)?;
-
-        assert!(associations.is_dirty());
-
+        // photopea is already assigned to image/bmp so this assignment should not flag store as dirty
         let photopea = desktop_entry_store.get_desktop_entry(&photopea_id).unwrap();
         associations.set_default_handler_for_mime_type(&image_bmp, &photopea)?;
-
         assert!(!associations.is_dirty());
 
         Ok(())
     }
 
     #[test]
+    fn removing_assignment_dirties_store() -> anyhow::Result<()> {
+        let (desktop_entry_store, mut associations) = create_test_entries_and_associations()?;
+        let image_bmp = MimeType::parse("image/bmp")?;
+
+        associations.remove_assigned_applications_for(&image_bmp)?;
+        assert!(associations.is_dirty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn mutating_assignment_dirties_store() -> anyhow::Result<()> {
+        let (desktop_entry_store, mut associations) = create_test_entries_and_associations()?;
+        let image_bmp = MimeType::parse("image/bmp")?;
+
+        // Assigning evince to image/bmp should mutate store as photopea is current handler
+        let eog_id = DesktopEntryId::parse("org.gnome.eog.desktop")?;
+        let eog = desktop_entry_store.get_desktop_entry(&eog_id).unwrap();
+        associations.set_default_handler_for_mime_type(&image_bmp, &eog)?;
+        assert!(associations.is_dirty());
+
+        Ok(())
+    }
+
+    #[test]
     fn prune_orphaned_application_assignments_workd() -> anyhow::Result<()> {
-        let mut associations = MimeAssociationStore::load(&[
-            test_user_mimeapps_list(),
-            test_gnome_mimeapps_list(),
-            test_sys_mimeapps_list(),
-        ])?;
+        let mut associations = create_test_associations()?;
 
         let desktop_entry_store =
             DesktopEntryStore::load(&[test_user_applications(), test_sys_applications()])?;
-
-        // we need to make first scope user writable for testing
-        associations.scopes[0].is_user_customizable = true;
 
         // add some invalid assignments
         let fake_pdf_assignment = (
@@ -980,14 +974,7 @@ mod tests {
 
     #[test]
     fn remove_assigned_application_works_with_wildcard_mimetypes() -> anyhow::Result<()> {
-        let mut associations = MimeAssociationStore::load(&[
-            test_user_mimeapps_list(),
-            test_gnome_mimeapps_list(),
-            test_sys_mimeapps_list(),
-        ])?;
-
-        // we need to make first scope user writable for testing
-        associations.scopes[0].is_user_customizable = true;
+        let mut associations = create_test_associations()?;
 
         let image_bmp = MimeType::parse("image/bmp")?;
         let image_png = MimeType::parse("image/png")?;
@@ -1030,11 +1017,7 @@ mod tests {
 
     #[test]
     fn mimeassocations_wildcard_lookup_works() -> anyhow::Result<()> {
-        let associations = MimeAssociationStore::load(&[
-            test_user_mimeapps_list(),
-            test_gnome_mimeapps_list(),
-            test_sys_mimeapps_list(),
-        ])?;
+        let associations = create_test_associations()?;
 
         let image_star = MimeType::parse("image/*")?;
         let image_bmp = MimeType::parse("image/bmp")?;
@@ -1085,11 +1068,7 @@ mod tests {
 
     #[test]
     fn mime_assocations_loads_expected_added_associations() -> anyhow::Result<()> {
-        let associations = MimeAssociationStore::load(&[
-            test_user_mimeapps_list(),
-            test_gnome_mimeapps_list(),
-            test_sys_mimeapps_list(),
-        ])?;
+        let associations = create_test_associations()?;
 
         let html = MimeType::parse("text/html")?;
         let firefox = DesktopEntryId::parse("org.mozilla.firefox.desktop")?;
@@ -1206,6 +1185,7 @@ mod tests {
     #[test]
     fn make_default_handler_errors_without_writeable_scope() -> anyhow::Result<()> {
         let (entries, mut associations) = create_test_entries_and_associations()?;
+        associations.scopes[0].is_user_customizable = false;
 
         let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
         let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
