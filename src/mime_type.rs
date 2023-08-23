@@ -107,6 +107,7 @@ impl MimeAssociationScope {
         log::info!("MimeAssociationScope::load {:?}", mimeapps_file_path);
 
         let mimeapps_file = File::open(mimeapps_file_path)?;
+        let permissions = mimeapps_file.metadata()?.permissions();
         let line_buffer = io::BufReader::new(mimeapps_file).lines();
         let mut added_associations = HashMap::new();
         let mut default_applications = HashMap::new();
@@ -146,9 +147,10 @@ impl MimeAssociationScope {
             }
         }
 
-        log::error!("I'm setting is_user_customizable by checking the URL. I should be checking if the file is writeable");
-
-        let is_user_customizable = mimeapps_file_path == super::user_mimeapps_list_path()?;
+        // This file is user customizable iff it's in the user's dir and writable
+        let home_dir = PathBuf::from(std::env::var("HOME")?);
+        let is_user_customizable =
+            mimeapps_file_path.starts_with(&home_dir) && !permissions.readonly();
 
         Ok(MimeAssociationScope {
             file_path: PathBuf::from(mimeapps_file_path),

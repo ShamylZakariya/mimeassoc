@@ -62,6 +62,9 @@ pub fn user_mimeapps_list_path() -> anyhow::Result<PathBuf> {
 /// Return a vector of paths to the mimeapps.list files for the user
 /// in system order
 pub fn mimeapps_lists_paths() -> anyhow::Result<Vec<PathBuf>> {
+    // ensure ~/.config/mimeapps.list exists
+    let _ = user_mimeapps_list_path()?;
+
     // ~/.config/mimeapps.list followed by the desktop_entry_dirs (with mimeapps.list appended), adding
     // each that exists.
 
