@@ -4,10 +4,14 @@ use std::{
 };
 
 pub mod desktop_entry;
+pub mod desktop_entry_store;
+pub mod mime_association_store;
 pub mod mime_info;
 pub mod mime_type;
 
 pub use desktop_entry::*;
+pub use desktop_entry_store::*;
+pub use mime_association_store::*;
 pub use mime_info::*;
 pub use mime_type::*;
 
@@ -116,11 +120,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        desktop_entry::{DesktopEntry, DesktopEntryId, DesktopEntryStore},
-        mime_type::{MimeAssociationStore, MimeType},
-        *,
-    };
+    use super::*;
 
     #[test]
     fn desktop_entry_dirs_returns_nonempty_vec() -> anyhow::Result<()> {
