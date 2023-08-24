@@ -58,7 +58,7 @@ impl Commands {
         &self,
         mime_associations_store: &mut MimeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
-        mime_info_store: &MimeInfoStore,
+        mime_info_store: &MimeTypeInfoStore,
     ) -> CommandOutput {
         match self {
             Commands::MimeTypes => Self::get_mime_types(mime_associations_store, mime_info_store),
@@ -104,7 +104,7 @@ impl Commands {
 
     fn get_mime_types(
         mime_associations_store: &MimeAssociationStore,
-        mime_info_store: &MimeInfoStore,
+        mime_info_store: &MimeTypeInfoStore,
     ) -> CommandOutput {
         let mut mime_types = mime_associations_store.mime_types();
         mime_types.sort();
@@ -123,7 +123,7 @@ impl Commands {
     fn get_mime_type(
         mime_associations_store: &MimeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
-        mime_info_store: &MimeInfoStore,
+        mime_info_store: &MimeTypeInfoStore,
         id: Option<&str>,
     ) -> CommandOutput {
         let Some(id) = id else {
@@ -152,11 +152,11 @@ impl Commands {
     fn get_single_mime_type(
         mime_associations_store: &MimeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
-        mime_info_store: &MimeInfoStore,
+        mime_info_store: &MimeTypeInfoStore,
         mime_type: &MimeType,
     ) -> MimeTypeCommandOutput {
         let desktop_entries = desktop_entry_store.get_desktop_entries_for_mimetype(mime_type);
-        let default_handler = mime_associations_store.assigned_application_for(mime_type);
+        let default_handler = mime_associations_store.default_application_for(mime_type);
 
         let mut output = MimeTypeCommandOutput {
             mime_type: mime_type.clone(),
@@ -190,7 +190,7 @@ impl Commands {
                         .iter()
                         .map(|mime_type| {
                             let is_handler = mime_associations_store
-                                .assigned_application_for(mime_type)
+                                .default_application_for(mime_type)
                                 == Some(desktop_entry.id());
                             MimeInfo {
                                 mime_type: mime_type.clone(),
@@ -230,7 +230,7 @@ impl Commands {
         let mime_info = mime_types
             .iter()
             .map(|mime_type| {
-                let is_handler = mime_associations_store.assigned_application_for(mime_type)
+                let is_handler = mime_associations_store.default_application_for(mime_type)
                     == Some(desktop_entry.id());
                 MimeInfo {
                     mime_type: mime_type.clone(),
@@ -332,12 +332,8 @@ impl Commands {
         };
 
         for mime_type in resolved_mime_types.into_iter() {
-            match mime_associations_store.remove_assigned_applications_for(&mime_type) {
-                Ok(_) => output.reset_mime_types.push(mime_type),
-                Err(e) => panic!(
-                    "Failed to reset default applicaiton assignment for \"{}\", error: {:?}",
-                    &mime_type, e
-                ),
+            if mime_associations_store.remove_assigned_applications_for(&mime_type) {
+                output.reset_mime_types.push(mime_type);
             }
         }
 

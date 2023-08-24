@@ -789,7 +789,7 @@ impl MainWindow {
                 .system_default_application_for(&mime_type)
                 == Some(&application_entry.desktop_entry_id());
             let is_assigned_application = mime_associations_store
-                .assigned_application_for(&mime_type)
+                .default_application_for(&mime_type)
                 == Some(&application_entry.desktop_entry_id());
             (is_default_application, is_assigned_application)
         };
@@ -934,7 +934,7 @@ impl MainWindow {
                 .system_default_application_for(&mime_type)
                 == Some(desktop_entry.id());
             let is_assigned_application = mime_associations_store
-                .assigned_application_for(&mime_type)
+                .default_application_for(&mime_type)
                 == Some(desktop_entry.id());
             (is_default_application, is_assigned_application)
         };

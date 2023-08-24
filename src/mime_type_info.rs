@@ -68,7 +68,7 @@ impl MimeTypeInfo {
     }
 }
 
-pub struct MimeInfoStore {
+pub struct MimeTypeInfoStore {
     mime_types: HashMap<MimeType, MimeTypeInfo>,
 
     /// map of aliases to mime types stored in Self::mime_types. For example,
@@ -77,7 +77,7 @@ pub struct MimeInfoStore {
     aliases: HashMap<MimeType, MimeType>,
 }
 
-impl MimeInfoStore {
+impl MimeTypeInfoStore {
     pub fn load<P: AsRef<Path>>(mime_info_xml_paths: &[P]) -> anyhow::Result<Self> {
         let mut store = Self {
             mime_types: HashMap::new(),
@@ -85,19 +85,16 @@ impl MimeInfoStore {
         };
 
         for path in mime_info_xml_paths.iter() {
-            Self::load_single_xml_into_store(path, &mut store)?;
+            Self::load_mime_info(path, &mut store)?;
         }
 
         store.resolve_aliases();
         Ok(store)
     }
 
-    fn load_single_xml_into_store<P: AsRef<Path>>(
-        freedesktop_org_xml_path: P,
-        store: &mut Self,
-    ) -> anyhow::Result<()> {
-        let path = freedesktop_org_xml_path.as_ref();
-        log::info!("MimeTypeInfoStore::load_single_xml_into_store {:?}", path);
+    fn load_mime_info<P: AsRef<Path>>(mime_info_path: P, store: &mut Self) -> anyhow::Result<()> {
+        let path = mime_info_path.as_ref();
+        log::info!("MimeTypeInfoStore::load_mime_info {:?}", path);
 
         let file = File::open(path)?;
         let reader = BufReader::new(file);
@@ -259,7 +256,7 @@ mod tests {
     fn loads_and_contains_expected_data<P: AsRef<Path>>(
         freedesktop_org_xml_path: P,
     ) -> anyhow::Result<()> {
-        let store = MimeInfoStore::load(&[freedesktop_org_xml_path])?;
+        let store = MimeTypeInfoStore::load(&[freedesktop_org_xml_path])?;
 
         // look up atari 7800 ROM mime type
         let atari_7800_mime_type = MimeType::parse("application/x-atari-7800-rom")?;
@@ -323,7 +320,7 @@ mod tests {
     #[test]
     fn merges_multiple_sources() -> anyhow::Result<()> {
         let sources = vec![tiny_freedesktop_org_xml_path(), code_workspace_xml_path()];
-        let store = MimeInfoStore::load(&sources)?;
+        let store = MimeTypeInfoStore::load(&sources)?;
 
         let mobi_mime_type = MimeType::parse("application/vnd.amazon.mobi8-ebook")?;
         let code_workspace_mime_type = MimeType::parse("application/x-code-workspace")?;

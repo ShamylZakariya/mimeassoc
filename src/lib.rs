@@ -6,14 +6,14 @@ use std::{
 pub mod desktop_entry;
 pub mod desktop_entry_store;
 pub mod mime_association_store;
-pub mod mime_info;
 pub mod mime_type;
+pub mod mime_type_info;
 
 pub use desktop_entry::*;
 pub use desktop_entry_store::*;
 pub use mime_association_store::*;
-pub use mime_info::*;
 pub use mime_type::*;
+pub use mime_type_info::*;
 
 pub const LIB_LOG_DOMAIN: &str = "LibMimeAssoc";
 
@@ -200,7 +200,7 @@ mod tests {
         mime_associations: &'a MimeAssociationStore,
         desktop_entries: &'a DesktopEntryStore,
     ) -> Option<&'a DesktopEntry> {
-        if let Some(desktop_entry_id) = mime_associations.assigned_application_for(&mime_type) {
+        if let Some(desktop_entry_id) = mime_associations.default_application_for(&mime_type) {
             if let Some(desktop_entry) = desktop_entries.get_desktop_entry(desktop_entry_id) {
                 return Some(desktop_entry);
             }
@@ -230,24 +230,24 @@ mod tests {
 
         // assert mime -> desktop entry ids work as expected
         assert_eq!(
-            mime_associations.assigned_application_for(&text_plain),
+            mime_associations.default_application_for(&text_plain),
             Some(&text_editor)
         );
         assert_eq!(
-            mime_associations.assigned_application_for(&image_bmp),
+            mime_associations.default_application_for(&image_bmp),
             Some(&photopea_id)
         );
         assert_eq!(
-            mime_associations.assigned_application_for(&audio_m4a),
+            mime_associations.default_application_for(&audio_m4a),
             Some(&totem_id)
         );
         assert_eq!(
-            mime_associations.assigned_application_for(&image_tiff),
+            mime_associations.default_application_for(&image_tiff),
             Some(&evince_id)
         );
 
         assert_eq!(
-            mime_associations.assigned_application_for(&image_pdf),
+            mime_associations.default_application_for(&image_pdf),
             Some(&evince_id)
         );
 

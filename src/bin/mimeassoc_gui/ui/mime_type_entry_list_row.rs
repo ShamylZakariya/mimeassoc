@@ -168,7 +168,7 @@ impl MimeTypeEntryListRow {
                 let is_assigned = if let Some(assigned_desktop_entry) = stores
                     .borrow()
                     .mime_associations_store()
-                    .assigned_application_for(mime_type)
+                    .default_application_for(mime_type)
                 {
                     assigned_desktop_entry == &desktop_entry_id
                 } else {

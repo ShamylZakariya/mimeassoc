@@ -13,15 +13,15 @@ enum HistoryEntry {
         mime_type: MimeType,
         previous_desktop_entry_id: Option<DesktopEntryId>,
     },
-    DiscardUncommittedChanges {
-        previous_user_scope: MimeAssociationScope,
-    },
-    ResetUserDefaultApplicationAssignments {
-        previous_user_scope: MimeAssociationScope,
-    },
-    PruneOrphanedApplicationAssignments {
-        previous_user_scope: MimeAssociationScope,
-    },
+    // DiscardUncommittedChanges {
+    //     previous_user_scope: MimeAssociationScope,
+    // },
+    // ResetUserDefaultApplicationAssignments {
+    //     previous_user_scope: MimeAssociationScope,
+    // },
+    // PruneOrphanedApplicationAssignments {
+    //     previous_user_scope: MimeAssociationScope,
+    // },
 }
 
 impl Debug for HistoryEntry {
@@ -45,24 +45,6 @@ impl Debug for HistoryEntry {
                 .field("mime_type", mime_type)
                 .field("previous_desktop_entry_id", previous_desktop_entry_id)
                 .finish(),
-            Self::DiscardUncommittedChanges {
-                previous_user_scope: _,
-            } => f
-                .debug_struct("DiscardUncommittedChanges")
-                // .field("previous_user_scope", previous_user_scope)
-                .finish(),
-            Self::ResetUserDefaultApplicationAssignments {
-                previous_user_scope: _,
-            } => f
-                .debug_struct("ResetUserDefaultApplicationAssignments")
-                // .field("previous_user_scope", previous_user_scope)
-                .finish(),
-            Self::PruneOrphanedApplicationAssignments {
-                previous_user_scope: _,
-            } => f
-                .debug_struct("PruneOrphanedApplicationAssignments")
-                // .field("previous_user_scope", previous_user_scope)
-                .finish(),
         }
     }
 }
@@ -70,7 +52,7 @@ impl Debug for HistoryEntry {
 pub struct Stores {
     mime_associations_store: MimeAssociationStore,
     desktop_entry_store: DesktopEntryStore,
-    mime_info_store: MimeInfoStore,
+    mime_info_store: MimeTypeInfoStore,
 
     history: Vec<HistoryEntry>,
 }
@@ -87,7 +69,7 @@ impl Stores {
         Ok(Self {
             mime_associations_store: MimeAssociationStore::load(&mimeapps_lists_paths()?)?,
             desktop_entry_store: DesktopEntryStore::load(&desktop_entry_dirs()?)?,
-            mime_info_store: MimeInfoStore::load(&mimeinfo_paths()?)?,
+            mime_info_store: MimeTypeInfoStore::load(&mimeinfo_paths()?)?,
             history: vec![],
         })
     }
@@ -100,7 +82,7 @@ impl Stores {
         &self.desktop_entry_store
     }
 
-    pub fn mime_info_store(&self) -> &MimeInfoStore {
+    pub fn mime_info_store(&self) -> &MimeTypeInfoStore {
         &self.mime_info_store
     }
 
@@ -111,7 +93,7 @@ impl Stores {
     ) -> anyhow::Result<()> {
         let previous_assigned_handler = self
             .mime_associations_store
-            .assigned_application_for(mime_type)
+            .default_application_for(mime_type)
             .cloned();
 
         let Some(desktop_entry) = self.desktop_entry_store.get_desktop_entry(desktop_entry_id) else {
@@ -151,11 +133,11 @@ impl Stores {
     ) -> anyhow::Result<()> {
         let previous_assigned_handler = self
             .mime_associations_store
-            .assigned_application_for(mime_type)
+            .default_application_for(mime_type)
             .cloned();
 
         self.mime_associations_store
-            .remove_assigned_applications_for(mime_type)?;
+            .remove_assigned_applications_for(mime_type);
 
         self.history.push(HistoryEntry::DesktopEntryUnassignment {
             mime_type: mime_type.clone(),
@@ -166,12 +148,6 @@ impl Stores {
     }
 
     pub fn discard_uncommitted_changes(&mut self) -> anyhow::Result<()> {
-        if let Some(user_scope) = self.mime_associations_store.get_user_scope().cloned() {
-            self.history.push(HistoryEntry::DiscardUncommittedChanges {
-                previous_user_scope: user_scope,
-            });
-        }
-
         // attempt to reload; if there's an error pop the change, which will re-assign the user scope state
         if let Err(e) = self.mime_associations_store.reload() {
             self.undo()?;
@@ -182,43 +158,17 @@ impl Stores {
     }
 
     pub fn reset_user_default_application_assignments(&mut self) -> anyhow::Result<()> {
-        if let Some(user_scope) = self.mime_associations_store.get_user_scope().cloned() {
-            self.history
-                .push(HistoryEntry::ResetUserDefaultApplicationAssignments {
-                    previous_user_scope: user_scope,
-                });
-        }
-
-        // attempt to clear; if there's an error pop the change, which will re-assign the user scope state
-        if let Err(e) = self.mime_associations_store.clear_assigned_applications() {
-            self.undo()?;
-            Err(e)
-        } else {
-            Ok(())
-        }
+        self.mime_associations_store.clear_assigned_applications();
+        Ok(())
     }
 
     pub fn prune_orphaned_application_assignments(
         &mut self,
     ) -> anyhow::Result<Vec<DesktopEntryId>> {
-        if let Some(user_scope) = self.mime_associations_store.get_user_scope().cloned() {
-            self.history
-                .push(HistoryEntry::PruneOrphanedApplicationAssignments {
-                    previous_user_scope: user_scope,
-                });
-        }
-
-        match self
+        let result = self
             .mime_associations_store
-            .prune_orphaned_application_assignments(&self.desktop_entry_store)
-        {
-            Ok(result) => Ok(result),
-            Err(e) => {
-                // the pruning failed; restore previous user scope
-                self.undo()?;
-                Err(e)
-            }
-        }
+            .prune_orphaned_application_assignments(&self.desktop_entry_store);
+        Ok(result.into_iter().collect())
     }
 
     pub fn save(&mut self) -> anyhow::Result<()> {
@@ -249,7 +199,7 @@ impl Stores {
                         )?;
                     } else {
                         self.mime_associations_store
-                            .remove_assigned_applications_for(&mime_type)?;
+                            .remove_assigned_applications_for(&mime_type);
                     }
                 }
                 HistoryEntry::DesktopEntryUnassignment {
@@ -263,27 +213,8 @@ impl Stores {
                         )?;
                     } else {
                         self.mime_associations_store
-                            .remove_assigned_applications_for(&mime_type)?;
+                            .remove_assigned_applications_for(&mime_type);
                     }
-                }
-
-                HistoryEntry::DiscardUncommittedChanges {
-                    previous_user_scope: user_scope,
-                } => {
-                    self.mime_associations_store
-                        .overwrite_user_scope(&user_scope)?;
-                }
-                HistoryEntry::ResetUserDefaultApplicationAssignments {
-                    previous_user_scope: user_scope,
-                } => {
-                    self.mime_associations_store
-                        .overwrite_user_scope(&user_scope)?;
-                }
-                HistoryEntry::PruneOrphanedApplicationAssignments {
-                    previous_user_scope: user_scope,
-                } => {
-                    self.mime_associations_store
-                        .overwrite_user_scope(&user_scope)?;
                 }
             }
         }
