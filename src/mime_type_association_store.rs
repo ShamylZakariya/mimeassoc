@@ -566,6 +566,12 @@ mod tests {
         path("test-data/config/mimeapps.list")
     }
 
+    // this is a second user editable mimeapps list used for some tests
+    // which need > 1 user customizable list
+    fn test_user_defaults_list() -> PathBuf {
+        path("test-data/config/defaults.list")
+    }
+
     fn test_user_applications() -> PathBuf {
         path("test-data/local/share/applications")
     }
@@ -593,14 +599,16 @@ mod tests {
     fn create_test_associations() -> anyhow::Result<MimeTypeAssociationStore> {
         let mut associations = MimeTypeAssociationStore::load(&[
             test_user_mimeapps_list(),
+            test_user_defaults_list(),
             test_gnome_mimeapps_list(),
             test_sys_mimeapps_list(),
         ])?;
 
-        // we need to make first scope user writable for testing
+        // we need to make first 2 scopes user writable for testing
         associations.scopes[0].is_user_customizable = true;
-        associations.scopes[1].is_user_customizable = false;
+        associations.scopes[1].is_user_customizable = true;
         associations.scopes[2].is_user_customizable = false;
+        associations.scopes[3].is_user_customizable = false;
 
         Ok(associations)
     }
@@ -904,6 +912,71 @@ mod tests {
     }
 
     #[test]
+    fn removing_assignment_from_higher_scopes_works() -> anyhow::Result<()> {
+        let mut associations = create_test_associations()?;
+
+        // verify pre-conditions
+        let x_scheme_handler_jetbrains = MimeType::parse("x-scheme-handler/jetbrains")?;
+        let x_scheme_handler_fleet = MimeType::parse("x-scheme-handler/fleet")?;
+        assert_eq!(
+            associations
+                .default_application_for(&x_scheme_handler_jetbrains)
+                .unwrap()
+                .id(),
+            "jetbrains-toolbox.desktop"
+        );
+
+        assert_eq!(
+            associations
+                .default_application_for(&x_scheme_handler_fleet)
+                .unwrap()
+                .id(),
+            "jetbrains-fleet.desktop"
+        );
+
+        // verify that these are stored in the second scope
+        assert_eq!(
+            associations.scopes[1]
+                .default_applications
+                .get(&x_scheme_handler_jetbrains)
+                .unwrap()
+                .id(),
+            "jetbrains-toolbox.desktop"
+        );
+
+        assert_eq!(
+            associations.scopes[1]
+                .default_applications
+                .get(&x_scheme_handler_fleet)
+                .unwrap()
+                .id(),
+            "jetbrains-fleet.desktop"
+        );
+
+        // now delete these associations
+        assert!(associations.remove_assigned_applications_for(&x_scheme_handler_jetbrains));
+        assert!(associations.remove_assigned_applications_for(&x_scheme_handler_fleet));
+
+        // now verify they're donezo globally
+        assert!(associations
+            .default_application_for(&x_scheme_handler_jetbrains)
+            .is_none());
+        assert!(associations
+            .default_application_for(&x_scheme_handler_fleet)
+            .is_none());
+
+        // verify they're gone from the second scope specifically
+        assert!(!associations.scopes[1]
+            .default_applications
+            .contains_key(&x_scheme_handler_jetbrains));
+        assert!(!associations.scopes[1]
+            .default_applications
+            .contains_key(&x_scheme_handler_fleet));
+
+        Ok(())
+    }
+
+    #[test]
     fn mimeassocations_wildcard_lookup_works() -> anyhow::Result<()> {
         let associations = create_test_associations()?;
 
@@ -1079,6 +1152,7 @@ mod tests {
     fn make_default_handler_errors_without_writeable_scope() -> anyhow::Result<()> {
         let (entries, mut associations) = create_test_entries_and_associations()?;
         associations.scopes[0].is_user_customizable = false;
+        associations.scopes[1].is_user_customizable = false;
 
         let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
         let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
