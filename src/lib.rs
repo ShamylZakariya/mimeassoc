@@ -5,14 +5,14 @@ use std::{
 
 pub mod desktop_entry;
 pub mod desktop_entry_store;
-pub mod mime_association_store;
 pub mod mime_type;
+pub mod mime_type_association_store;
 pub mod mime_type_info;
 
 pub use desktop_entry::*;
 pub use desktop_entry_store::*;
-pub use mime_association_store::*;
 pub use mime_type::*;
+pub use mime_type_association_store::*;
 pub use mime_type_info::*;
 
 pub const LIB_LOG_DOMAIN: &str = "LibMimeAssoc";
@@ -197,7 +197,7 @@ mod tests {
 
     fn default_application_for_mime_type<'a>(
         mime_type: &MimeType,
-        mime_associations: &'a MimeAssociationStore,
+        mime_associations: &'a MimeTypeAssociationStore,
         desktop_entries: &'a DesktopEntryStore,
     ) -> Option<&'a DesktopEntry> {
         if let Some(desktop_entry_id) = mime_associations.default_application_for(&mime_type) {
@@ -210,7 +210,7 @@ mod tests {
 
     #[test]
     fn makes_correct_mime_to_desktop_associations() -> anyhow::Result<()> {
-        let mime_associations = MimeAssociationStore::load(&test_mimeapps_lists_paths())?;
+        let mime_associations = MimeTypeAssociationStore::load(&test_mimeapps_lists_paths())?;
         let desktop_entries = DesktopEntryStore::load(&test_desktop_entry_dirs())?;
 
         let text_plain = MimeType::parse("text/plain")?;

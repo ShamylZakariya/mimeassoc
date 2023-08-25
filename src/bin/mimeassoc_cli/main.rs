@@ -25,7 +25,7 @@ pub struct Cli {
 impl Cli {
     pub fn process(
         &self,
-        mime_associations_store: &mut MimeAssociationStore,
+        mime_associations_store: &mut MimeTypeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
         mime_info_store: &MimeTypeInfoStore,
     ) {
@@ -107,7 +107,7 @@ fn main() {
         Err(e) => panic!("Unable to load mimeinfo_paths: {:?}", e),
     };
 
-    let mut mime_associations_store = match MimeAssociationStore::load(&mimeapps_lists) {
+    let mut mime_associations_store = match MimeTypeAssociationStore::load(&mimeapps_lists) {
         Ok(mimeassoc) => mimeassoc,
         Err(e) => panic!("Unable to load MimeAssociationStore: {:?}", e),
     };

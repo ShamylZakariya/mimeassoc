@@ -56,7 +56,7 @@ pub enum Commands {
 impl Commands {
     pub fn process(
         &self,
-        mime_associations_store: &mut MimeAssociationStore,
+        mime_associations_store: &mut MimeTypeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
         mime_info_store: &MimeTypeInfoStore,
     ) -> CommandOutput {
@@ -103,7 +103,7 @@ impl Commands {
     }
 
     fn get_mime_types(
-        mime_associations_store: &MimeAssociationStore,
+        mime_associations_store: &MimeTypeAssociationStore,
         mime_info_store: &MimeTypeInfoStore,
     ) -> CommandOutput {
         let mut mime_types = mime_associations_store.mime_types();
@@ -121,7 +121,7 @@ impl Commands {
     }
 
     fn get_mime_type(
-        mime_associations_store: &MimeAssociationStore,
+        mime_associations_store: &MimeTypeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
         mime_info_store: &MimeTypeInfoStore,
         id: Option<&str>,
@@ -150,7 +150,7 @@ impl Commands {
     }
 
     fn get_single_mime_type(
-        mime_associations_store: &MimeAssociationStore,
+        mime_associations_store: &MimeTypeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
         mime_info_store: &MimeTypeInfoStore,
         mime_type: &MimeType,
@@ -175,7 +175,7 @@ impl Commands {
     }
 
     fn get_applications(
-        mime_associations_store: &MimeAssociationStore,
+        mime_associations_store: &MimeTypeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
     ) -> CommandOutput {
         CommandOutput::Applications(
@@ -209,7 +209,7 @@ impl Commands {
     }
 
     fn get_application(
-        mime_associations_store: &MimeAssociationStore,
+        mime_associations_store: &MimeTypeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
         id: Option<&str>,
     ) -> CommandOutput {
@@ -246,7 +246,7 @@ impl Commands {
     }
 
     fn set_default_handler(
-        mime_associations_store: &mut MimeAssociationStore,
+        mime_associations_store: &mut MimeTypeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
         desktop_entry_id: &str,
         mime_types: &[&str],
@@ -313,7 +313,7 @@ impl Commands {
     }
 
     fn reset_mime_types(
-        mime_associations_store: &mut MimeAssociationStore,
+        mime_associations_store: &mut MimeTypeAssociationStore,
         mime_types: &[&str],
         dry_run: bool,
     ) -> CommandOutput {
@@ -348,7 +348,7 @@ impl Commands {
     }
 
     fn get_configuration(
-        mime_associations_store: &MimeAssociationStore,
+        mime_associations_store: &MimeTypeAssociationStore,
         desktop_entry_store: &DesktopEntryStore,
     ) -> CommandOutput {
         let mime_association_scope_paths = mime_associations_store

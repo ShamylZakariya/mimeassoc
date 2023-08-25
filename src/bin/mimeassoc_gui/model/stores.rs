@@ -50,7 +50,7 @@ impl Debug for HistoryEntry {
 }
 
 pub struct Stores {
-    mime_associations_store: MimeAssociationStore,
+    mime_associations_store: MimeTypeAssociationStore,
     desktop_entry_store: DesktopEntryStore,
     mime_info_store: MimeTypeInfoStore,
 
@@ -67,14 +67,14 @@ impl std::fmt::Debug for Stores {
 impl Stores {
     pub fn new() -> anyhow::Result<Self> {
         Ok(Self {
-            mime_associations_store: MimeAssociationStore::load(&mimeapps_lists_paths()?)?,
+            mime_associations_store: MimeTypeAssociationStore::load(&mimeapps_lists_paths()?)?,
             desktop_entry_store: DesktopEntryStore::load(&desktop_entry_dirs()?)?,
             mime_info_store: MimeTypeInfoStore::load(&mimeinfo_paths()?)?,
             history: vec![],
         })
     }
 
-    pub fn mime_associations_store(&self) -> &MimeAssociationStore {
+    pub fn mime_associations_store(&self) -> &MimeTypeAssociationStore {
         &self.mime_associations_store
     }
 
