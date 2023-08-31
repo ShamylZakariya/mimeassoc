@@ -26,4 +26,31 @@ impl Strings {
             mime_type
         )
     }
+
+    pub fn reset_user_default_application_assignments_dialog_title() -> &'static str {
+        "Reset your application handler assignments?"
+    }
+
+    pub fn reset_user_default_application_assignments_dialog_body() -> &'static str {
+        "This will clear any application assignments you have made and reset to system defaults."
+    }
+
+    pub fn reset_user_default_application_assignments_dialog_action_proceed() -> &'static str {
+        "Reset to System Defaults"
+    }
+
+    pub fn prune_orphaned_application_assignments_dialog_title() -> &'static str {
+        "Clear orphaned application assignments?"
+    }
+
+    pub fn prune_orphaned_application_assignments_dialog_body() -> &'static str {
+        "This will remove any left-over application assignments from uninstalled applications?"
+    }
+    pub fn prune_orphaned_application_assignments_dialog_action_proceed() -> &'static str {
+        "Clear"
+    }
+
+    pub fn cancel() -> &'static str {
+        "Cancel"
+    }
 }

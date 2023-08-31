@@ -49,6 +49,12 @@ impl Debug for HistoryEntry {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum ApplicationToMimeTypeBindingAction {
+    Assign,
+    Clear,
+}
+
 pub struct Stores {
     mime_associations_store: MimeTypeAssociationStore,
     desktop_entry_store: DesktopEntryStore,
@@ -86,63 +92,49 @@ impl Stores {
         &self.mime_info_store
     }
 
-    pub fn assign_application_to_mimetype(
+    pub fn set_application_to_mimetype_binding(
         &mut self,
         mime_type: &MimeType,
         desktop_entry_id: &DesktopEntryId,
+        action: ApplicationToMimeTypeBindingAction,
     ) -> anyhow::Result<()> {
-        let previous_assigned_handler = self
-            .mime_associations_store
-            .default_application_for(mime_type)
-            .cloned();
+        match action {
+            ApplicationToMimeTypeBindingAction::Assign => {
+                let previous_assigned_handler = self
+                    .mime_associations_store
+                    .default_application_for(mime_type)
+                    .cloned();
 
-        let Some(desktop_entry) = self.desktop_entry_store.get_desktop_entry(desktop_entry_id) else {
-            anyhow::bail!("Unrecognized desktop entry id")
-        };
+                let Some(desktop_entry) =
+                    self.desktop_entry_store.get_desktop_entry(desktop_entry_id)
+                else {
+                    anyhow::bail!("Unrecognized desktop entry id")
+                };
 
-        self.mime_associations_store
-            .set_default_handler_for_mime_type(mime_type, desktop_entry)?;
+                self.mime_associations_store
+                    .set_default_handler_for_mime_type(mime_type, desktop_entry)?;
 
-        self.history.push(HistoryEntry::DesktopEntryAssignment {
-            mime_type: mime_type.clone(),
-            previous_desktop_entry_id: previous_assigned_handler,
-            new_desktop_entry_id: desktop_entry_id.clone(),
-        });
+                self.history.push(HistoryEntry::DesktopEntryAssignment {
+                    mime_type: mime_type.clone(),
+                    previous_desktop_entry_id: previous_assigned_handler,
+                    new_desktop_entry_id: desktop_entry_id.clone(),
+                });
+            }
+            ApplicationToMimeTypeBindingAction::Clear => {
+                let previous_assigned_handler = self
+                    .mime_associations_store
+                    .default_application_for(mime_type)
+                    .cloned();
 
-        Ok(())
-    }
+                self.mime_associations_store
+                    .remove_assigned_applications_for(mime_type);
 
-    fn assign_application_to_mimetype_without_history(
-        &mut self,
-        mime_type: &MimeType,
-        previous_desktop_entry: &DesktopEntryId,
-    ) -> anyhow::Result<()> {
-        let Some(desktop_entry) = self.desktop_entry_store.get_desktop_entry(previous_desktop_entry) else {
-            anyhow::bail!("Unrecognized desktop entry id")
-        };
-
-        self.mime_associations_store
-            .set_default_handler_for_mime_type(mime_type, desktop_entry)?;
-
-        Ok(())
-    }
-
-    pub fn remove_assigned_application_from_mimetype(
-        &mut self,
-        mime_type: &MimeType,
-    ) -> anyhow::Result<()> {
-        let previous_assigned_handler = self
-            .mime_associations_store
-            .default_application_for(mime_type)
-            .cloned();
-
-        self.mime_associations_store
-            .remove_assigned_applications_for(mime_type);
-
-        self.history.push(HistoryEntry::DesktopEntryUnassignment {
-            mime_type: mime_type.clone(),
-            previous_desktop_entry_id: previous_assigned_handler,
-        });
+                self.history.push(HistoryEntry::DesktopEntryUnassignment {
+                    mime_type: mime_type.clone(),
+                    previous_desktop_entry_id: previous_assigned_handler,
+                });
+            }
+        }
 
         Ok(())
     }
@@ -224,5 +216,25 @@ impl Stores {
 
     pub fn debug_log_history_stack(&self) {
         log::debug!("\nhistory:\n{:#?}\n", self.history);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+
+    fn assign_application_to_mimetype_without_history(
+        &mut self,
+        mime_type: &MimeType,
+        previous_desktop_entry: &DesktopEntryId,
+    ) -> anyhow::Result<()> {
+        let Some(desktop_entry) = self
+            .desktop_entry_store
+            .get_desktop_entry(previous_desktop_entry)
+        else {
+            anyhow::bail!("Unrecognized desktop entry id")
+        };
+
+        self.mime_associations_store
+            .set_default_handler_for_mime_type(mime_type, desktop_entry)?;
+
+        Ok(())
     }
 }

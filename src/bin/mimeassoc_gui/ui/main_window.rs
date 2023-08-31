@@ -413,10 +413,12 @@ impl MainWindow {
 //
 
 impl MainWindow {
+    /// Assigns an application to handle a specified mimetype. E.g., assign Firefox to handle text/html
     fn assign_application_to_mimetype(
         &self,
         mime_type: &MimeType,
-        desktop_entry_id: Option<&DesktopEntryId>,
+        desktop_entry_id: &DesktopEntryId,
+        action: ApplicationToMimeTypeBindingAction,
     ) {
         log::debug!(
             "MainWindow::assign_application_to_mimetype application: {:?} mime_type: {}",
@@ -424,21 +426,12 @@ impl MainWindow {
             mime_type,
         );
 
-        if let Some(desktop_entry_id) = desktop_entry_id {
-            if let Err(e) = self
-                .stores()
-                .borrow_mut()
-                .assign_application_to_mimetype(mime_type, desktop_entry_id)
-            {
-                self.show_error("Error", "Unable to assign application to mimetype", &e);
-                return;
-            }
-        } else if let Err(e) = self
+        if let Err(e) = self
             .stores()
             .borrow_mut()
-            .remove_assigned_application_from_mimetype(mime_type)
+            .set_application_to_mimetype_binding(mime_type, desktop_entry_id, action)
         {
-            self.show_error("Error", "Unable to un-assign application from mimetype", &e);
+            self.show_error("Error", "Unable to assign application to mimetype", &e);
             return;
         }
 
@@ -455,10 +448,8 @@ impl MainWindow {
 
         // Create new dialog
         let dialog = adw::MessageDialog::builder()
-            .heading("Reset your application handler assignments?")
-            .body(
-                "Would you like to reset your application handler assignments to system defaults? This will clear out any application assignments you have made.",
-            )
+            .heading(Strings::reset_user_default_application_assignments_dialog_title())
+            .body(Strings::reset_user_default_application_assignments_dialog_body())
             .transient_for(self)
             .modal(true)
             .destroy_with_parent(true)
@@ -466,8 +457,11 @@ impl MainWindow {
             .default_response(reset_response)
             .build();
         dialog.add_responses(&[
-            (cancel_response, "Cancel"),
-            (reset_response, "Reset to System Defaults"),
+            (cancel_response, Strings::cancel()),
+            (
+                reset_response,
+                Strings::reset_user_default_application_assignments_dialog_action_proceed(),
+            ),
         ]);
 
         dialog.set_response_appearance(reset_response, ResponseAppearance::Destructive);
@@ -496,15 +490,21 @@ impl MainWindow {
 
         // Create new dialog
         let dialog = adw::MessageDialog::builder()
-            .heading("Clear orphaned application assignments?")
-            .body("Would you like to remove any left-over application assignments from uninstalled applications?")
+            .heading(Strings::prune_orphaned_application_assignments_dialog_title())
+            .body(Strings::prune_orphaned_application_assignments_dialog_body())
             .transient_for(self)
             .modal(true)
             .destroy_with_parent(true)
             .close_response(cancel_response)
             .default_response(clear_response)
             .build();
-        dialog.add_responses(&[(cancel_response, "Cancel"), (clear_response, "Clear")]);
+        dialog.add_responses(&[
+            (cancel_response, Strings::cancel()),
+            (
+                clear_response,
+                Strings::prune_orphaned_application_assignments_dialog_action_proceed(),
+            ),
+        ]);
 
         dialog.set_response_appearance(clear_response, ResponseAppearance::Suggested);
 
@@ -804,10 +804,10 @@ impl MainWindow {
                 let is_single_checkbox = num_application_entries_in_list == 1;
 
                 if check_button.is_active() {
-                    window.assign_application_to_mimetype(&mime_type, Some(&application_entry.desktop_entry_id()));
+                    window.assign_application_to_mimetype(&mime_type, &application_entry.desktop_entry_id(), ApplicationToMimeTypeBindingAction::Assign);
                 } else if is_single_checkbox {
                     // only send the unchecked signal if this is a single checkbox, not a multi-element radio button
-                    window.assign_application_to_mimetype(&mime_type, None);
+                    window.assign_application_to_mimetype(&mime_type, &application_entry.desktop_entry_id(), ApplicationToMimeTypeBindingAction::Clear);
                 }
             }),
         );
@@ -956,6 +956,11 @@ impl MainWindow {
         if is_assigned_application {
             check_button.set_active(true);
         }
+
+        check_button.connect_toggled(clone!(@weak self as window, @strong desktop_entry, @strong mime_type => move |check_button| {
+            let action = if check_button.is_active() { ApplicationToMimeTypeBindingAction::Assign } else { ApplicationToMimeTypeBindingAction::Clear };
+            window.assign_application_to_mimetype(&mime_type, &desktop_entry.id(), action);
+        }));
 
         row
     }
