@@ -113,9 +113,21 @@ mod imp {
     impl ApplicationWindowImpl for MainWindow {}
 }
 
+#[derive(Debug)]
 pub enum MainWindowPage {
     MimeTypes,
     Applications,
+}
+
+impl MainWindowPage {
+    /// Creates a MainWindowPage from the page name as set in the .ui XML file.
+    fn from_ui_name(name: &str) -> Option<Self> {
+        match name {
+            "mime_types_page" => Some(MainWindowPage::MimeTypes),
+            "applications_page" => Some(MainWindowPage::Applications),
+            _ => None,
+        }
+    }
 }
 
 glib::wrapper! {
@@ -182,11 +194,23 @@ impl MainWindow {
     }
 
     fn setup_ui(&self) {
+        // wire up the save button
         self.imp()
             .commit_button
             .connect_clicked(clone!(@weak self as window => move |_|{
                 window.commit_changes();
             }));
+
+        // listen for when user switches between MimeTypes and Applications panes
+        self.imp().stack.connect_visible_child_notify(
+            clone!(@weak self as window => move |stack| {
+                if let Some(name) = stack.visible_child_name() {
+                    if let Some(page) = MainWindowPage::from_ui_name(&name) {
+                        window.current_page_changed(page);
+                    }
+                }
+            }),
+        );
 
         self.setup_mime_types_pane();
         self.setup_applications_pane();
@@ -538,6 +562,10 @@ impl MainWindow {
                 page_selection_model.select_item(1, true);
             }
         }
+    }
+
+    fn current_page_changed(&self, to_page: MainWindowPage) {
+        log::debug!("current_page_changed to_page: {:?}", to_page);
         self.reload_active_page();
     }
 
