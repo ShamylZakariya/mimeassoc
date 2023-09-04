@@ -90,7 +90,9 @@ impl ApplicationEntry {
     /// all the mime types which this application reports to handle
     pub fn mime_type_assignments(&self) -> gio::ListStore {
         let desktop_entry = self.desktop_entry();
-        let supported_mime_types = desktop_entry.mime_types();
+        let mut supported_mime_types = desktop_entry.mime_types().clone();
+        supported_mime_types.sort();
+
         let stores = self.stores();
         let supported_mime_type_entries = supported_mime_types
             .iter()

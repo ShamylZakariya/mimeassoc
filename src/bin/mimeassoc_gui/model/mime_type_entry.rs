@@ -76,8 +76,14 @@ impl MimeTypeEntry {
         let borrowed_stores = stores.borrow();
         let desktop_entry_store = borrowed_stores.desktop_entry_store();
 
-        let application_entries = desktop_entry_store
-            .get_desktop_entries_for_mimetype(&mime_type)
+        let mut desktop_entries = desktop_entry_store.get_desktop_entries_for_mimetype(&mime_type);
+        desktop_entries.sort_by(|a, b| {
+            let a_name = a.name().unwrap_or(a.id().id()).to_lowercase();
+            let b_name = b.name().unwrap_or(b.id().id()).to_lowercase();
+            a_name.cmp(&b_name)
+        });
+
+        let application_entries = desktop_entries
             .iter()
             .map(|de| ApplicationEntry::new(de.id(), stores.clone()))
             .collect::<Vec<_>>();

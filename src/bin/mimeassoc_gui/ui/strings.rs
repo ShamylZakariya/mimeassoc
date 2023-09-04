@@ -16,7 +16,7 @@ impl Strings {
     /// Message shown in the MainWindowPage::Applications view, in the right-hand mime types
     /// listing, when a mime type is bound to the selected application at the system level
     /// and as such cannot be disabled by the user.
-    pub fn application_is_system_default_handler_for_mimetype(
+    pub fn application_is_system_default_handler_for_mimetype_long(
         desktop_entry: &DesktopEntry,
         mime_type: &MimeType,
     ) -> String {
@@ -25,6 +25,15 @@ impl Strings {
             desktop_entry.name().unwrap_or(desktop_entry.id().id()),
             mime_type
         )
+    }
+
+    /// Message shown in the MainWindowPage::MimeTypes view in the detail view
+    /// as subtitle for an Application which is the system default handler for the
+    /// selected mime type.
+    pub fn application_is_system_default_handler_for_mimetype_short(
+        mime_type: &MimeType,
+    ) -> String {
+        format!("System default handler for {}", mime_type)
     }
 
     // Strings for dialogs

@@ -602,7 +602,7 @@ impl MainWindow {
                 .as_ref()
                 .cloned();
             if let Some(mime_type_entry) = mime_type_entry {
-                self.show_mime_type_to_application_assignment(&mime_type_entry);
+                self.show_mime_type_pane_detail(&mime_type_entry);
             }
         } else if page_selection_model.is_selected(1) {
             let application_entry = self
@@ -612,7 +612,7 @@ impl MainWindow {
                 .as_ref()
                 .cloned();
             if let Some(application_entry) = application_entry {
-                self.show_application_to_mime_type_assignment(&application_entry);
+                self.show_application_pane_detail(&application_entry);
             }
         } else {
             unreachable!("Somehow the page selection model has a page other than [0,1] selected.")
@@ -651,13 +651,13 @@ impl MainWindow {
                 .expect("Expected a valid row index")
                 .downcast::<MimeTypeEntry>()
                 .expect("MainWindow::mime_type_entries() model should contain instances of MimeTypeEntry only");
-            window.show_mime_type_to_application_assignment(&model);
+            window.show_mime_type_pane_detail(&model);
         }));
 
         // Select first entry
         let row = mime_types_list_box.row_at_index(0);
         mime_types_list_box.select_row(row.as_ref());
-        self.show_mime_type_to_application_assignment(
+        self.show_mime_type_pane_detail(
             &self
                 .mime_type_entries()
                 .item(0)
@@ -675,53 +675,13 @@ impl MainWindow {
             Some(&self.mime_type_entries()),
             clone!(@weak self as window => @default-panic, move | obj | {
                 let model = obj.downcast_ref().unwrap();
-                let row = window.create_mime_type_list_box_row(model);
+                let row = window.create_mime_type_pane_primary_row(model);
                 row.upcast()
             }),
         );
     }
 
-    fn create_mime_type_list_box_row(&self, model: &MimeTypeEntry) -> ListBoxRow {
-        let stores = self.stores();
-        let stores = stores.borrow();
-        let mime_info_store = stores.mime_info_store();
-
-        let mime_type = &model.mime_type();
-        let mime_info = mime_info_store.get_info_for_mime_type(mime_type);
-
-        let mime_type_label = Label::builder()
-            .wrap(true)
-            .wrap_mode(pango::WrapMode::Word)
-            .xalign(0.0)
-            .css_classes(vec!["mime-type"])
-            .build();
-
-        mime_type_label.set_text(&mime_type.to_string());
-
-        let content = Box::builder()
-            .orientation(Orientation::Vertical)
-            .css_classes(vec!["content"])
-            .build();
-
-        content.append(&mime_type_label);
-
-        if let Some(name) = mime_info.and_then(|info| info.comment()) {
-            let file_type_name_label = Label::builder()
-                .wrap(true)
-                .wrap_mode(pango::WrapMode::Word)
-                .xalign(0.0)
-                .css_classes(vec!["mime-type-description"])
-                .build();
-
-            file_type_name_label.set_text(name);
-
-            content.append(&file_type_name_label);
-        }
-
-        ListBoxRow::builder().child(&content).build()
-    }
-
-    fn show_mime_type_to_application_assignment(&self, mime_type_entry: &MimeTypeEntry) {
+    fn show_mime_type_pane_detail(&self, mime_type_entry: &MimeTypeEntry) {
         // flag that we're currently viewing this mime type
         self.imp()
             .currently_selected_mime_type_entry
@@ -744,7 +704,7 @@ impl MainWindow {
         list_box.bind_model(Some(&model),
             clone!(@weak self as window, @strong mime_type_entry => @default-panic, move |obj| {
                 let application_entry = obj.downcast_ref().expect("The object should be of type `ApplicationEntry`.");
-                window.create_application_assignment_row(&mime_type_entry, application_entry, model_count).upcast()
+                window.create_mime_type_pane_detail_row(&mime_type_entry, application_entry, model_count).upcast()
             }));
 
         // Update the info label - basically, if only one application is shown, and it is the
@@ -786,7 +746,7 @@ impl MainWindow {
         info_label.set_visible(show_info_label);
     }
 
-    fn create_application_assignment_row(
+    fn create_mime_type_pane_detail_row(
         &self,
         mime_type_entry: &MimeTypeEntry,
         application_entry: &ApplicationEntry,
@@ -798,7 +758,7 @@ impl MainWindow {
             .can_focus(false)
             .build();
 
-        let (is_default_application, is_assigned_application) = {
+        let (is_system_default_application, is_assigned_application) = {
             let stores = self.stores();
             let stores = stores.borrow();
             let mime_associations_store = stores.mime_associations_store();
@@ -813,12 +773,12 @@ impl MainWindow {
         };
 
         check_button.set_active(is_assigned_application);
-        if num_application_entries_in_list == 1 && is_default_application {
+        if num_application_entries_in_list == 1 && is_system_default_application {
             check_button.set_sensitive(false);
         }
 
         check_button.connect_toggled(
-            clone!(@weak self as window, @strong mime_type_entry, @strong application_entry => move |check_button| {
+            clone!(@weak self as window, @strong mime_type_entry, @strong application_entry, @strong mime_type => move |check_button| {
                 let is_single_checkbox = num_application_entries_in_list == 1;
 
                 if check_button.is_active() {
@@ -840,6 +800,13 @@ impl MainWindow {
         let title = desktop_entry.name().unwrap_or("<Unnamed Application>");
         row.set_title(title);
 
+        if is_system_default_application {
+            row.set_subtitle(
+                Strings::application_is_system_default_handler_for_mimetype_short(&mime_type)
+                    .as_str(),
+            );
+        }
+
         // RadioButtons work by putting check buttons in a group; we check if the group exists
         // and add this check button if it does; otherwise, we need to make a new group from
         // our first check button. It's ugly holding this state in the window, but here we are.
@@ -854,6 +821,46 @@ impl MainWindow {
             .replace(check_button);
 
         row
+    }
+
+    fn create_mime_type_pane_primary_row(&self, model: &MimeTypeEntry) -> ListBoxRow {
+        let stores = self.stores();
+        let stores = stores.borrow();
+        let mime_info_store = stores.mime_info_store();
+
+        let mime_type = &model.mime_type();
+        let mime_info = mime_info_store.get_info_for_mime_type(mime_type);
+
+        let mime_type_label = Label::builder()
+            .wrap(true)
+            .wrap_mode(pango::WrapMode::Word)
+            .xalign(0.0)
+            .css_classes(vec!["mime-type"])
+            .build();
+
+        mime_type_label.set_text(&mime_type.to_string());
+
+        let content = Box::builder()
+            .orientation(Orientation::Vertical)
+            .css_classes(vec!["content"])
+            .build();
+
+        content.append(&mime_type_label);
+
+        if let Some(name) = mime_info.and_then(|info| info.comment()) {
+            let file_type_name_label = Label::builder()
+                .wrap(true)
+                .wrap_mode(pango::WrapMode::Word)
+                .xalign(0.0)
+                .css_classes(vec!["mime-type-description"])
+                .build();
+
+            file_type_name_label.set_text(name);
+
+            content.append(&file_type_name_label);
+        }
+
+        ListBoxRow::builder().child(&content).build()
     }
 }
 
@@ -875,13 +882,13 @@ impl MainWindow {
                 .expect("Expected valid item index")
                 .downcast::<ApplicationEntry>()
                 .expect("MainWindow::application_entries should only contain ApplicationEntry");
-            window.show_application_to_mime_type_assignment(&model);
+            window.show_application_pane_detail(&model);
         }));
 
         // Select first entry
         let row = application_list_box.row_at_index(0);
         application_list_box.select_row(row.as_ref());
-        self.show_application_to_mime_type_assignment(
+        self.show_application_pane_detail(
             &self
                 .application_entries()
                 .item(0)
@@ -900,19 +907,19 @@ impl MainWindow {
                 let model = obj
                     .downcast_ref()
                     .unwrap();
-                let row = Self::create_application_list_box_row(model);
+                let row = Self::create_application_pane_primary_row(model);
                 row.upcast()
             }),
         );
     }
 
-    fn show_application_to_mime_type_assignment(&self, application_entry: &ApplicationEntry) {
+    fn show_application_pane_detail(&self, application_entry: &ApplicationEntry) {
         let model = NoSelection::new(Some(application_entry.mime_type_assignments()));
 
         self.imp().application_to_mime_type_assignment_list_box.bind_model(Some(&model),
             clone!(@weak self as window, @strong application_entry => @default-panic, move |obj| {
                 let model = obj.downcast_ref().expect("The object should be of type `MimeTypeEntry`.");
-                let row = window.create_mime_type_assignment_row(&application_entry, model);
+                let row = window.create_application_pane_detail_row(&application_entry, model);
                 row.upcast()
             }));
 
@@ -926,7 +933,7 @@ impl MainWindow {
             .replace(application_entry.clone());
     }
 
-    fn create_mime_type_assignment_row(
+    fn create_application_pane_detail_row(
         self,
         application_entry: &ApplicationEntry,
         mime_type_entry: &MimeTypeEntry,
@@ -964,7 +971,7 @@ impl MainWindow {
             check_button.set_active(true);
             row.set_sensitive(false);
             row.set_subtitle(
-                &Strings::application_is_system_default_handler_for_mimetype(
+                &Strings::application_is_system_default_handler_for_mimetype_long(
                     &desktop_entry,
                     &mime_type,
                 ),
@@ -983,7 +990,7 @@ impl MainWindow {
         row
     }
 
-    fn create_application_list_box_row(model: &ApplicationEntry) -> ListBoxRow {
+    fn create_application_pane_primary_row(model: &ApplicationEntry) -> ListBoxRow {
         let application_name_label = Label::builder()
             .wrap(true)
             .wrap_mode(pango::WrapMode::Word)
