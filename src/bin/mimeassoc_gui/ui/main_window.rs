@@ -572,30 +572,20 @@ impl MainWindow {
     pub fn show_about(&self) {
         let about = adw::AboutWindow::builder()
             .transient_for(self)
-            .application_name("MimeAssoc")
+            .application_name(crate::common::APP_NAME)
             .application_icon(crate::common::APP_ICON)
-            .developer_name("Shamyl Zakariya")
+            .developer_name(crate::common::APP_DEVELOPER)
             .version(crate::common::APP_VERSION)
-            .issue_url("https://github.com/ShamylZakariya/mimeassoc/issues")
-            .copyright("© 2023 Shamyl Zakariya")
+            .issue_url(crate::common::APP_ISSUES_URL)
+            .copyright(format!("© {}", crate::common::APP_DEVELOPER).as_str())
             .license_type(gtk::License::MitX11)
-            .website("https://github.com/ShamylZakariya/mimeassoc")
-            .release_notes(
-                r#"<ul>
-    <li>Nothing to see here, yet.</li>
-</ul>"#,
-            )
+            .website(crate::common::APP_WEBSITE_URL)
+            .release_notes(Strings::about_window_release_notes())
             .build();
 
         about.add_credit_section(
-            Some("Standing on the shoulders of giants"),
-            &[
-                "GTK https://www.gtk.org/",
-                "GNOME https://www.gnome.org/",
-                "Libadwaita https://gitlab.gnome.org/GNOME/libadwaita",
-                "Workbench https://github.com/sonnyp/Workbench",
-                "And many more...",
-            ],
+            Some(Strings::about_window_credits_title()),
+            &Strings::about_window_credits(),
         );
 
         about.present();

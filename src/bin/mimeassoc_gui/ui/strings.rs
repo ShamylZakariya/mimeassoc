@@ -27,6 +27,8 @@ impl Strings {
         )
     }
 
+    // Strings for dialogs
+
     pub fn reset_user_default_application_assignments_dialog_title() -> &'static str {
         "Reset your application handler assignments?"
     }
@@ -49,6 +51,31 @@ impl Strings {
     pub fn prune_orphaned_application_assignments_dialog_action_proceed() -> &'static str {
         "Clear"
     }
+
+    // Strings for About box
+
+    pub fn about_window_release_notes() -> &'static str {
+        r#"<ul>
+    <li>Nothing to see here folks, please disperse.</li>
+</ul>"#
+    }
+
+    pub fn about_window_credits_title() -> &'static str {
+        "Standing on the shoulders of giants"
+    }
+
+    pub fn about_window_credits() -> Vec<&'static str> {
+        vec![
+            "GTK https://www.gtk.org/",
+            "GNOME https://www.gnome.org/",
+            "Libadwaita https://gitlab.gnome.org/GNOME/libadwaita",
+            "Workbench https://github.com/sonnyp/Workbench",
+            "gtk-rs https://gtk-rs.org/",
+            "And many more...",
+        ]
+    }
+
+    // Etc
 
     pub fn cancel() -> &'static str {
         "Cancel"
