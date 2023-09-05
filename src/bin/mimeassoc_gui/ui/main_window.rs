@@ -315,11 +315,7 @@ impl MainWindow {
         let apps = borrowed_stores.desktop_entry_store();
 
         let mut all_desktop_entries = apps.desktop_entries();
-        all_desktop_entries.sort_by(|a, b| {
-            a.name()
-                .unwrap_or(a.id().id())
-                .cmp(b.name().unwrap_or(b.id().id()))
-        });
+        all_desktop_entries.sort_by(|a, b| a.cmp_by_name_alpha_inensitive(b));
 
         let application_entries = all_desktop_entries
             .iter()
@@ -950,32 +946,35 @@ impl MainWindow {
 
         let mime_type = mime_type_entry.mime_type();
         let desktop_entry = application_entry.desktop_entry();
-        let (is_default_application, is_assigned_application) = {
+        let (is_system_default_application, is_assigned_application) = {
             let stores = self.stores();
             let stores = stores.borrow();
             let mime_associations_store = stores.mime_associations_store();
 
-            let is_default_application = mime_associations_store
+            let is_system_default_application = mime_associations_store
                 .system_default_application_for(&mime_type)
                 == Some(desktop_entry.id());
             let is_assigned_application = mime_associations_store
                 .default_application_for(&mime_type)
                 == Some(desktop_entry.id());
-            (is_default_application, is_assigned_application)
+            (is_system_default_application, is_assigned_application)
         };
 
         row.set_title(mime_type.to_string().as_str());
 
-        if is_default_application {
-            check_button.set_sensitive(false);
-            check_button.set_active(true);
-            row.set_sensitive(false);
+        if is_system_default_application {
             row.set_subtitle(
                 &Strings::application_is_system_default_handler_for_mimetype_long(
                     &desktop_entry,
                     &mime_type,
                 ),
             );
+
+            if is_assigned_application {
+                check_button.set_sensitive(false);
+                check_button.set_active(true);
+                row.set_sensitive(false);
+            }
         }
 
         if is_assigned_application {

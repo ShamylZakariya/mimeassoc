@@ -77,11 +77,7 @@ impl MimeTypeEntry {
         let desktop_entry_store = borrowed_stores.desktop_entry_store();
 
         let mut desktop_entries = desktop_entry_store.get_desktop_entries_for_mimetype(&mime_type);
-        desktop_entries.sort_by(|a, b| {
-            let a_name = a.name().unwrap_or(a.id().id()).to_lowercase();
-            let b_name = b.name().unwrap_or(b.id().id()).to_lowercase();
-            a_name.cmp(&b_name)
-        });
+        desktop_entries.sort_by(|a, b| a.cmp_by_name_alpha_inensitive(b));
 
         let application_entries = desktop_entries
             .iter()

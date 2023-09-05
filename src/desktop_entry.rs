@@ -169,6 +169,12 @@ impl DesktopEntry {
         self.fields.get("Name").map(|v| v.as_str())
     }
 
+    pub fn cmp_by_name_alpha_inensitive(&self, other: &DesktopEntry) -> core::cmp::Ordering {
+        let name = self.name().unwrap_or(&self.id.0).to_lowercase();
+        let other_name = other.name().unwrap_or(&other.id.0).to_lowercase();
+        name.cmp(&other_name)
+    }
+
     pub fn id(&self) -> &DesktopEntryId {
         &self.id
     }
