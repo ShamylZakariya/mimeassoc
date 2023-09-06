@@ -155,7 +155,7 @@ impl Commands {
         mime_info_store: &MimeTypeInfoStore,
         mime_type: &MimeType,
     ) -> MimeTypeCommandOutput {
-        let desktop_entries = desktop_entry_store.get_desktop_entries_for_mimetype(mime_type);
+        let desktop_entries = desktop_entry_store.find_desktop_entries_for_mimetype(mime_type);
         let default_handler = mime_associations_store.default_application_for(mime_type);
 
         let mut output = MimeTypeCommandOutput {
@@ -263,8 +263,12 @@ impl Commands {
         }
 
         // find the desktop entry
-        let Some(desktop_entry) = lookup_desktop_entry(desktop_entry_store, desktop_entry_id) else {
-            panic!("\"{}\" does not appear to be an installed application", desktop_entry_id);
+        let Some(desktop_entry) = lookup_desktop_entry(desktop_entry_store, desktop_entry_id)
+        else {
+            panic!(
+                "\"{}\" does not appear to be an installed application",
+                desktop_entry_id
+            );
         };
 
         // if no mime types are supported, we will use all the mime types this app claims to handle

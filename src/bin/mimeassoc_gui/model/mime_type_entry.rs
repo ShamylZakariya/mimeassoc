@@ -76,7 +76,7 @@ impl MimeTypeEntry {
         let borrowed_stores = stores.borrow();
         let desktop_entry_store = borrowed_stores.desktop_entry_store();
 
-        let mut desktop_entries = desktop_entry_store.get_desktop_entries_for_mimetype(&mime_type);
+        let mut desktop_entries = desktop_entry_store.find_desktop_entries_for_mimetype(&mime_type);
         desktop_entries.sort_by(|a, b| a.cmp_by_name_alpha_inensitive(b));
 
         let application_entries = desktop_entries

@@ -201,7 +201,9 @@ mod tests {
         desktop_entries: &'a DesktopEntryStore,
     ) -> Option<&'a DesktopEntry> {
         if let Some(desktop_entry_id) = mime_associations.default_application_for(&mime_type) {
-            if let Some(desktop_entry) = desktop_entries.get_desktop_entry(desktop_entry_id) {
+            if let Some(desktop_entry) =
+                desktop_entries.find_desktop_entry_with_id(desktop_entry_id)
+            {
                 return Some(desktop_entry);
             }
         }

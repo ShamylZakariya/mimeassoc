@@ -122,6 +122,15 @@ fn main() {
         Err(e) => panic!("Unable to load MimeTypeInfoStore: {:?}", e),
     };
 
+    for mime_type in desktop_entry_store.mime_types() {
+        if let Err(e) = mime_associations_store.add_added_associations(&mime_type, &vec![]) {
+            panic!(
+                "Unable to add mimetypes from desktop entry store to mime association store {:?}",
+                e
+            );
+        }
+    }
+
     let cli = Cli::parse();
     cli.process(
         &mut mime_associations_store,

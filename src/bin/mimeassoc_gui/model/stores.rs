@@ -72,12 +72,24 @@ impl std::fmt::Debug for Stores {
 
 impl Stores {
     pub fn new() -> anyhow::Result<Self> {
-        Ok(Self {
+        let mut instance = Self {
             mime_associations_store: MimeTypeAssociationStore::load(&mimeapps_lists_paths()?)?,
             desktop_entry_store: DesktopEntryStore::load(&desktop_entry_dirs()?)?,
             mime_info_store: MimeTypeInfoStore::load(&mimeinfo_paths()?)?,
             history: vec![],
-        })
+        };
+
+        for mime_type in instance.desktop_entry_store.mime_types() {
+            if let Err(e) = instance
+                .mime_associations_store
+                .add_added_associations(&mime_type, &vec![])
+            {
+                anyhow::bail!(
+                "Unable to add mimetypes from desktop entry store to mime association store {:?}", e);
+            }
+        }
+
+        Ok(instance)
     }
 
     pub fn mime_associations_store(&self) -> &MimeTypeAssociationStore {
@@ -105,8 +117,9 @@ impl Stores {
                     .default_application_for(mime_type)
                     .cloned();
 
-                let Some(desktop_entry) =
-                    self.desktop_entry_store.get_desktop_entry(desktop_entry_id)
+                let Some(desktop_entry) = self
+                    .desktop_entry_store
+                    .find_desktop_entry_with_id(desktop_entry_id)
                 else {
                     anyhow::bail!("Unrecognized desktop entry id")
                 };
@@ -227,7 +240,7 @@ impl Stores {
     ) -> anyhow::Result<()> {
         let Some(desktop_entry) = self
             .desktop_entry_store
-            .get_desktop_entry(previous_desktop_entry)
+            .find_desktop_entry_with_id(previous_desktop_entry)
         else {
             anyhow::bail!("Unrecognized desktop entry id")
         };

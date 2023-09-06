@@ -81,7 +81,7 @@ impl ApplicationEntry {
         let stores = stores.borrow();
         let desktop_entry_store = stores.desktop_entry_store();
 
-        desktop_entry_store.get_desktop_entry(&id).cloned().expect(
+        desktop_entry_store.find_desktop_entry_with_id(&id).cloned().expect(
             "Expect all ApplicationEntry instances to be backed by a valid DesktopEntry instance",
         )
     }

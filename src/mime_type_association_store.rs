@@ -190,7 +190,7 @@ impl MimeTypeAssociationScope {
             .map(|d| d.to_string())
             .collect::<Vec<_>>()
             .join(";");
-        format!("{}={};", mime_type, desktop_entry_strings)
+        format!("{}={}", mime_type, desktop_entry_strings)
     }
 
     fn generate_default_application_line(
@@ -214,11 +214,13 @@ impl MimeTypeAssociationScope {
 
             for mime_type in mime_types {
                 if let Some(desktop_entries) = self.added_associations.get(mime_type) {
-                    writeln!(
-                        output_file,
-                        "{};",
-                        Self::generate_added_associations_line(mime_type, desktop_entries)
-                    )?;
+                    if !desktop_entries.is_empty() {
+                        writeln!(
+                            output_file,
+                            "{};",
+                            Self::generate_added_associations_line(mime_type, desktop_entries)
+                        )?;
+                    }
                 }
             }
 
@@ -303,6 +305,9 @@ impl MimeTypeAssociationStore {
         let mut mime_types = HashSet::new();
         for scope in self.scopes.iter().rev() {
             for (mime_type, _) in scope.default_applications.iter() {
+                mime_types.insert(mime_type);
+            }
+            for (mime_type, _) in scope.added_associations.iter() {
                 mime_types.insert(mime_type);
             }
         }
@@ -407,7 +412,8 @@ impl MimeTypeAssociationStore {
         let mut orphaned_ids = HashSet::new();
         for scope in self.user_scopes_iter_mut() {
             for desktop_entry_id in scope.default_applications.values() {
-                if let Some(desktop_entry) = desktop_entry_store.get_desktop_entry(desktop_entry_id)
+                if let Some(desktop_entry) =
+                    desktop_entry_store.find_desktop_entry_with_id(desktop_entry_id)
                 {
                     if !desktop_entry.appears_valid_application() {
                         orphaned_ids.insert(desktop_entry_id.clone());
@@ -438,6 +444,47 @@ impl MimeTypeAssociationStore {
             }
         }
         added_associations
+    }
+
+    /// Add to the [Added Associations] block to the topmost mutable scope
+    pub fn add_added_associations(
+        &mut self,
+        mime_type: &MimeType,
+        desktop_entries: &[DesktopEntry],
+    ) -> anyhow::Result<()> {
+        // sanity checks
+        for desktop_entry in desktop_entries.iter() {
+            if !desktop_entry.appears_valid_application() {
+                anyhow::bail!(
+                    "DesktopEntry \"{}\" does not appear to be a valid launchable application",
+                    desktop_entry.id()
+                );
+            }
+            if !desktop_entry.can_open_mime_type(mime_type) {
+                anyhow::bail!(
+                    "DesktopEntry \"{}\" does not appear to support mime type {}",
+                    desktop_entry.id(),
+                    mime_type,
+                );
+            }
+        }
+
+        // make assignment in first scope
+        let Some(scope) = self.user_scopes_iter_mut().next() else {
+            anyhow::bail!("No customizable user scope available");
+        };
+
+        if let Some(desktop_entry_ids) = scope.added_associations.get_mut(mime_type) {
+            for desktop_entry in desktop_entries {
+                if !desktop_entry_ids.contains(desktop_entry.id()) {
+                    desktop_entry_ids.push(desktop_entry.id().clone());
+                }
+            }
+        } else {
+            scope.added_associations.insert(mime_type.clone(), vec![]);
+        }
+
+        Ok(())
     }
 
     /// Make the provided DesktopEntry the default handler for the given mime type.
@@ -714,7 +761,7 @@ mod tests {
         associations.scopes[0].is_user_customizable = true;
 
         let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
-        let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
+        let photopea = entries.find_desktop_entry_with_id(&photopea_id).unwrap();
         let evince_id = DesktopEntryId::parse("org.gnome.Evince.desktop")?;
         let image_tiff = MimeType::parse("image/tiff")?;
 
@@ -795,7 +842,9 @@ mod tests {
         );
 
         // photopea is already assigned to image/bmp so this assignment should not flag store as dirty
-        let photopea = desktop_entry_store.get_desktop_entry(&photopea_id).unwrap();
+        let photopea = desktop_entry_store
+            .find_desktop_entry_with_id(&photopea_id)
+            .unwrap();
         associations.set_default_handler_for_mime_type(&image_bmp, &photopea)?;
         assert!(!associations.is_dirty());
 
@@ -820,7 +869,9 @@ mod tests {
 
         // Assigning evince to image/bmp should mutate store as photopea is current handler
         let eog_id = DesktopEntryId::parse("org.gnome.eog.desktop")?;
-        let eog = desktop_entry_store.get_desktop_entry(&eog_id).unwrap();
+        let eog = desktop_entry_store
+            .find_desktop_entry_with_id(&eog_id)
+            .unwrap();
         associations.set_default_handler_for_mime_type(&image_bmp, &eog)?;
         assert!(associations.is_dirty());
 
@@ -1006,7 +1057,7 @@ mod tests {
 
         let image_bmp = MimeType::parse("image/bmp")?;
         let eog_id = DesktopEntryId::parse("org.gnome.eog.desktop")?;
-        let eog = entries.get_desktop_entry(&eog_id).unwrap();
+        let eog = entries.find_desktop_entry_with_id(&eog_id).unwrap();
         let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
 
         assert_eq!(
@@ -1108,7 +1159,7 @@ mod tests {
         associations.scopes[0].is_user_customizable = true;
 
         let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
-        let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
+        let photopea = entries.find_desktop_entry_with_id(&photopea_id).unwrap();
         let evince_id = DesktopEntryId::parse("org.gnome.Evince.desktop")?;
         let image_tiff = MimeType::parse("image/tiff")?;
 
@@ -1136,7 +1187,7 @@ mod tests {
         associations.scopes[0].is_user_customizable = true;
 
         let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
-        let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
+        let photopea = entries.find_desktop_entry_with_id(&photopea_id).unwrap();
 
         // photopea doesn't support inode/directory
         let inode_directory = MimeType::parse("inode/directory")?;
@@ -1155,7 +1206,7 @@ mod tests {
         associations.scopes[1].is_user_customizable = false;
 
         let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
-        let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
+        let photopea = entries.find_desktop_entry_with_id(&photopea_id).unwrap();
         let image_tiff = MimeType::parse("image/tiff")?;
 
         // assignment should fail since no writable scope is set

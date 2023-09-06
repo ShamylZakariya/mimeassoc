@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     ops::Deref,
     path::{Path, PathBuf},
 };
@@ -99,7 +99,7 @@ impl DesktopEntryStore {
     /// Lookup the DesktopEntry with the specified identifier, returning the one
     /// earliest in the list provided at construction time, e.g., with user entries
     /// overriding system.
-    pub fn get_desktop_entry(&self, id: &DesktopEntryId) -> Option<&DesktopEntry> {
+    pub fn find_desktop_entry_with_id(&self, id: &DesktopEntryId) -> Option<&DesktopEntry> {
         for scope in self.scopes.iter() {
             if let Some(desktop_entry) = scope.application_entry(id) {
                 return Some(desktop_entry);
@@ -110,7 +110,7 @@ impl DesktopEntryStore {
     }
 
     /// Look up the desktop entries which can open a specific mimetype
-    pub fn get_desktop_entries_for_mimetype(&self, mime_type: &MimeType) -> Vec<&DesktopEntry> {
+    pub fn find_desktop_entries_for_mimetype(&self, mime_type: &MimeType) -> Vec<&DesktopEntry> {
         let mut entries = vec![];
         for desktop_entry in self.desktop_entries() {
             if desktop_entry.can_open_mime_type(mime_type) {
@@ -119,6 +119,21 @@ impl DesktopEntryStore {
         }
 
         entries
+    }
+
+    /// Look up all mime types specified by desktop entries
+    pub fn mime_types(&self) -> Vec<MimeType> {
+        let mut mime_types: HashSet<MimeType> = HashSet::new();
+
+        for scope in self.scopes.iter().rev() {
+            for application in scope.application_entries.iter() {
+                for mime_type in application.1.mime_types() {
+                    mime_types.insert(mime_type.clone());
+                }
+            }
+        }
+
+        mime_types.into_iter().collect()
     }
 }
 
@@ -133,12 +148,12 @@ pub fn lookup_desktop_entry<'a>(
     identifier: &str,
 ) -> Option<&'a DesktopEntry> {
     if let Ok(desktop_entry_id) = DesktopEntryId::parse(identifier) {
-        return entries.get_desktop_entry(&desktop_entry_id);
+        return entries.find_desktop_entry_with_id(&desktop_entry_id);
     }
 
     if !identifier.ends_with(".desktop") {
         if let Ok(desktop_entry_id) = DesktopEntryId::parse(&format!("{}.desktop", identifier)) {
-            let desktop_entry = entries.get_desktop_entry(&desktop_entry_id);
+            let desktop_entry = entries.find_desktop_entry_with_id(&desktop_entry_id);
             if desktop_entry.is_some() {
                 return desktop_entry;
             }
@@ -224,7 +239,7 @@ mod tests {
             DesktopEntryStore::load(&[test_user_applications(), test_sys_applications()])?;
 
         let weather_id = DesktopEntryId::parse("org.gnome.Weather.desktop")?;
-        let weather = entries.get_desktop_entry(&weather_id);
+        let weather = entries.find_desktop_entry_with_id(&weather_id);
         assert!(weather.is_some());
         let weather = weather.unwrap();
         assert_eq!(weather.icon(), Some("OverriddenWeatherIconId"));
@@ -238,40 +253,61 @@ mod tests {
             DesktopEntryStore::load(&[test_user_applications(), test_sys_applications()])?;
 
         let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
-        let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
+        let photopea = entries.find_desktop_entry_with_id(&photopea_id).unwrap();
 
         let image_bmp = MimeType::parse("image/bmp")?;
         let image_jpeg = MimeType::parse("image/jpeg")?;
         assert!(entries
-            .get_desktop_entries_for_mimetype(&image_bmp)
+            .find_desktop_entries_for_mimetype(&image_bmp)
             .contains(&photopea));
         assert!(entries
-            .get_desktop_entries_for_mimetype(&image_jpeg)
+            .find_desktop_entries_for_mimetype(&image_jpeg)
             .contains(&photopea));
 
         // evince comes from sys applications, and it ALSO handles tiff
         let evince_id = DesktopEntryId::parse("org.gnome.Evince.desktop")?;
-        let evince = entries.get_desktop_entry(&evince_id).unwrap();
+        let evince = entries.find_desktop_entry_with_id(&evince_id).unwrap();
         let image_tiff = MimeType::parse("image/tiff")?;
         assert!(entries
-            .get_desktop_entries_for_mimetype(&image_tiff)
+            .find_desktop_entries_for_mimetype(&image_tiff)
             .contains(&photopea));
         assert!(entries
-            .get_desktop_entries_for_mimetype(&image_tiff)
+            .find_desktop_entries_for_mimetype(&image_tiff)
             .contains(&evince));
 
         let gedit_id = DesktopEntryId::parse("org.gnome.gedit.desktop")?;
-        let gedit = entries.get_desktop_entry(&gedit_id).unwrap();
+        let gedit = entries.find_desktop_entry_with_id(&gedit_id).unwrap();
         let texteditor_id = DesktopEntryId::parse("org.gnome.TextEditor.desktop")?;
-        let texteditor = entries.get_desktop_entry(&texteditor_id).unwrap();
+        let texteditor = entries.find_desktop_entry_with_id(&texteditor_id).unwrap();
         let text_plain = MimeType::parse("text/plain")?;
         assert!(entries
-            .get_desktop_entries_for_mimetype(&text_plain)
+            .find_desktop_entries_for_mimetype(&text_plain)
             .contains(&gedit),);
         assert!(entries
-            .get_desktop_entries_for_mimetype(&text_plain)
+            .find_desktop_entries_for_mimetype(&text_plain)
             .contains(&texteditor),);
 
+        Ok(())
+    }
+
+    #[test]
+    fn desktop_entry_store_gathers_mime_types() -> anyhow::Result<()> {
+        let entries =
+            DesktopEntryStore::load(&[test_user_applications(), test_sys_applications()])?;
+
+        let mime_types = entries.mime_types();
+
+        // EOG reads bmp
+        assert!(mime_types.contains(&MimeType::parse("image/bmp")?));
+
+        // Evince reads application/vnd.comicbook-rar
+        assert!(mime_types.contains(&MimeType::parse("application/vnd.comicbook-rar")?));
+
+        // Gedit and TextEditor handle text/plain
+        assert!(mime_types.contains(&MimeType::parse("text/plain")?));
+
+        // Totem handles
+        assert!(mime_types.contains(&MimeType::parse("application/vnd.apple.mpegurl")?));
         Ok(())
     }
 
@@ -282,9 +318,9 @@ mod tests {
 
         // reference
         let photopea_id = DesktopEntryId::parse("photopea.desktop")?;
-        let photopea = entries.get_desktop_entry(&photopea_id).unwrap();
+        let photopea = entries.find_desktop_entry_with_id(&photopea_id).unwrap();
         let evince_id = DesktopEntryId::parse("org.gnome.Evince.desktop")?;
-        let evince = entries.get_desktop_entry(&evince_id).unwrap();
+        let evince = entries.find_desktop_entry_with_id(&evince_id).unwrap();
 
         assert_eq!(
             lookup_desktop_entry(&entries, "photopea.desktop"),
