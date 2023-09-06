@@ -49,12 +49,6 @@ impl Debug for HistoryEntry {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub enum ApplicationToMimeTypeBindingAction {
-    Assign,
-    Clear,
-}
-
 pub struct Stores {
     mime_associations_store: MimeTypeAssociationStore,
     desktop_entry_store: DesktopEntryStore,
@@ -107,46 +101,42 @@ impl Stores {
     pub fn set_application_to_mimetype_binding(
         &mut self,
         mime_type: &MimeType,
-        desktop_entry_id: &DesktopEntryId,
-        action: ApplicationToMimeTypeBindingAction,
+        desktop_entry_id: Option<&DesktopEntryId>,
     ) -> anyhow::Result<()> {
-        match action {
-            ApplicationToMimeTypeBindingAction::Assign => {
-                let previous_assigned_handler = self
-                    .mime_associations_store
-                    .default_application_for(mime_type)
-                    .cloned();
+        if let Some(desktop_entry_id) = desktop_entry_id {
+            let previous_assigned_handler = self
+                .mime_associations_store
+                .default_application_for(mime_type)
+                .cloned();
 
-                let Some(desktop_entry) = self
-                    .desktop_entry_store
-                    .find_desktop_entry_with_id(desktop_entry_id)
-                else {
-                    anyhow::bail!("Unrecognized desktop entry id")
-                };
+            let Some(desktop_entry) = self
+                .desktop_entry_store
+                .find_desktop_entry_with_id(desktop_entry_id)
+            else {
+                anyhow::bail!("Unrecognized desktop entry id")
+            };
 
-                self.mime_associations_store
-                    .set_default_handler_for_mime_type(mime_type, desktop_entry)?;
+            self.mime_associations_store
+                .set_default_handler_for_mime_type(mime_type, desktop_entry)?;
 
-                self.history.push(HistoryEntry::DesktopEntryAssignment {
-                    mime_type: mime_type.clone(),
-                    previous_desktop_entry_id: previous_assigned_handler,
-                    new_desktop_entry_id: desktop_entry_id.clone(),
-                });
-            }
-            ApplicationToMimeTypeBindingAction::Clear => {
-                let previous_assigned_handler = self
-                    .mime_associations_store
-                    .default_application_for(mime_type)
-                    .cloned();
+            self.history.push(HistoryEntry::DesktopEntryAssignment {
+                mime_type: mime_type.clone(),
+                previous_desktop_entry_id: previous_assigned_handler,
+                new_desktop_entry_id: desktop_entry_id.clone(),
+            });
+        } else {
+            let previous_assigned_handler = self
+                .mime_associations_store
+                .default_application_for(mime_type)
+                .cloned();
 
-                self.mime_associations_store
-                    .remove_assigned_applications_for(mime_type);
+            self.mime_associations_store
+                .remove_assigned_applications_for(mime_type);
 
-                self.history.push(HistoryEntry::DesktopEntryUnassignment {
-                    mime_type: mime_type.clone(),
-                    previous_desktop_entry_id: previous_assigned_handler,
-                });
-            }
+            self.history.push(HistoryEntry::DesktopEntryUnassignment {
+                mime_type: mime_type.clone(),
+                previous_desktop_entry_id: previous_assigned_handler,
+            });
         }
 
         Ok(())

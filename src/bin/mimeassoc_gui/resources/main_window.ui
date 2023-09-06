@@ -113,22 +113,22 @@
 
                 <child>
 
-                  <!-- MimeTypes Page right-hand side, showing application assignment list box -->
+                  <!-- MimeTypes Page detail, showing application assignment list box -->
                   <object class="GtkScrolledWindow"
-                    id="mime_type_to_application_assignment_scrolled_window">
+                    id="mime_type_pane_detail_scrolled_window">
                     <property name="hscrollbar-policy">never</property>
                     <property name="min-content-height">420</property>
                     <property name="vexpand">True</property>
                     <property name="hexpand">True</property>
                     <property name="child">
 
-                      <object class="GtkBox" id="mime_type_to_application_assignment_box">
+                      <object class="GtkBox">
                         <property name="orientation">vertical</property>
                         <child>
                           <object class="GtkListBox"
-                            id="mime_type_to_application_assignment_list_box">
+                            id="mime_type_pane_detail_applications_list_box">
                             <property name="valign">start</property>
-                            <property name="name">mime_type_to_application_assignment_list_box</property>
+                            <property name="name">mime_type_pane_detail_applications_list_box</property>
                             <style>
                               <class name="boxed-list" />
                             </style>
@@ -136,8 +136,14 @@
 
                         </child>
                         <child>
+                          <object class="GtkButton" id="mime_type_pane_detail_select_none_button">
+                            <property name="label">Select None</property>
+                            <property name="name">mime_type_pane_detail_select_none_button</property>
+                          </object>
+                        </child>
+                        <child>
                           <object class="GtkLabel"
-                            id="mime_type_to_application_assignment_info_label">
+                            id="mime_type_pane_detail_info_label">
                             <property name="name">system-default-handler-warning-message</property>
                             <property name="label">This is the system default, and no other application handling this mimetype is installed.</property>
                             <property name="wrap">true</property>

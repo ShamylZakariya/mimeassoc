@@ -41,13 +41,16 @@ mod imp {
         pub mime_types_list_box: TemplateChild<ListBox>,
 
         #[template_child]
-        pub mime_type_to_application_assignment_scrolled_window: TemplateChild<ScrolledWindow>,
+        pub mime_type_pane_detail_scrolled_window: TemplateChild<ScrolledWindow>,
 
         #[template_child]
-        pub mime_type_to_application_assignment_list_box: TemplateChild<ListBox>,
+        pub mime_type_pane_detail_applications_list_box: TemplateChild<ListBox>,
 
         #[template_child]
-        pub mime_type_to_application_assignment_info_label: TemplateChild<Label>,
+        pub mime_type_pane_detail_info_label: TemplateChild<Label>,
+
+        #[template_child]
+        pub mime_type_pane_detail_select_none_button: TemplateChild<Button>,
 
         // applications page UI bindings
         #[template_child]
@@ -437,8 +440,7 @@ impl MainWindow {
     fn assign_application_to_mimetype(
         &self,
         mime_type: &MimeType,
-        desktop_entry_id: &DesktopEntryId,
-        action: ApplicationToMimeTypeBindingAction,
+        desktop_entry_id: Option<&DesktopEntryId>,
     ) {
         log::debug!(
             "MainWindow::assign_application_to_mimetype application: {:?} mime_type: {}",
@@ -449,7 +451,7 @@ impl MainWindow {
         if let Err(e) = self
             .stores()
             .borrow_mut()
-            .set_application_to_mimetype_binding(mime_type, desktop_entry_id, action)
+            .set_application_to_mimetype_binding(mime_type, desktop_entry_id)
         {
             self.show_error("Error", "Unable to assign application to mimetype", &e);
             return;
@@ -650,6 +652,12 @@ impl MainWindow {
             window.show_mime_type_pane_detail(&model);
         }));
 
+        self.imp()
+            .mime_type_pane_detail_select_none_button
+            .connect_clicked(clone!(@weak self as window => move |_| {
+                window.mime_type_pane_detail_on_select_none();
+            }));
+
         // Select first entry
         let row = mime_types_list_box.row_at_index(0);
         mime_types_list_box.select_row(row.as_ref());
@@ -684,7 +692,7 @@ impl MainWindow {
             .borrow_mut()
             .replace(mime_type_entry.clone());
 
-        let list_box = &self.imp().mime_type_to_application_assignment_list_box;
+        let list_box = &self.imp().mime_type_pane_detail_applications_list_box;
         list_box.set_selection_mode(SelectionMode::None);
 
         // Reset the application check button group before building the list; it will be
@@ -703,11 +711,17 @@ impl MainWindow {
                 window.create_mime_type_pane_detail_row(&mime_type_entry, application_entry, model_count).upcast()
             }));
 
+        // select-none button should only be visible when there are multiple items to select from, and
+        // the list is in radio-button mode
+        self.imp()
+            .mime_type_pane_detail_select_none_button
+            .set_visible(model_count > 1);
+
         // Update the info label - basically, if only one application is shown, and it is the
         // system default handler for the mime type, it will be presented in a disabled state
         // in ::create_application_row, and here we show an info label to explain why
 
-        let info_label = &self.imp().mime_type_to_application_assignment_info_label;
+        let info_label = &self.imp().mime_type_pane_detail_info_label;
         let show_info_label = if model_count == 1 {
             // if the number of items is 1, and that item is the system default, show the info message
             let desktop_entry = model
@@ -778,10 +792,10 @@ impl MainWindow {
                 let is_single_checkbox = num_application_entries_in_list == 1;
 
                 if check_button.is_active() {
-                    window.assign_application_to_mimetype(&mime_type, &application_entry.desktop_entry_id(), ApplicationToMimeTypeBindingAction::Assign);
+                    window.assign_application_to_mimetype(&mime_type, Some(&application_entry.desktop_entry_id()));
                 } else if is_single_checkbox {
                     // only send the unchecked signal if this is a single checkbox, not a multi-element radio button
-                    window.assign_application_to_mimetype(&mime_type, &application_entry.desktop_entry_id(), ApplicationToMimeTypeBindingAction::Clear);
+                    window.assign_application_to_mimetype(&mime_type, None);
                 }
             }),
         );
@@ -857,6 +871,19 @@ impl MainWindow {
         }
 
         ListBoxRow::builder().child(&content).build()
+    }
+
+    fn mime_type_pane_detail_on_select_none(&self) {
+        let mime_type_entry = self
+            .imp()
+            .currently_selected_mime_type_entry
+            .borrow()
+            .as_ref()
+            .cloned();
+        if let Some(mime_type_entry) = mime_type_entry {
+            self.assign_application_to_mimetype(&mime_type_entry.mime_type(), None);
+            self.reload_active_page();
+        }
     }
 }
 
@@ -982,8 +1009,11 @@ impl MainWindow {
         }
 
         check_button.connect_toggled(clone!(@weak self as window, @strong desktop_entry, @strong mime_type => move |check_button| {
-            let action = if check_button.is_active() { ApplicationToMimeTypeBindingAction::Assign } else { ApplicationToMimeTypeBindingAction::Clear };
-            window.assign_application_to_mimetype(&mime_type, &desktop_entry.id(), action);
+            if check_button.is_active() {
+                window.assign_application_to_mimetype(&mime_type, Some(&desktop_entry.id()));
+            } else {
+                window.assign_application_to_mimetype(&mime_type, None);
+            }
         }));
 
         row
