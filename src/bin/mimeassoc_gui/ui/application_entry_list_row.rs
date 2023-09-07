@@ -73,7 +73,9 @@ impl ApplicationEntryListRow {
     }
 
     pub fn bind(&self, application_entry: &ApplicationEntry) {
-        let desktop_entry = &application_entry.desktop_entry();
+        let desktop_entry = &application_entry
+            .desktop_entry()
+            .expect("Expect to get desktop entry id from ApplicationEntry");
         let content_label = self.imp().name_label.get();
         content_label.set_text(desktop_entry.name().unwrap_or("<Unnamed Application>"));
 

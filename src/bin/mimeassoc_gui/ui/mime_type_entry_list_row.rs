@@ -161,16 +161,18 @@ impl MimeTypeEntryListRow {
                 let entry = entry
                     .downcast_ref::<ApplicationEntry>()
                     .expect("Expect applications list store to contain ApplicationEntry");
-                let desktop_entry_id = entry.desktop_entry_id();
-                let id = desktop_entry_id.to_string();
-                let display_name = entry.desktop_entry().name().unwrap_or(&id).to_string();
+                let desktop_entry = entry
+                    .desktop_entry()
+                    .expect("Expect to get desktop entry from ApplicationEntry");
+                let id = desktop_entry.id().to_string();
+                let display_name = desktop_entry.name().unwrap_or(&id).to_string();
 
                 let is_assigned = if let Some(assigned_desktop_entry) = stores
                     .borrow()
                     .mime_associations_store()
                     .default_application_for(mime_type)
                 {
-                    assigned_desktop_entry == &desktop_entry_id
+                    assigned_desktop_entry == desktop_entry.id()
                 } else {
                     false
                 };

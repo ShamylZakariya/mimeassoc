@@ -711,11 +711,13 @@ impl MainWindow {
                 window.create_mime_type_pane_detail_row(&mime_type_entry, application_entry, model_count).upcast()
             }));
 
-        // select-none button should only be visible when there are multiple items to select from, and
-        // the list is in radio-button mode
+        // select-none button should only be visible when there are multiple items to select from
+        // (e.g., the list is in radio-button mode), and there's no system default selection, because we can't unset that.
+        let can_show_select_none_button = model_count > 1
+            && !self.mime_type_has_system_default_handler(&mime_type_entry.mime_type());
         self.imp()
             .mime_type_pane_detail_select_none_button
-            .set_visible(model_count > 1);
+            .set_visible(can_show_select_none_button);
 
         // Update the info label - basically, if only one application is shown, and it is the
         // system default handler for the mime type, it will be presented in a disabled state
@@ -729,7 +731,8 @@ impl MainWindow {
                 .unwrap()
                 .downcast_ref::<ApplicationEntry>()
                 .unwrap()
-                .desktop_entry();
+                .desktop_entry()
+                .expect("Expect to receive a DesktopEntry from the ApplicationEntry");
 
             let mime_type = mime_type_entry.mime_type();
 
@@ -756,6 +759,15 @@ impl MainWindow {
         info_label.set_visible(show_info_label);
     }
 
+    fn mime_type_has_system_default_handler(&self, mime_type: &MimeType) -> bool {
+        let stores = self.stores();
+        let stores = stores.borrow();
+        let mime_associations_store = stores.mime_associations_store();
+        mime_associations_store
+            .system_default_application_for(mime_type)
+            .is_some()
+    }
+
     fn create_mime_type_pane_detail_row(
         &self,
         mime_type_entry: &MimeTypeEntry,
@@ -772,13 +784,16 @@ impl MainWindow {
             let stores = self.stores();
             let stores = stores.borrow();
             let mime_associations_store = stores.mime_associations_store();
+            let desktop_entry_id = application_entry
+                .desktop_entry_id()
+                .expect("Expect to get desktop entry id");
 
             let is_default_application = mime_associations_store
                 .system_default_application_for(&mime_type)
-                == Some(&application_entry.desktop_entry_id());
+                == Some(&desktop_entry_id);
             let is_assigned_application = mime_associations_store
                 .default_application_for(&mime_type)
-                == Some(&application_entry.desktop_entry_id());
+                == Some(&desktop_entry_id);
             (is_default_application, is_assigned_application)
         };
 
@@ -792,7 +807,8 @@ impl MainWindow {
                 let is_single_checkbox = num_application_entries_in_list == 1;
 
                 if check_button.is_active() {
-                    window.assign_application_to_mimetype(&mime_type, Some(&application_entry.desktop_entry_id()));
+                    let desktop_entry_id = application_entry.desktop_entry_id().expect("Expect to get desktop entry id");
+                    window.assign_application_to_mimetype(&mime_type, Some(&desktop_entry_id));
                 } else if is_single_checkbox {
                     // only send the unchecked signal if this is a single checkbox, not a multi-element radio button
                     window.assign_application_to_mimetype(&mime_type, None);
@@ -806,7 +822,9 @@ impl MainWindow {
         row.add_prefix(&check_button);
         row.set_sensitive(check_button.is_sensitive());
 
-        let desktop_entry = application_entry.desktop_entry();
+        let desktop_entry = application_entry
+            .desktop_entry()
+            .expect("Expect to get desktop entry id from ApplicationEntry");
         let title = desktop_entry.name().unwrap_or("<Unnamed Application>");
         row.set_title(title);
 
@@ -972,7 +990,9 @@ impl MainWindow {
         row.add_prefix(&check_button);
 
         let mime_type = mime_type_entry.mime_type();
-        let desktop_entry = application_entry.desktop_entry();
+        let desktop_entry = application_entry
+            .desktop_entry()
+            .expect("Expect to get desktop entry id from ApplicationEntry");
         let (is_system_default_application, is_assigned_application) = {
             let stores = self.stores();
             let stores = stores.borrow();
@@ -1019,7 +1039,7 @@ impl MainWindow {
         row
     }
 
-    fn create_application_pane_primary_row(model: &ApplicationEntry) -> ListBoxRow {
+    fn create_application_pane_primary_row(application_entry: &ApplicationEntry) -> ListBoxRow {
         let application_name_label = Label::builder()
             .wrap(true)
             .wrap_mode(pango::WrapMode::Word)
@@ -1042,7 +1062,9 @@ impl MainWindow {
         content.append(&application_name_label);
         content.append(&desktop_entry_id_label);
 
-        let desktop_entry = &model.desktop_entry();
+        let desktop_entry = &application_entry
+            .desktop_entry()
+            .expect("Expect to get desktop entry id from ApplicationEntry");
         application_name_label.set_text(desktop_entry.name().unwrap_or("<Unnamed Application>"));
         desktop_entry_id_label.set_text(desktop_entry.id().id());
 

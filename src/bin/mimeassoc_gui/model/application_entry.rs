@@ -69,38 +69,41 @@ impl ApplicationEntry {
     }
 
     /// Get the `DesktopEntryId` for thie `ApplicatioEntry`
-    pub fn desktop_entry_id(&self) -> DesktopEntryId {
+    pub fn desktop_entry_id(&self) -> Option<DesktopEntryId> {
         let desktop_entry_id_raw = self.id();
-        DesktopEntryId::parse(&desktop_entry_id_raw).unwrap()
+        DesktopEntryId::parse(&desktop_entry_id_raw).ok()
     }
 
     /// Get the `DesktopEntry` for thie `ApplicatioEntry`
-    pub fn desktop_entry(&self) -> DesktopEntry {
-        let id = self.desktop_entry_id();
-        let stores = self.stores();
-        let stores = stores.borrow();
-        let desktop_entry_store = stores.desktop_entry_store();
+    pub fn desktop_entry(&self) -> Option<DesktopEntry> {
+        if let Some(id) = self.desktop_entry_id() {
+            let stores = self.stores();
+            let stores = stores.borrow();
+            let desktop_entry_store = stores.desktop_entry_store();
 
-        desktop_entry_store.find_desktop_entry_with_id(&id).cloned().expect(
-            "Expect all ApplicationEntry instances to be backed by a valid DesktopEntry instance",
-        )
+            desktop_entry_store.find_desktop_entry_with_id(&id).cloned()
+        } else {
+            None
+        }
     }
 
     /// Creates and populates a ListStore of MimeTypeEntry representing
     /// all the mime types which this application reports to handle
     pub fn mime_type_assignments(&self) -> gio::ListStore {
-        let desktop_entry = self.desktop_entry();
-        let mut supported_mime_types = desktop_entry.mime_types().clone();
-        supported_mime_types.sort();
-
-        let stores = self.stores();
-        let supported_mime_type_entries = supported_mime_types
-            .iter()
-            .map(|mt| MimeTypeEntry::new(mt, stores.clone()))
-            .collect::<Vec<_>>();
-
         let mime_type_assignments_store = gio::ListStore::with_type(MimeTypeEntry::static_type());
-        mime_type_assignments_store.extend_from_slice(&supported_mime_type_entries);
+
+        if let Some(desktop_entry) = self.desktop_entry() {
+            let mut supported_mime_types = desktop_entry.mime_types().clone();
+            supported_mime_types.sort();
+
+            let stores = self.stores();
+            let supported_mime_type_entries = supported_mime_types
+                .iter()
+                .map(|mt| MimeTypeEntry::new(mt, stores.clone()))
+                .collect::<Vec<_>>();
+
+            mime_type_assignments_store.extend_from_slice(&supported_mime_type_entries);
+        }
 
         mime_type_assignments_store
     }
