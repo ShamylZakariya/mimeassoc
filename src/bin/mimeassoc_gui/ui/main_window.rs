@@ -49,9 +49,6 @@ mod imp {
         #[template_child]
         pub mime_type_pane_detail_info_label: TemplateChild<Label>,
 
-        #[template_child]
-        pub mime_type_pane_detail_select_none_button: TemplateChild<Button>,
-
         // applications page UI bindings
         #[template_child]
         pub applications_page: TemplateChild<ViewStackPage>,
@@ -652,12 +649,6 @@ impl MainWindow {
             window.show_mime_type_pane_detail(&model);
         }));
 
-        self.imp()
-            .mime_type_pane_detail_select_none_button
-            .connect_clicked(clone!(@weak self as window => move |_| {
-                window.mime_type_pane_detail_on_select_none();
-            }));
-
         // Select first entry
         let row = mime_types_list_box.row_at_index(0);
         mime_types_list_box.select_row(row.as_ref());
@@ -703,21 +694,24 @@ impl MainWindow {
             .borrow_mut()
             .take();
 
-        let model = NoSelection::new(Some(mime_type_entry.supported_application_entries()));
-        let model_count = model.n_items();
+        let application_entries = mime_type_entry.supported_application_entries();
+        let model_count = application_entries.n_items();
+
+        // select-none list option should only be visible when there are multiple items to select from
+        // (e.g., the list is in radio-button mode), and there's no system default selection, because we can't unset that.
+        let can_select_none = model_count > 1
+            && !self.mime_type_has_system_default_handler(&mime_type_entry.mime_type());
+
+        if can_select_none {
+            application_entries.insert(0, &ApplicationEntry::none());
+        }
+
+        let model = NoSelection::new(Some(application_entries));
         list_box.bind_model(Some(&model),
             clone!(@weak self as window, @strong mime_type_entry => @default-panic, move |obj| {
                 let application_entry = obj.downcast_ref().expect("The object should be of type `ApplicationEntry`.");
                 window.create_mime_type_pane_detail_row(&mime_type_entry, application_entry, model_count).upcast()
             }));
-
-        // select-none button should only be visible when there are multiple items to select from
-        // (e.g., the list is in radio-button mode), and there's no system default selection, because we can't unset that.
-        let can_show_select_none_button = model_count > 1
-            && !self.mime_type_has_system_default_handler(&mime_type_entry.mime_type());
-        self.imp()
-            .mime_type_pane_detail_select_none_button
-            .set_visible(can_show_select_none_button);
 
         // Update the info label - basically, if only one application is shown, and it is the
         // system default handler for the mime type, it will be presented in a disabled state
@@ -780,60 +774,90 @@ impl MainWindow {
             .can_focus(false)
             .build();
 
-        let (is_system_default_application, is_assigned_application) = {
+        let row = if application_entry.desktop_entry_id().is_some() {
+            let (is_system_default_application, is_assigned_application) = {
+                let stores = self.stores();
+                let stores = stores.borrow();
+                let mime_associations_store = stores.mime_associations_store();
+                let desktop_entry_id = application_entry
+                    .desktop_entry_id()
+                    .expect("Expect to get desktop entry id");
+
+                let is_default_application = mime_associations_store
+                    .system_default_application_for(&mime_type)
+                    == Some(&desktop_entry_id);
+                let is_assigned_application = mime_associations_store
+                    .default_application_for(&mime_type)
+                    == Some(&desktop_entry_id);
+                (is_default_application, is_assigned_application)
+            };
+
+            check_button.set_active(is_assigned_application);
+            if num_application_entries_in_list == 1 && is_system_default_application {
+                check_button.set_sensitive(false);
+            }
+
+            check_button.connect_toggled(
+                clone!(@weak self as window, @strong application_entry, @strong mime_type => move |check_button| {
+                    let is_single_checkbox = num_application_entries_in_list == 1;
+
+                    if check_button.is_active() {
+                        let desktop_entry_id = application_entry.desktop_entry_id().expect("Expect to get desktop entry id");
+                        window.assign_application_to_mimetype(&mime_type, Some(&desktop_entry_id));
+                    } else if is_single_checkbox {
+                        // only send the unchecked signal if this is a single checkbox, not a multi-element radio button
+                        window.assign_application_to_mimetype(&mime_type, None);
+                    }
+                }),
+            );
+            let row = ActionRow::builder()
+                .activatable_widget(&check_button)
+                .build();
+            row.add_prefix(&check_button);
+            row.set_sensitive(check_button.is_sensitive());
+
+            let desktop_entry = application_entry
+                .desktop_entry()
+                .expect("Expect to get desktop entry id from ApplicationEntry");
+            let title = desktop_entry.name().unwrap_or("<Unnamed Application>");
+            row.set_title(title);
+
+            if is_system_default_application {
+                row.set_subtitle(
+                    Strings::application_is_system_default_handler_for_mimetype_short(&mime_type)
+                        .as_str(),
+                );
+            }
+
+            row
+        } else {
+            // This is a "None" row; the check button will be selected if nothing is assigned to this mime type.
+            // Selecting this item will unset bindings to this mimetype
+
             let stores = self.stores();
             let stores = stores.borrow();
             let mime_associations_store = stores.mime_associations_store();
-            let desktop_entry_id = application_entry
-                .desktop_entry_id()
-                .expect("Expect to get desktop entry id");
-
-            let is_default_application = mime_associations_store
-                .system_default_application_for(&mime_type)
-                == Some(&desktop_entry_id);
-            let is_assigned_application = mime_associations_store
+            let no_application_assigned = mime_associations_store
                 .default_application_for(&mime_type)
-                == Some(&desktop_entry_id);
-            (is_default_application, is_assigned_application)
-        };
+                .is_none();
 
-        check_button.set_active(is_assigned_application);
-        if num_application_entries_in_list == 1 && is_system_default_application {
-            check_button.set_sensitive(false);
-        }
-
-        check_button.connect_toggled(
-            clone!(@weak self as window, @strong mime_type_entry, @strong application_entry, @strong mime_type => move |check_button| {
-                let is_single_checkbox = num_application_entries_in_list == 1;
-
-                if check_button.is_active() {
-                    let desktop_entry_id = application_entry.desktop_entry_id().expect("Expect to get desktop entry id");
-                    window.assign_application_to_mimetype(&mime_type, Some(&desktop_entry_id));
-                } else if is_single_checkbox {
-                    // only send the unchecked signal if this is a single checkbox, not a multi-element radio button
-                    window.assign_application_to_mimetype(&mime_type, None);
-                }
-            }),
-        );
-
-        let row = ActionRow::builder()
-            .activatable_widget(&check_button)
-            .build();
-        row.add_prefix(&check_button);
-        row.set_sensitive(check_button.is_sensitive());
-
-        let desktop_entry = application_entry
-            .desktop_entry()
-            .expect("Expect to get desktop entry id from ApplicationEntry");
-        let title = desktop_entry.name().unwrap_or("<Unnamed Application>");
-        row.set_title(title);
-
-        if is_system_default_application {
-            row.set_subtitle(
-                Strings::application_is_system_default_handler_for_mimetype_short(&mime_type)
-                    .as_str(),
+            check_button.set_active(no_application_assigned);
+            check_button.connect_toggled(
+                clone!(@weak self as window, @strong mime_type => move |check_button| {
+                    if check_button.is_active() {
+                        window.mime_type_pane_detail_on_select_none(&mime_type);
+                    }
+                }),
             );
-        }
+
+            let row = ActionRow::builder()
+                .activatable_widget(&check_button)
+                .build();
+            row.add_prefix(&check_button);
+            row.set_title(Strings::assign_no_application_list_item());
+
+            row
+        };
 
         // RadioButtons work by putting check buttons in a group; we check if the group exists
         // and add this check button if it does; otherwise, we need to make a new group from
@@ -891,17 +915,9 @@ impl MainWindow {
         ListBoxRow::builder().child(&content).build()
     }
 
-    fn mime_type_pane_detail_on_select_none(&self) {
-        let mime_type_entry = self
-            .imp()
-            .currently_selected_mime_type_entry
-            .borrow()
-            .as_ref()
-            .cloned();
-        if let Some(mime_type_entry) = mime_type_entry {
-            self.assign_application_to_mimetype(&mime_type_entry.mime_type(), None);
-            self.reload_active_page();
-        }
+    fn mime_type_pane_detail_on_select_none(&self, mime_type: &MimeType) {
+        self.assign_application_to_mimetype(mime_type, None);
+        self.reload_active_page();
     }
 }
 

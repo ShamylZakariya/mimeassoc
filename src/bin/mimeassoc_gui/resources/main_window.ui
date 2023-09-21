@@ -136,12 +136,6 @@
 
                         </child>
                         <child>
-                          <object class="GtkButton" id="mime_type_pane_detail_select_none_button">
-                            <property name="label">Select None</property>
-                            <property name="name">mime_type_pane_detail_select_none_button</property>
-                          </object>
-                        </child>
-                        <child>
                           <object class="GtkLabel"
                             id="mime_type_pane_detail_info_label">
                             <property name="name">system-default-handler-warning-message</property>

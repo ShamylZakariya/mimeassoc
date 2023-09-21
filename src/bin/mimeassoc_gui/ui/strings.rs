@@ -10,7 +10,13 @@ impl Strings {
         desktop_entry: &DesktopEntry,
         mime_type: &MimeType,
     ) -> String {
-        format!("{} is the system default handler for {}, and no other application handling it is installed", desktop_entry.name().unwrap_or(desktop_entry.id().to_string().as_str()), mime_type)
+        format!(
+            "{} is the system default handler for {}, and can't be unassigned",
+            desktop_entry
+                .name()
+                .unwrap_or(desktop_entry.id().to_string().as_str()),
+            mime_type
+        )
     }
 
     /// Message shown in the MainWindowPage::Applications view, in the right-hand mime types
@@ -34,6 +40,10 @@ impl Strings {
         mime_type: &MimeType,
     ) -> String {
         format!("System default handler for {}", mime_type)
+    }
+
+    pub fn assign_no_application_list_item() -> &'static str {
+        "None"
     }
 
     // Strings for dialogs

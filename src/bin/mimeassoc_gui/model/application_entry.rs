@@ -68,6 +68,11 @@ impl ApplicationEntry {
         entry
     }
 
+    /// Create an empty ApplicationEntry. This is used to represent the "None" selection in lists.
+    pub fn none() -> Self {
+        Object::builder().build()
+    }
+
     /// Get the `DesktopEntryId` for thie `ApplicatioEntry`
     pub fn desktop_entry_id(&self) -> Option<DesktopEntryId> {
         let desktop_entry_id_raw = self.id();
