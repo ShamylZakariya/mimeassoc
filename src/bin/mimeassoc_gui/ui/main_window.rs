@@ -685,6 +685,7 @@ impl MainWindow {
 
         let list_box = &self.imp().mime_type_pane_detail_applications_list_box;
         list_box.set_selection_mode(SelectionMode::None);
+        list_box.set_sensitive(true);
 
         // Reset the application check button group before building the list; it will be
         // assigned to the first created list item, and if there are subsequent items, they
@@ -697,14 +698,8 @@ impl MainWindow {
         let application_entries = mime_type_entry.supported_application_entries();
         let model_count = application_entries.n_items();
 
-        // select-none list option should only be visible when there are multiple items to select from
-        // (e.g., the list is in radio-button mode), and there's no system default selection, because we can't unset that.
-        let can_select_none = model_count > 1
-            && !self.mime_type_has_system_default_handler(&mime_type_entry.mime_type());
-
-        if can_select_none {
-            application_entries.insert(0, &ApplicationEntry::none());
-        }
+        //insert an empty entry at beginning of list - this will be the None entry
+        application_entries.insert(0, &ApplicationEntry::none());
 
         let model = NoSelection::new(Some(application_entries));
         list_box.bind_model(Some(&model),
@@ -721,7 +716,7 @@ impl MainWindow {
         let show_info_label = if model_count == 1 {
             // if the number of items is 1, and that item is the system default, show the info message
             let desktop_entry = model
-                .item(0)
+                .item(1) // Recall, there's an empty ApplicationEntry at position 0
                 .unwrap()
                 .downcast_ref::<ApplicationEntry>()
                 .unwrap()
@@ -751,15 +746,6 @@ impl MainWindow {
         };
 
         info_label.set_visible(show_info_label);
-    }
-
-    fn mime_type_has_system_default_handler(&self, mime_type: &MimeType) -> bool {
-        let stores = self.stores();
-        let stores = stores.borrow();
-        let mime_associations_store = stores.mime_associations_store();
-        mime_associations_store
-            .system_default_application_for(mime_type)
-            .is_some()
     }
 
     fn create_mime_type_pane_detail_row(
@@ -794,7 +780,9 @@ impl MainWindow {
 
             check_button.set_active(is_assigned_application);
             if num_application_entries_in_list == 1 && is_system_default_application {
-                check_button.set_sensitive(false);
+                self.imp()
+                    .mime_type_pane_detail_applications_list_box
+                    .set_sensitive(false);
             }
 
             check_button.connect_toggled(
@@ -814,7 +802,6 @@ impl MainWindow {
                 .activatable_widget(&check_button)
                 .build();
             row.add_prefix(&check_button);
-            row.set_sensitive(check_button.is_sensitive());
 
             let desktop_entry = application_entry
                 .desktop_entry()
@@ -867,6 +854,7 @@ impl MainWindow {
             return row;
         }
 
+        // this is the first vended row, use its check button to stand as the group
         self.imp()
             .application_check_button_group
             .borrow_mut()
