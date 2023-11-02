@@ -3,6 +3,7 @@ mod model;
 mod ui;
 
 use gtk::{gdk::Display, glib::*, prelude::*, *};
+use mimeassoc::MimeType;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -142,6 +143,9 @@ fn build_ui(app: &adw::Application) {
     log::debug!("main::build_ui");
 
     let window = ui::MainWindow::new(app);
-    // window.show_page(ui::MainWindowPage::Applications);
+
+    let mime_type = MimeType::parse("application/vnd.lotus-1-2-3").unwrap();
+    window.perform_command(ui::MainWindowCommand::ShowMimeType(mime_type));
+
     window.present();
 }

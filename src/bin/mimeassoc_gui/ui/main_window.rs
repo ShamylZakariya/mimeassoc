@@ -114,6 +114,12 @@ mod imp {
 }
 
 #[derive(Debug)]
+pub enum MainWindowCommand {
+    ShowMimeType(MimeType),
+    ShowApplication(DesktopEntryId),
+}
+
+#[derive(Debug)]
 pub enum MainWindowPage {
     MimeTypes,
     Applications,
@@ -540,6 +546,39 @@ impl MainWindow {
         );
 
         dialog.present();
+    }
+
+    pub fn perform_command(&self, command: MainWindowCommand) {
+        match command {
+            MainWindowCommand::ShowMimeType(mime_type) => {
+                self.show_page(MainWindowPage::MimeTypes);
+
+                // Show the detail pane for this mime type
+                let mime_type_entry = MimeTypeEntry::new(&mime_type, self.stores());
+                self.show_mime_type_pane_detail(&mime_type_entry);
+
+                // Select this mime type in the list box
+                let mime_types_list_box = &self.imp().mime_types_list_box;
+                let mime_type_entries = self.mime_type_entries();
+                let count = mime_type_entries.n_items();
+                for i in 0..count {
+                    let model = mime_type_entries.item(i)
+                        .expect("Expected a valid row index")
+                        .downcast::<MimeTypeEntry>()
+                        .expect("MainWindow::mime_type_entries() model should contain instances of MimeTypeEntry only");
+                    if model.mime_type() == mime_type {
+                        let row = mime_types_list_box.row_at_index(i as i32);
+                        mime_types_list_box.select_row(row.as_ref());
+                        break;
+                    }
+                }
+            }
+            MainWindowCommand::ShowApplication(desktop_entry_id) => {
+                self.show_page(MainWindowPage::Applications);
+                let application_entry = ApplicationEntry::new(&desktop_entry_id, self.stores());
+                self.show_application_pane_detail(&application_entry);
+            }
+        }
     }
 
     /// Show one of the main window pages
