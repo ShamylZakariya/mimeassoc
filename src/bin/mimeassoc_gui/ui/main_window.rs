@@ -567,8 +567,17 @@ impl MainWindow {
                         .downcast::<MimeTypeEntry>()
                         .expect("MainWindow::mime_type_entries() model should contain instances of MimeTypeEntry only");
                     if model.mime_type() == mime_type {
-                        let row = mime_types_list_box.row_at_index(i as i32);
-                        mime_types_list_box.select_row(row.as_ref());
+                        if let Some(row) = mime_types_list_box.row_at_index(i as i32) {
+                            mime_types_list_box.select_row(Some(&row));
+
+                            // We need to add this to glib's idle timer, since the list construction and window layout
+                            // may not have completed by the time this is called.
+                            let list_box = mime_types_list_box.get();
+                            glib::idle_add_local_once(clone!(@weak list_box => move || {
+                                Self::scroll_listbox_to_selected_row(list_box);
+                            }));
+                        }
+
                         break;
                     }
                 }
@@ -579,6 +588,28 @@ impl MainWindow {
                 self.show_application_pane_detail(&application_entry);
             }
         }
+    }
+
+    fn scroll_listbox_to_selected_row(list_box: ListBox) -> bool {
+        if let Some(row) = list_box.selected_row() {
+            if let Some(coordinates) = row.translate_coordinates(&list_box, 0.0, 0.0) {
+                // If the window hasn't laid out, we'll have a zero height and can't proceed
+                if coordinates.1 == 0.0 {
+                    return false;
+                }
+
+                if let Some(adjustment) = list_box.adjustment() {
+                    let (_, natural_size) = row.preferred_size();
+                    adjustment.set_value(
+                        coordinates.1
+                            - (adjustment.page_size() - natural_size.height() as f64) / 2.0,
+                    );
+
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     /// Show one of the main window pages
