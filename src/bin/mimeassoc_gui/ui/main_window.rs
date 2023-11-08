@@ -570,12 +570,9 @@ impl MainWindow {
                         if let Some(row) = mime_types_list_box.row_at_index(i as i32) {
                             mime_types_list_box.select_row(Some(&row));
 
-                            // We need to add this to glib's idle timer, since the list construction and window layout
-                            // may not have completed by the time this is called.
-                            let list_box = mime_types_list_box.get();
-                            glib::idle_add_local_once(clone!(@weak list_box => move || {
-                                Self::scroll_listbox_to_selected_row(list_box);
-                            }));
+                            if i > 0 {
+                                super::scroll_listbox_to_selected_row(mime_types_list_box.get());
+                            }
                         }
 
                         break;
@@ -584,32 +581,33 @@ impl MainWindow {
             }
             MainWindowCommand::ShowApplication(desktop_entry_id) => {
                 self.show_page(MainWindowPage::Applications);
+
                 let application_entry = ApplicationEntry::new(&desktop_entry_id, self.stores());
                 self.show_application_pane_detail(&application_entry);
+
+                // select this app in the list box
+                let applications_list_box = &self.imp().applications_list_box;
+                let application_entries = self.application_entries();
+                let count = application_entries.n_items();
+                for i in 0..count {
+                    let model = application_entries.item(i)
+                        .expect("Expected a valid row index")
+                        .downcast::<ApplicationEntry>()
+                        .expect("MainWindow::application_entries() model should contain instances of ApplicationEntry only");
+
+                    if let Some(id) = model.desktop_entry_id() {
+                        if id == desktop_entry_id {
+                            applications_list_box
+                                .select_row(applications_list_box.row_at_index(i as i32).as_ref());
+
+                            if i > 0 {
+                                super::scroll_listbox_to_selected_row(applications_list_box.get());
+                            }
+                        }
+                    }
+                }
             }
         }
-    }
-
-    fn scroll_listbox_to_selected_row(list_box: ListBox) -> bool {
-        if let Some(row) = list_box.selected_row() {
-            if let Some(coordinates) = row.translate_coordinates(&list_box, 0.0, 0.0) {
-                // If the window hasn't laid out, we'll have a zero height and can't proceed
-                if coordinates.1 == 0.0 {
-                    return false;
-                }
-
-                if let Some(adjustment) = list_box.adjustment() {
-                    let (_, natural_size) = row.preferred_size();
-                    adjustment.set_value(
-                        coordinates.1
-                            - (adjustment.page_size() - natural_size.height() as f64) / 2.0,
-                    );
-
-                    return true;
-                }
-            }
-        }
-        false
     }
 
     /// Show one of the main window pages
