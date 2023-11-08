@@ -56,7 +56,7 @@ fn set_logger() {
     static LOGGER: StdoutLogger = StdoutLogger;
 
     // check "LOG_LEVEL_FILTER" env var. It can be an int corresponding to level (0,1,2,3,4,5), or a string e.g.,
-    // "Error", "Warn", etc. If empty, default to log level of Off
+    // "Error", "Warn", etc.
     let log_level_filter = if let Ok(log_level_filter_str) = std::env::var("LOG_LEVEL_FILTER") {
         if let Ok(log_level_filter) = log_level_filter_str.parse() {
             match log_level_filter {
@@ -78,6 +78,9 @@ fn set_logger() {
                 _ => log::LevelFilter::Off,
             }
         }
+    } else if cfg!(debug_assertions) {
+        // Default to Debug if run without LOG_LEVEL_FILTER env
+        log::LevelFilter::Debug
     } else {
         log::LevelFilter::Off
     };
@@ -144,11 +147,16 @@ fn build_ui(app: &adw::Application) {
 
     let window = ui::MainWindow::new(app);
 
-    // let mime_type = MimeType::parse("application/vnd.lotus-1-2-3").unwrap();
-    // window.perform_command(ui::MainWindowCommand::ShowMimeType(mime_type));
+    let command = Some(ui::MainWindowCommand::ShowMimeType(
+        MimeType::parse("application/vnd.lotus-1-2-3").unwrap(),
+    ));
+    // let command = Some(ui::MainWindowCommand::ShowApplication(
+    //     DesktopEntryId::parse("code.desktop").unwrap(),
+    // ));
 
-    let app_id = DesktopEntryId::parse("code.desktop").unwrap();
-    window.perform_command(ui::MainWindowCommand::ShowApplication(app_id));
+    if let Some(command) = command {
+        window.perform_command(command);
+    }
 
     window.present();
 }
