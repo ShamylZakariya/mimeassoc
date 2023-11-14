@@ -148,7 +148,7 @@ fn build_ui(app: &adw::Application) {
     let window = ui::MainWindow::new(app);
 
     let command = Some(ui::MainWindowCommand::ShowMimeType(
-        MimeType::parse("application/vnd.lotus-1-2-3").unwrap(),
+        MimeType::parse("application/pdf").unwrap(),
     ));
     // let command = Some(ui::MainWindowCommand::ShowApplication(
     //     DesktopEntryId::parse("code.desktop").unwrap(),

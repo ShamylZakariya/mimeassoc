@@ -892,11 +892,17 @@ impl MainWindow {
             let stores = self.stores();
             let stores = stores.borrow();
             let mime_associations_store = stores.mime_associations_store();
-            let no_application_assigned = mime_associations_store
-                .default_application_for(&mime_type)
-                .is_none();
+            let desktop_entry_store = stores.desktop_entry_store();
 
-            check_button.set_active(no_application_assigned);
+            let an_application_is_assigned = mime_associations_store
+                .default_application_for(&mime_type)
+                .is_some_and(|desktop_entry_id| {
+                    desktop_entry_store
+                        .find_desktop_entry_with_id(desktop_entry_id)
+                        .is_some_and(|e| e.appears_valid_application())
+                });
+
+            check_button.set_active(!an_application_is_assigned);
             check_button.connect_toggled(
                 clone!(@weak self as window, @strong mime_type => move |check_button| {
                     if check_button.is_active() {

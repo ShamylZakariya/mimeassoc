@@ -38,7 +38,10 @@
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": [
+                // "mime-type",
+                // "application/vnd.lotus-1-2-3"
+            ],
             "cwd": "${workspaceFolder}"
         },
         {
@@ -50,7 +53,7 @@
                     "test",
                     "--no-run",
                     "--bin=mimeassoc_cli",
-                    "--package=mimeassoc"
+                    "--package=mimeassoc",
                 ],
                 "filter": {
                     "name": "mimeassoc_cli",
