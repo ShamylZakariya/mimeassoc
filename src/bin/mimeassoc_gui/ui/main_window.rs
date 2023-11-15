@@ -753,7 +753,6 @@ impl MainWindow {
 
         let list_box = &self.imp().mime_type_pane_detail_applications_list_box;
         list_box.set_selection_mode(SelectionMode::None);
-        list_box.set_sensitive(true);
 
         // Reset the application check button group before building the list; it will be
         // assigned to the first created list item, and if there are subsequent items, they
@@ -847,11 +846,6 @@ impl MainWindow {
             };
 
             check_button.set_active(is_assigned_application);
-            if num_application_entries_in_list == 1 && is_system_default_application {
-                self.imp()
-                    .mime_type_pane_detail_applications_list_box
-                    .set_sensitive(false);
-            }
 
             check_button.connect_toggled(
                 clone!(@weak self as window, @strong application_entry, @strong mime_type => move |check_button| {
@@ -902,6 +896,14 @@ impl MainWindow {
                         .is_some_and(|e| e.appears_valid_application())
                 });
 
+            let can_assign_none = !mime_associations_store
+                .system_default_application_for(&mime_type)
+                .is_some_and(|desktop_entry_id| {
+                    desktop_entry_store
+                        .find_desktop_entry_with_id(desktop_entry_id)
+                        .is_some_and(|e| e.appears_valid_application())
+                });
+
             check_button.set_active(!an_application_is_assigned);
             check_button.connect_toggled(
                 clone!(@weak self as window, @strong mime_type => move |check_button| {
@@ -916,6 +918,7 @@ impl MainWindow {
                 .build();
             row.add_prefix(&check_button);
             row.set_title(Strings::assign_no_application_list_item());
+            row.set_sensitive(can_assign_none);
 
             row
         };

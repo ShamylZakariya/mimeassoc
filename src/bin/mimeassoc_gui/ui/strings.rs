@@ -11,7 +11,7 @@ impl Strings {
         mime_type: &MimeType,
     ) -> String {
         format!(
-            "{} is the system default handler for {}, and can't be unassigned",
+            "{} is the only available handler for {}. It is assigned by the system, and can't be unassigned.",
             desktop_entry
                 .name()
                 .unwrap_or(desktop_entry.id().to_string().as_str()),
