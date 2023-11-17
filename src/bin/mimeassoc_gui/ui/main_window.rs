@@ -8,10 +8,13 @@ use gtk::{glib::*, *};
 use mimeassoc::*;
 
 use crate::model::*;
+use crate::view_controllers::MimeTypesPaneController;
 
 use super::strings::Strings;
 
 mod imp {
+    use crate::view_controllers::MimeTypesPaneController;
+
     use super::*;
 
     #[derive(CompositeTemplate, Default)]
@@ -69,6 +72,9 @@ mod imp {
         pub application_check_button_group: RefCell<Option<CheckButton>>,
         pub currently_selected_mime_type_entry: RefCell<Option<MimeTypeEntry>>,
         pub currently_selected_application_entry: RefCell<Option<ApplicationEntry>>,
+
+        // View Models
+        pub mime_types_pane_controller: OnceCell<MimeTypesPaneController>,
     }
 
     // The central trait for subclassing a GObject
@@ -98,6 +104,7 @@ mod imp {
 
             // Setup
             obj.setup_models();
+            obj.setup_view_controllers();
             obj.setup_actions();
             obj.setup_ui();
         }
@@ -197,6 +204,22 @@ impl MainWindow {
             .application_entries
             .replace(Some(applications_list_store));
         self.build_application_entries_list_store();
+    }
+
+    fn setup_view_controllers(&self) {
+        let weak_self = glib::object::WeakRef::new();
+        weak_self.set(Some(self));
+
+        let _ = self
+            .imp()
+            .mime_types_pane_controller
+            .set(MimeTypesPaneController::new(
+                weak_self,
+                clone!(@weak self as window => move || {
+                    log::debug!("setup_view_models - on_commit");
+                    window.commit_changes();
+                }),
+            ));
     }
 
     fn setup_ui(&self) {
