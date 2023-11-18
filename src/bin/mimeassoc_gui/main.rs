@@ -1,7 +1,7 @@
 mod common;
 mod model;
 mod ui;
-mod view_controllers;
+mod controllers;
 
 use gtk::{gdk::Display, glib::*, prelude::*, *};
 use mimeassoc::*;

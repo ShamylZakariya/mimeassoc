@@ -7,13 +7,13 @@ use glib::subclass::*;
 use gtk::{glib::*, *};
 use mimeassoc::*;
 
+use crate::controllers::{AppController, MimeTypesPaneController};
 use crate::model::*;
-use crate::view_controllers::MimeTypesPaneController;
 
 use super::strings::Strings;
 
 mod imp {
-    use crate::view_controllers::MimeTypesPaneController;
+    use crate::controllers::{AppController, MimeTypesPaneController};
 
     use super::*;
 
@@ -25,6 +25,9 @@ mod imp {
         pub mime_type_entries: RefCell<Option<gio::ListStore>>,
         pub application_entries: RefCell<Option<gio::ListStore>>,
         pub undo_action: OnceCell<gtk::gio::SimpleAction>,
+
+        // Controllers
+        pub app_controller: OnceCell<Rc<RefCell<AppController>>>,
 
         // UI bindings
         #[template_child]
@@ -72,9 +75,6 @@ mod imp {
         pub application_check_button_group: RefCell<Option<CheckButton>>,
         pub currently_selected_mime_type_entry: RefCell<Option<MimeTypeEntry>>,
         pub currently_selected_application_entry: RefCell<Option<ApplicationEntry>>,
-
-        // View Models
-        pub mime_types_pane_controller: OnceCell<MimeTypesPaneController>,
     }
 
     // The central trait for subclassing a GObject
@@ -155,7 +155,7 @@ impl MainWindow {
         Object::builder().property("application", app).build()
     }
 
-    fn stores(&self) -> Rc<RefCell<Stores>> {
+    pub fn stores(&self) -> Rc<RefCell<Stores>> {
         self.imp()
             .stores
             .get()
@@ -163,7 +163,7 @@ impl MainWindow {
             .clone()
     }
 
-    fn mime_type_entries(&self) -> gio::ListStore {
+    pub fn mime_type_entries(&self) -> gio::ListStore {
         self.imp()
             .mime_type_entries
             .borrow()
@@ -171,7 +171,7 @@ impl MainWindow {
             .expect("Could not get mime_type_entries.")
     }
 
-    fn application_entries(&self) -> gio::ListStore {
+    pub fn application_entries(&self) -> gio::ListStore {
         self.imp()
             .application_entries
             .borrow()
@@ -212,14 +212,8 @@ impl MainWindow {
 
         let _ = self
             .imp()
-            .mime_types_pane_controller
-            .set(MimeTypesPaneController::new(
-                weak_self,
-                clone!(@weak self as window => move || {
-                    log::debug!("setup_view_models - on_commit");
-                    window.commit_changes();
-                }),
-            ));
+            .app_controller
+            .set(Rc::new(RefCell::new(AppController::new(weak_self))));
     }
 
     fn setup_ui(&self) {
