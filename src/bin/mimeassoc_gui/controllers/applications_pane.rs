@@ -19,6 +19,7 @@ mod imp {
     #[derive(Default)]
     pub struct ApplicationsPaneController {
         pub window: OnceCell<WeakRef<MainWindow>>,
+        pub app_controller: OnceCell<WeakRef<AppController>>,
         pub application_entries: OnceCell<gio::ListStore>,
         pub currently_selected_application_entry: RefCell<Option<ApplicationEntry>>,
     }
@@ -43,11 +44,11 @@ glib::wrapper! {
 }
 
 impl ApplicationsPaneController {
-    pub fn new(window: glib::object::WeakRef<MainWindow>) -> Self {
+    pub fn new(window: WeakRef<MainWindow>, app_controller: WeakRef<AppController>) -> Self {
         log::debug!("ApplicationsPaneController::new");
         let instance: ApplicationsPaneController = Object::builder().build();
         instance.imp().window.set(window).unwrap();
-
+        instance.imp().app_controller.set(app_controller).unwrap();
         instance.setup();
 
         instance
@@ -58,10 +59,11 @@ impl ApplicationsPaneController {
     pub fn setup(&self) {
         log::debug!("ApplicationsPaneController::setup");
 
+        self.build_model();
+        self.bind_model();
+
         let window = self.window();
         let application_list_box = &window.imp().applications_list_box;
-
-        self.bind_model();
 
         // Listen for selection
         application_list_box.connect_row_activated(
@@ -86,6 +88,29 @@ impl ApplicationsPaneController {
                 .downcast::<ApplicationEntry>()
                 .expect("MainWindow::application_entries should only contain ApplicationEntry"),
         );
+    }
+
+    fn build_model(&self) {
+        self.imp()
+            .application_entries
+            .set(gio::ListStore::with_type(ApplicationEntry::static_type()))
+            .unwrap();
+
+        let stores = self.stores();
+        let borrowed_stores = stores.borrow();
+        let apps = borrowed_stores.desktop_entry_store();
+
+        let mut all_desktop_entries = apps.desktop_entries();
+        all_desktop_entries.sort_by(|a, b| a.cmp_by_name_alpha_inensitive(b));
+
+        let application_entries = all_desktop_entries
+            .iter()
+            .filter(|de| !de.mime_types().is_empty())
+            .map(|de| ApplicationEntry::new(de.id(), stores.clone()))
+            .collect::<Vec<_>>();
+
+        self.application_entries()
+            .extend_from_slice(&application_entries);
     }
 
     /// Binds the `MainWindow::application_entries` list model to the `MainWindow::application_list_box`,
@@ -212,7 +237,7 @@ impl ApplicationsPaneController {
             check_button.set_active(true);
         }
 
-        let app_controller = self.application_controller();
+        let app_controller = self.app_controller();
         check_button.connect_toggled(clone!(@weak app_controller, @strong desktop_entry, @strong mime_type => move |check_button| {
             if check_button.is_active() {
                 app_controller.assign_application_to_mimetype(&mime_type, Some(&desktop_entry.id()));
@@ -233,12 +258,17 @@ impl ApplicationsPaneController {
             .expect("Expect window instance to be valid")
     }
 
-    fn application_controller(&self) -> AppController {
-        self.window().app_controller().clone()
+    fn app_controller(&self) -> AppController {
+        self.imp()
+            .app_controller
+            .get()
+            .expect("Expect AppController instance to be set")
+            .upgrade()
+            .expect("Expect AppController instance to be alive")
     }
 
     fn stores(&self) -> Rc<RefCell<Stores>> {
-        self.application_controller().stores()
+        self.app_controller().stores()
     }
 
     pub fn application_entries(&self) -> &gio::ListStore {

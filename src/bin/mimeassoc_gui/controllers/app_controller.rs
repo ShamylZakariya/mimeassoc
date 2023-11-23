@@ -48,21 +48,30 @@ impl AppController {
     pub fn new(window: glib::object::WeakRef<MainWindow>) -> Self {
         log::debug!("AppController::new");
         let instance: AppController = Object::builder().build();
+
+        // basic setup of instance
         instance.imp().window.set(window.clone()).unwrap();
+        instance.setup_stores();
+
+        // create view controllers
+        let weak_self = glib::object::WeakRef::new();
+        weak_self.set(Some(&instance));
 
         instance
             .imp()
             .mime_types_pane_controller
-            .set(MimeTypesPaneController::new(window.clone()))
+            .set(MimeTypesPaneController::new(
+                window.clone(),
+                weak_self.clone(),
+            ))
             .unwrap();
 
         instance
             .imp()
             .applications_pane_controller
-            .set(ApplicationsPaneController::new(window))
+            .set(ApplicationsPaneController::new(window, weak_self))
             .unwrap();
 
-        instance.setup_stores();
         instance
     }
 
@@ -142,7 +151,6 @@ impl AppController {
             }
             Err(e) => self.show_error("Uh oh", "Unable to load necessary data", &e),
         }
-
     }
 
     fn reset_user_default_application_assignments(&self) {
@@ -225,7 +233,11 @@ impl AppController {
     }
 
     pub fn stores(&self) -> Rc<RefCell<Stores>> {
-        self.imp().stores.get().expect("Expect Stores instance to have been created").clone()
+        self.imp()
+            .stores
+            .get()
+            .expect("Expect Stores instance to have been created")
+            .clone()
     }
 
     fn store_was_mutated(&self) {

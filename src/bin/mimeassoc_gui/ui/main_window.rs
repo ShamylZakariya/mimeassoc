@@ -152,21 +152,19 @@ impl MainWindow {
     }
 
     fn setup_ui(&self) {
-        let app_controller = self.app_controller();
-
         // wire up the save button
         self.imp()
             .commit_button
-            .connect_clicked(clone!(@weak app_controller => move |_|{
-                app_controller.commit_changes();
+            .connect_clicked(clone!(@weak self as window => move |_|{
+                window.app_controller().commit_changes();
             }));
 
         // listen for when user switches between MimeTypes and Applications panes
         self.imp().stack.connect_visible_child_notify(
-            clone!(@weak app_controller => move |stack| {
+            clone!(@weak self as window => move |stack| {
                 if let Some(name) = stack.visible_child_name() {
                     if let Some(page) = MainWindowPage::from_ui_name(&name) {
-                        app_controller.on_current_page_changed(page);
+                        window.app_controller().on_current_page_changed(page);
                     }
                 }
             }),
@@ -175,25 +173,24 @@ impl MainWindow {
 
     fn setup_actions(&self) {
         log::debug!("MainWindow::setup_actions");
-        let app_controller = self.app_controller();
 
         let action_show_mime_types = gtk::gio::SimpleAction::new("show-mime-types", None);
-        action_show_mime_types.connect_activate(clone!(@weak app_controller => move |_, _|{
-            app_controller.show_page(MainWindowPage::MimeTypes);
+        action_show_mime_types.connect_activate(clone!(@weak self as window => move |_, _|{
+            window.app_controller().show_page(MainWindowPage::MimeTypes);
         }));
         self.add_action(&action_show_mime_types);
 
         let action_show_applications = gtk::gio::SimpleAction::new("show-applications", None);
-        action_show_applications.connect_activate(clone!(@weak app_controller => move |_, _|{
-            app_controller.show_page(MainWindowPage::Applications);
+        action_show_applications.connect_activate(clone!(@weak self as window => move |_, _|{
+            window.app_controller().show_page(MainWindowPage::Applications);
         }));
         self.add_action(&action_show_applications);
 
         let action_reset_user_default_application_assignments =
             gtk::gio::SimpleAction::new("reset-user-default-applications", None);
         action_reset_user_default_application_assignments.connect_activate(
-            clone!(@weak app_controller => move |_, _| {
-                app_controller.query_reset_user_default_application_assignments();
+            clone!(@weak self as window => move |_, _| {
+                window.app_controller().query_reset_user_default_application_assignments();
             }),
         );
         self.add_action(&action_reset_user_default_application_assignments);
@@ -201,30 +198,30 @@ impl MainWindow {
         let action_clear_orphaned_application_assignments =
             gtk::gio::SimpleAction::new("prune-orphaned-application-assignments", None);
         action_clear_orphaned_application_assignments.connect_activate(
-            clone!(@weak app_controller => move |_, _| {
-                app_controller.query_prune_orphaned_application_assignments();
+            clone!(@weak self as window => move |_, _| {
+                window.app_controller().query_prune_orphaned_application_assignments();
             }),
         );
         self.add_action(&action_clear_orphaned_application_assignments);
 
         let about_action = gtk::gio::SimpleAction::new("show-about", None);
         about_action.connect_activate(
-            clone!(@weak app_controller => move |_, _| { app_controller.show_about(); }),
+            clone!(@weak self as window => move |_, _| { window.app_controller().show_about(); }),
         );
         self.add_action(&about_action);
 
         let discard_uncommited_changes_action =
             gtk::gio::SimpleAction::new("discard-uncommitted-changes", None);
         discard_uncommited_changes_action.connect_activate(
-            clone!(@weak app_controller => move |_, _| {
-                app_controller.discard_uncommitted_changes();
+            clone!(@weak self as window => move |_, _| {
+                window.app_controller().discard_uncommitted_changes();
             }),
         );
         self.add_action(&discard_uncommited_changes_action);
 
         let undo_action = gtk::gio::SimpleAction::new("undo", None);
-        undo_action.connect_activate(clone!(@weak app_controller => move |_, _| {
-            app_controller.undo();
+        undo_action.connect_activate(clone!(@weak self as window => move |_, _| {
+            window.app_controller().undo();
         }));
         self.add_action(&undo_action);
         self.imp()
@@ -233,8 +230,8 @@ impl MainWindow {
             .expect("MainWindow::setup_actions must only be executed once");
 
         let log_history_action = gtk::gio::SimpleAction::new("log-history-stack", None);
-        log_history_action.connect_activate(clone!(@weak app_controller => move |_, _| {
-            let stores = app_controller.stores();
+        log_history_action.connect_activate(clone!(@weak self as window => move |_, _| {
+            let stores = window.app_controller().stores();
             let stores = stores.borrow();
             stores.debug_log_history_stack();
         }));

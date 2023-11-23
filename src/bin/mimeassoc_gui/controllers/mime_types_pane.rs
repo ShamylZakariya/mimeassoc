@@ -20,6 +20,7 @@ mod imp {
     #[derive(Default)]
     pub struct MimeTypesPaneController {
         pub window: OnceCell<WeakRef<MainWindow>>,
+        pub app_controller: OnceCell<WeakRef<AppController>>,
         pub mime_type_entries: OnceCell<gio::ListStore>,
 
         pub application_check_button_group: RefCell<Option<CheckButton>>,
@@ -46,16 +47,11 @@ glib::wrapper! {
 }
 
 impl MimeTypesPaneController {
-    pub fn new(window: glib::object::WeakRef<MainWindow>) -> Self {
+    pub fn new(window: WeakRef<MainWindow>, app_controller: WeakRef<AppController>) -> Self {
         log::debug!("MimeTypesViewModel::new");
         let instance: MimeTypesPaneController = Object::builder().build();
         instance.imp().window.set(window).unwrap();
-        instance
-            .imp()
-            .mime_type_entries
-            .set(gio::ListStore::with_type(MimeTypeEntry::static_type()))
-            .unwrap();
-
+        instance.imp().app_controller.set(app_controller).unwrap();
         instance.setup();
 
         instance
@@ -73,12 +69,12 @@ impl MimeTypesPaneController {
     fn setup(&self) {
         log::debug!("MimeTypesPaneController::setup");
 
-        let window = self.window();
-
-        let mime_types_list_box = &window.imp().mime_types_list_box;
+        self.build_model();
         self.bind_model();
 
         // bind to selection events
+        let window = self.window();
+        let mime_types_list_box = &window.imp().mime_types_list_box;
         mime_types_list_box.connect_row_activated(clone!(@weak self as controller => move |_, row|{
             let index = row.index();
             let model = controller.mime_type_entries().item(index as u32)
@@ -111,16 +107,44 @@ impl MimeTypesPaneController {
             .expect("Expect window instance to be valid")
     }
 
-    fn application_controller(&self) -> AppController {
-        self.window().app_controller().clone()
+    fn app_controller(&self) -> AppController {
+        self.imp()
+            .app_controller
+            .get()
+            .expect("Expect AppController instance to be set")
+            .upgrade()
+            .expect("Expect AppController instance to be alive")
     }
 
     fn stores(&self) -> Rc<RefCell<Stores>> {
-        self.application_controller().stores()
+        self.app_controller().stores()
     }
 
     pub fn mime_type_entries(&self) -> &gio::ListStore {
         self.imp().mime_type_entries.get().unwrap()
+    }
+
+    fn build_model(&self) {
+        self.imp()
+            .mime_type_entries
+            .set(gio::ListStore::with_type(MimeTypeEntry::static_type()))
+            .unwrap();
+
+        let stores = self.stores();
+        let borrowed_stores = stores.borrow();
+        let mime_associations_store = borrowed_stores.mime_associations_store();
+
+        let mut all_mime_types = mime_associations_store.mime_types();
+        all_mime_types.sort();
+
+        let mime_type_entries = all_mime_types
+            .iter()
+            .map(|mt| MimeTypeEntry::new(mt, stores.clone()))
+            .filter(|e| e.supported_application_entries().n_items() > 0)
+            .collect::<Vec<_>>();
+
+        self.mime_type_entries()
+            .extend_from_slice(&mime_type_entries);
     }
 
     /// Binds the `mime_type_entries` list model to the `mime_types_list_box`,
@@ -266,7 +290,7 @@ impl MimeTypesPaneController {
             .valign(Align::Center)
             .can_focus(false)
             .build();
-        let app_controller = self.application_controller();
+        let app_controller = self.app_controller();
 
         let row = if application_entry.desktop_entry_id().is_some() {
             let (is_system_default_application, is_assigned_application) = {
@@ -384,7 +408,7 @@ impl MimeTypesPaneController {
     }
 
     fn on_select_none(&self, mime_type: &MimeType) {
-        let application_controller = self.application_controller();
+        let application_controller = self.app_controller();
         application_controller.assign_application_to_mimetype(mime_type, None);
         application_controller.reload_active_page();
     }
