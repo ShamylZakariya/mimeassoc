@@ -1,5 +1,4 @@
-use std::cell::{OnceCell, RefCell};
-use std::rc::Rc;
+use std::cell::OnceCell;
 
 use adw::subclass::prelude::*;
 use adw::{prelude::*, *};
@@ -7,27 +6,19 @@ use glib::subclass::*;
 use gtk::{glib::*, *};
 use mimeassoc::*;
 
-use crate::controllers::{AppController, MimeTypesPaneController};
-use crate::model::*;
-
-use super::strings::Strings;
+use crate::controllers::AppController;
 
 mod imp {
-    use crate::controllers::{AppController, MimeTypesPaneController};
-
     use super::*;
+    use crate::controllers::AppController;
 
     #[derive(CompositeTemplate, Default)]
     #[template(resource = "/org/zakariya/MimeAssoc/main_window.ui")]
     pub struct MainWindow {
-        // Models
-        pub stores: OnceCell<Rc<RefCell<Stores>>>,
-        pub mime_type_entries: RefCell<Option<gio::ListStore>>,
-        pub application_entries: RefCell<Option<gio::ListStore>>,
         pub undo_action: OnceCell<gtk::gio::SimpleAction>,
 
         // Controllers
-        pub app_controller: OnceCell<Rc<RefCell<AppController>>>,
+        pub app_controller: OnceCell<AppController>,
 
         // UI bindings
         #[template_child]
@@ -70,11 +61,6 @@ mod imp {
 
         #[template_child]
         pub application_to_mime_type_assignment_list_box: TemplateChild<ListBox>,
-
-        // Run-time Bound UI Elements and state
-        pub application_check_button_group: RefCell<Option<CheckButton>>,
-        pub currently_selected_mime_type_entry: RefCell<Option<MimeTypeEntry>>,
-        pub currently_selected_application_entry: RefCell<Option<ApplicationEntry>>,
     }
 
     // The central trait for subclassing a GObject
@@ -103,10 +89,9 @@ mod imp {
             let obj = self.obj();
 
             // Setup
-            obj.setup_models();
-            obj.setup_view_controllers();
             obj.setup_actions();
             obj.setup_ui();
+            obj.setup_view_controllers();
         }
     }
 
@@ -155,111 +140,60 @@ impl MainWindow {
         Object::builder().property("application", app).build()
     }
 
-    pub fn stores(&self) -> Rc<RefCell<Stores>> {
-        self.imp()
-            .stores
-            .get()
-            .expect("Expect `setup_models()` to be called before calling `stores()`.")
-            .clone()
-    }
-
-    pub fn mime_type_entries(&self) -> gio::ListStore {
-        self.imp()
-            .mime_type_entries
-            .borrow()
-            .clone()
-            .expect("Could not get mime_type_entries.")
-    }
-
-    pub fn application_entries(&self) -> gio::ListStore {
-        self.imp()
-            .application_entries
-            .borrow()
-            .clone()
-            .expect("Could not get application_entries.")
-    }
-
-    fn setup_models(&self) {
-        log::debug!("MainWindow::setup_models");
-
-        // Create models
-        match Stores::new() {
-            Ok(stores) => {
-                self.imp()
-                    .stores
-                    .set(Rc::new(RefCell::new(stores)))
-                    .expect("MainWindow::setup_models() should only be set once");
-            }
-            Err(e) => self.show_error("Uh oh", "Unable to load necessary data", &e),
-        }
-
-        let mime_types_list_store = gio::ListStore::with_type(MimeTypeEntry::static_type());
-        self.imp()
-            .mime_type_entries
-            .replace(Some(mime_types_list_store));
-        self.build_mime_type_entries_list_store();
-
-        let applications_list_store = gio::ListStore::with_type(ApplicationEntry::static_type());
-        self.imp()
-            .application_entries
-            .replace(Some(applications_list_store));
-        self.build_application_entries_list_store();
+    pub fn app_controller(&self) -> &AppController {
+        self.imp().app_controller.get().unwrap()
     }
 
     fn setup_view_controllers(&self) {
         let weak_self = glib::object::WeakRef::new();
         weak_self.set(Some(self));
 
-        let _ = self
-            .imp()
-            .app_controller
-            .set(Rc::new(RefCell::new(AppController::new(weak_self))));
+        let _ = self.imp().app_controller.set(AppController::new(weak_self));
     }
 
     fn setup_ui(&self) {
+        let app_controller = self.app_controller();
+
         // wire up the save button
         self.imp()
             .commit_button
-            .connect_clicked(clone!(@weak self as window => move |_|{
-                window.commit_changes();
+            .connect_clicked(clone!(@weak app_controller => move |_|{
+                app_controller.commit_changes();
             }));
 
         // listen for when user switches between MimeTypes and Applications panes
         self.imp().stack.connect_visible_child_notify(
-            clone!(@weak self as window => move |stack| {
+            clone!(@weak app_controller => move |stack| {
                 if let Some(name) = stack.visible_child_name() {
                     if let Some(page) = MainWindowPage::from_ui_name(&name) {
-                        window.current_page_changed(page);
+                        app_controller.on_current_page_changed(page);
                     }
                 }
             }),
         );
-
-        self.setup_mime_types_pane();
-        self.setup_applications_pane();
-        self.store_was_mutated();
     }
 
     fn setup_actions(&self) {
         log::debug!("MainWindow::setup_actions");
+        let app_controller = self.app_controller();
 
         let action_show_mime_types = gtk::gio::SimpleAction::new("show-mime-types", None);
-        action_show_mime_types.connect_activate(clone!(@weak self as window => move |_, _|{
-            window.show_page(MainWindowPage::MimeTypes);
+        action_show_mime_types.connect_activate(clone!(@weak app_controller => move |_, _|{
+            app_controller.show_page(MainWindowPage::MimeTypes);
         }));
         self.add_action(&action_show_mime_types);
 
         let action_show_applications = gtk::gio::SimpleAction::new("show-applications", None);
-        action_show_applications.connect_activate(clone!(@weak self as window => move |_, _|{
-            window.show_page(MainWindowPage::Applications);
+        action_show_applications.connect_activate(clone!(@weak app_controller => move |_, _|{
+            app_controller.show_page(MainWindowPage::Applications);
         }));
         self.add_action(&action_show_applications);
 
         let action_reset_user_default_application_assignments =
             gtk::gio::SimpleAction::new("reset-user-default-applications", None);
         action_reset_user_default_application_assignments.connect_activate(
-            clone!(@weak self as window => move |_, _| {
-                window.query_reset_user_default_application_assignments();
+            clone!(@weak app_controller => move |_, _| {
+                app_controller.query_reset_user_default_application_assignments();
             }),
         );
         self.add_action(&action_reset_user_default_application_assignments);
@@ -267,29 +201,30 @@ impl MainWindow {
         let action_clear_orphaned_application_assignments =
             gtk::gio::SimpleAction::new("prune-orphaned-application-assignments", None);
         action_clear_orphaned_application_assignments.connect_activate(
-            clone!(@weak self as window => move |_, _| {
-                window.query_prune_orphaned_application_assignments();
+            clone!(@weak app_controller => move |_, _| {
+                app_controller.query_prune_orphaned_application_assignments();
             }),
         );
         self.add_action(&action_clear_orphaned_application_assignments);
 
         let about_action = gtk::gio::SimpleAction::new("show-about", None);
-        about_action
-            .connect_activate(clone!(@weak self as window => move |_, _| { window.show_about(); }));
+        about_action.connect_activate(
+            clone!(@weak app_controller => move |_, _| { app_controller.show_about(); }),
+        );
         self.add_action(&about_action);
 
         let discard_uncommited_changes_action =
             gtk::gio::SimpleAction::new("discard-uncommitted-changes", None);
         discard_uncommited_changes_action.connect_activate(
-            clone!(@weak self as window => move |_, _| {
-                window.discard_uncommitted_changes();
+            clone!(@weak app_controller => move |_, _| {
+                app_controller.discard_uncommitted_changes();
             }),
         );
         self.add_action(&discard_uncommited_changes_action);
 
         let undo_action = gtk::gio::SimpleAction::new("undo", None);
-        undo_action.connect_activate(clone!(@weak self as window => move |_, _| {
-            window.undo();
+        undo_action.connect_activate(clone!(@weak app_controller => move |_, _| {
+            app_controller.undo();
         }));
         self.add_action(&undo_action);
         self.imp()
@@ -298,874 +233,11 @@ impl MainWindow {
             .expect("MainWindow::setup_actions must only be executed once");
 
         let log_history_action = gtk::gio::SimpleAction::new("log-history-stack", None);
-        log_history_action.connect_activate(clone!(@weak self as window => move |_, _| {
-            let stores = window.stores();
+        log_history_action.connect_activate(clone!(@weak app_controller => move |_, _| {
+            let stores = app_controller.stores();
             let stores = stores.borrow();
             stores.debug_log_history_stack();
         }));
         self.add_action(&log_history_action);
-    }
-}
-
-//
-//  Store
-//
-
-impl MainWindow {
-    /// Populates self::mime_type_entries with the current state of self.stores()
-    fn build_mime_type_entries_list_store(&self) {
-        let stores = self.stores();
-        let borrowed_stores = stores.borrow();
-        let mime_associations_store = borrowed_stores.mime_associations_store();
-
-        let mut all_mime_types = mime_associations_store.mime_types();
-        all_mime_types.sort();
-
-        let mime_type_entries = all_mime_types
-            .iter()
-            .map(|mt| MimeTypeEntry::new(mt, stores.clone()))
-            .filter(|e| e.supported_application_entries().n_items() > 0)
-            .collect::<Vec<_>>();
-
-        self.mime_type_entries()
-            .extend_from_slice(&mime_type_entries);
-    }
-
-    /// Populates self::application_entries with the current state of self.stores()
-    fn build_application_entries_list_store(&self) {
-        let stores = self.stores();
-        let borrowed_stores = stores.borrow();
-        let apps = borrowed_stores.desktop_entry_store();
-
-        let mut all_desktop_entries = apps.desktop_entries();
-        all_desktop_entries.sort_by(|a, b| a.cmp_by_name_alpha_inensitive(b));
-
-        let application_entries = all_desktop_entries
-            .iter()
-            .filter(|de| !de.mime_types().is_empty())
-            .map(|de| ApplicationEntry::new(de.id(), stores.clone()))
-            .collect::<Vec<_>>();
-
-        self.application_entries()
-            .extend_from_slice(&application_entries);
-    }
-
-    fn store_was_mutated(&self) {
-        let stores = self.stores();
-        let stores = stores.borrow();
-
-        let can_undo = stores.can_undo();
-        let can_save = stores.is_dirty();
-
-        log::debug!(
-            "MainWindow::store_dirty_state_changed can_undo: {} can_save: {}",
-            can_undo,
-            can_save,
-        );
-
-        self.imp().commit_button.set_visible(can_save);
-        self.imp()
-            .undo_action
-            .get()
-            .expect("Expect MainWindow::setup_actions to have run already")
-            .set_enabled(can_undo);
-    }
-
-    fn discard_uncommitted_changes(&self) {
-        log::debug!("MainWindow::discard_uncommitted_changes",);
-
-        let stores = self.stores();
-        if let Err(e) = stores.borrow_mut().discard_uncommitted_changes() {
-            self.show_error("Error", "Unable to reload mime associations", &e);
-        }
-
-        self.store_was_mutated();
-        self.reload_active_page();
-    }
-
-    fn undo(&self) {
-        log::debug!("MainWindow::undo",);
-
-        let stores = self.stores();
-        let mut stores = stores.borrow_mut();
-        let result = stores.undo();
-        drop(stores);
-
-        self.store_was_mutated();
-        if let Err(e) = result {
-            self.show_error("Oh bother!", "Unable to perform undo", &e);
-        } else {
-            self.reload_active_page();
-        }
-    }
-
-    fn reset_user_default_application_assignments(&self) {
-        log::debug!("MainWindow::reset_user_default_application_assignments",);
-
-        if let Err(e) = self
-            .stores()
-            .borrow_mut()
-            .reset_user_default_application_assignments()
-        {
-            self.show_error(
-                "Oh no",
-                "Unable to reset assigned applications to sytem defaults.",
-                &e,
-            );
-            return;
-        }
-
-        // Persist our changes and reload display
-        self.show_toast("Application assignments result to system default successfully");
-        self.commit_changes();
-        self.reload_active_page();
-    }
-
-    fn prune_orphaned_application_assignments(&self) {
-        if let Err(e) = self
-            .stores()
-            .borrow_mut()
-            .prune_orphaned_application_assignments()
-        {
-            self.show_error(
-                "Oh no",
-                "Unable clear out orphaned application assignments.",
-                &e,
-            );
-            return;
-        }
-
-        // Persist our changes and reload display
-        self.show_toast("Orphaned application assignments cleared successfully");
-        self.commit_changes();
-        self.reload_active_page();
-    }
-
-    fn commit_changes(&self) {
-        if let Err(e) = self.stores().borrow_mut().save() {
-            self.show_error("Oh no", "Unable to save changes", &e);
-        } else {
-            self.show_toast("Committed changes successfully");
-        }
-        self.store_was_mutated();
-    }
-}
-
-//
-// UI Callbacks
-//
-
-impl MainWindow {
-    /// Assigns an application to handle a specified mimetype. E.g., assign Firefox to handle text/html
-    fn assign_application_to_mimetype(
-        &self,
-        mime_type: &MimeType,
-        desktop_entry_id: Option<&DesktopEntryId>,
-    ) {
-        log::debug!(
-            "MainWindow::assign_application_to_mimetype application: {:?} mime_type: {}",
-            desktop_entry_id,
-            mime_type,
-        );
-
-        if let Err(e) = self
-            .stores()
-            .borrow_mut()
-            .set_application_to_mimetype_binding(mime_type, desktop_entry_id)
-        {
-            self.show_error("Error", "Unable to assign application to mimetype", &e);
-            return;
-        }
-
-        // Assignment was successful, mark changes were made
-        self.store_was_mutated();
-    }
-
-    /// Show user a dialog asking if they want to reset application assignments.
-    fn query_reset_user_default_application_assignments(&self) {
-        log::debug!("MainWindow::reset_user_default_application_assignments",);
-
-        let cancel_response = "cancel";
-        let reset_response = "reset";
-
-        // Create new dialog
-        let dialog = adw::MessageDialog::builder()
-            .heading(Strings::reset_user_default_application_assignments_dialog_title())
-            .body(Strings::reset_user_default_application_assignments_dialog_body())
-            .transient_for(self)
-            .modal(true)
-            .destroy_with_parent(true)
-            .close_response(cancel_response)
-            .default_response(reset_response)
-            .build();
-        dialog.add_responses(&[
-            (cancel_response, Strings::cancel()),
-            (
-                reset_response,
-                Strings::reset_user_default_application_assignments_dialog_action_proceed(),
-            ),
-        ]);
-
-        dialog.set_response_appearance(reset_response, ResponseAppearance::Destructive);
-
-        dialog.connect_response(
-            None,
-            clone!(@weak self as window => move |dialog, response|{
-                dialog.destroy();
-                if response != reset_response {
-                    return;
-                }
-
-                window.reset_user_default_application_assignments();
-            }),
-        );
-
-        dialog.present();
-    }
-
-    /// Show user a dialog asking if they want to clear orphaned application assignments.
-    fn query_prune_orphaned_application_assignments(&self) {
-        log::debug!("MainWindow::query_prune_orphaned_application_assignments",);
-
-        let cancel_response = "cancel";
-        let clear_response = "clear";
-
-        // Create new dialog
-        let dialog = adw::MessageDialog::builder()
-            .heading(Strings::prune_orphaned_application_assignments_dialog_title())
-            .body(Strings::prune_orphaned_application_assignments_dialog_body())
-            .transient_for(self)
-            .modal(true)
-            .destroy_with_parent(true)
-            .close_response(cancel_response)
-            .default_response(clear_response)
-            .build();
-        dialog.add_responses(&[
-            (cancel_response, Strings::cancel()),
-            (
-                clear_response,
-                Strings::prune_orphaned_application_assignments_dialog_action_proceed(),
-            ),
-        ]);
-
-        dialog.set_response_appearance(clear_response, ResponseAppearance::Suggested);
-
-        dialog.connect_response(
-            None,
-            clone!(@weak self as window => move |dialog, response|{
-                dialog.destroy();
-                if response != clear_response {
-                    return;
-                }
-
-                window.prune_orphaned_application_assignments();
-            }),
-        );
-
-        dialog.present();
-    }
-
-    pub fn perform_command(&self, command: MainWindowCommand) {
-        match command {
-            MainWindowCommand::ShowMimeType(mime_type) => {
-                self.show_page(MainWindowPage::MimeTypes);
-
-                // Show the detail pane for this mime type
-                let mime_type_entry = MimeTypeEntry::new(&mime_type, self.stores());
-                self.show_mime_type_pane_detail(&mime_type_entry);
-
-                // Select this mime type in the list box
-                let mime_types_list_box = &self.imp().mime_types_list_box;
-                let mime_type_entries = self.mime_type_entries();
-                let count = mime_type_entries.n_items();
-                for i in 0..count {
-                    let model = mime_type_entries.item(i)
-                        .expect("Expected a valid row index")
-                        .downcast::<MimeTypeEntry>()
-                        .expect("MainWindow::mime_type_entries() model should contain instances of MimeTypeEntry only");
-                    if model.mime_type() == mime_type {
-                        if let Some(row) = mime_types_list_box.row_at_index(i as i32) {
-                            mime_types_list_box.select_row(Some(&row));
-
-                            if i > 0 {
-                                super::scroll_listbox_to_selected_row(mime_types_list_box.get());
-                            }
-                        }
-
-                        break;
-                    }
-                }
-            }
-            MainWindowCommand::ShowApplication(desktop_entry_id) => {
-                self.show_page(MainWindowPage::Applications);
-
-                let application_entry = ApplicationEntry::new(&desktop_entry_id, self.stores());
-                self.show_application_pane_detail(&application_entry);
-
-                // select this app in the list box
-                let applications_list_box = &self.imp().applications_list_box;
-                let application_entries = self.application_entries();
-                let count = application_entries.n_items();
-                for i in 0..count {
-                    let model = application_entries.item(i)
-                        .expect("Expected a valid row index")
-                        .downcast::<ApplicationEntry>()
-                        .expect("MainWindow::application_entries() model should contain instances of ApplicationEntry only");
-
-                    if let Some(id) = model.desktop_entry_id() {
-                        if id == desktop_entry_id {
-                            applications_list_box
-                                .select_row(applications_list_box.row_at_index(i as i32).as_ref());
-
-                            if i > 0 {
-                                super::scroll_listbox_to_selected_row(applications_list_box.get());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /// Show one of the main window pages
-    pub fn show_page(&self, page: MainWindowPage) {
-        // Note: we're treating the page selection model as single selection.
-        // TODO: Wrap it in a SingleSelection? Is this possible?
-        let page_selection_model = self.imp().stack.pages();
-        match page {
-            MainWindowPage::MimeTypes => {
-                log::debug!("MainWindow::show_page - MimeTypes",);
-                page_selection_model.select_item(0, true);
-            }
-            MainWindowPage::Applications => {
-                log::debug!("MainWindow::show_page - Applications",);
-                page_selection_model.select_item(1, true);
-            }
-        }
-    }
-
-    fn current_page_changed(&self, to_page: MainWindowPage) {
-        log::debug!("current_page_changed to_page: {:?}", to_page);
-        self.reload_active_page();
-    }
-
-    pub fn show_about(&self) {
-        let about = adw::AboutWindow::builder()
-            .transient_for(self)
-            .application_name(crate::common::APP_NAME)
-            .application_icon(crate::common::APP_ICON)
-            .developer_name(crate::common::APP_DEVELOPER)
-            .version(crate::common::APP_VERSION)
-            .issue_url(crate::common::APP_ISSUES_URL)
-            .copyright(format!("© {}", crate::common::APP_DEVELOPER).as_str())
-            .license_type(gtk::License::MitX11)
-            .website(crate::common::APP_WEBSITE_URL)
-            .release_notes(Strings::about_window_release_notes())
-            .build();
-
-        about.add_credit_section(
-            Some(Strings::about_window_credits_title()),
-            &Strings::about_window_credits(),
-        );
-
-        about.present();
-    }
-
-    fn reload_active_page(&self) {
-        // Note: we're treating the page selection model as single selection
-        let page_selection_model = self.imp().stack.pages();
-        if page_selection_model.is_selected(0) {
-            let mime_type_entry = self
-                .imp()
-                .currently_selected_mime_type_entry
-                .borrow()
-                .as_ref()
-                .cloned();
-            if let Some(mime_type_entry) = mime_type_entry {
-                self.show_mime_type_pane_detail(&mime_type_entry);
-            }
-        } else if page_selection_model.is_selected(1) {
-            let application_entry = self
-                .imp()
-                .currently_selected_application_entry
-                .borrow()
-                .as_ref()
-                .cloned();
-            if let Some(application_entry) = application_entry {
-                self.show_application_pane_detail(&application_entry);
-            }
-        } else {
-            unreachable!("Somehow the page selection model has a page other than [0,1] selected.")
-        }
-    }
-
-    fn show_toast(&self, message: &str) {
-        log::debug!("MainWindow::show_toast: {}", message,);
-    }
-
-    fn show_error(&self, title: &str, message: &str, error: &anyhow::Error) {
-        log::error!(
-            "MainWindow::show_error title: {}, message: {} error: {:?}",
-            title,
-            message,
-            error
-        );
-    }
-}
-
-//
-// Mime Types Pane
-//
-
-impl MainWindow {
-    fn setup_mime_types_pane(&self) {
-        log::debug!("MainWindow::setup_mime_types_pane",);
-
-        let mime_types_list_box = &self.imp().mime_types_list_box;
-        self.bind_mime_types_pane_model();
-
-        // bind to selection events
-        mime_types_list_box.connect_row_activated(clone!(@weak self as window => move |_, row|{
-            let index = row.index();
-            let model = window.mime_type_entries().item(index as u32)
-                .expect("Expected a valid row index")
-                .downcast::<MimeTypeEntry>()
-                .expect("MainWindow::mime_type_entries() model should contain instances of MimeTypeEntry only");
-            window.show_mime_type_pane_detail(&model);
-        }));
-
-        // Select first entry
-        let row = mime_types_list_box.row_at_index(0);
-        mime_types_list_box.select_row(row.as_ref());
-        self.show_mime_type_pane_detail(
-            &self
-                .mime_type_entries()
-                .item(0)
-                .expect("Expect non-empty mime type entries model")
-                .downcast::<MimeTypeEntry>()
-                .expect(
-                    "MainWindow::mime_type_entries() model should contain instances of MimeTypeEntry only",
-                ));
-    }
-
-    /// Binds the `MainWindow::mime_type_entries` list model to the `MainWindow::mime_types_list_view`,
-    /// this can be called any time to "reload" the primary/left-hand side mime types list view.
-    fn bind_mime_types_pane_model(&self) {
-        self.imp().mime_types_list_box.bind_model(
-            Some(&self.mime_type_entries()),
-            clone!(@weak self as window => @default-panic, move | obj | {
-                let model = obj.downcast_ref().unwrap();
-                let row = window.create_mime_type_pane_primary_row(model);
-                row.upcast()
-            }),
-        );
-    }
-
-    fn show_mime_type_pane_detail(&self, mime_type_entry: &MimeTypeEntry) {
-        // flag that we're currently viewing this mime type
-        self.imp()
-            .currently_selected_mime_type_entry
-            .borrow_mut()
-            .replace(mime_type_entry.clone());
-
-        let list_box = &self.imp().mime_type_pane_detail_applications_list_box;
-        list_box.set_selection_mode(SelectionMode::None);
-
-        // Reset the application check button group before building the list; it will be
-        // assigned to the first created list item, and if there are subsequent items, they
-        // will use it as a group, making them into radio buttons.
-        self.imp()
-            .application_check_button_group
-            .borrow_mut()
-            .take();
-
-        let application_entries = mime_type_entry.supported_application_entries();
-        let model_count = application_entries.n_items();
-
-        //insert an empty entry at beginning of list - this will be the None entry
-        application_entries.insert(0, &ApplicationEntry::none());
-
-        let model = NoSelection::new(Some(application_entries));
-        list_box.bind_model(Some(&model),
-            clone!(@weak self as window, @strong mime_type_entry => @default-panic, move |obj| {
-                let application_entry = obj.downcast_ref().expect("The object should be of type `ApplicationEntry`.");
-                window.create_mime_type_pane_detail_row(&mime_type_entry, application_entry, model_count).upcast()
-            }));
-
-        // Update the info label - basically, if only one application is shown, and it is the
-        // system default handler for the mime type, it will be presented in a disabled state
-        // in ::create_application_row, and here we show an info label to explain why
-
-        let info_label = &self.imp().mime_type_pane_detail_info_label;
-        let show_info_label = if model_count == 1 {
-            // if the number of items is 1, and that item is the system default, show the info message
-            let desktop_entry = model
-                .item(1) // Recall, there's an empty ApplicationEntry at position 0
-                .unwrap()
-                .downcast_ref::<ApplicationEntry>()
-                .unwrap()
-                .desktop_entry()
-                .expect("Expect to receive a DesktopEntry from the ApplicationEntry");
-
-            let mime_type = mime_type_entry.mime_type();
-
-            let stores = self.stores();
-            let stores = stores.borrow();
-            let mime_association_store = stores.mime_associations_store();
-            let is_system_default = mime_association_store
-                .system_default_application_for(&mime_type)
-                == Some(desktop_entry.id());
-
-            if is_system_default {
-                // TODO: Move this into some kind of string table
-                let info_message =
-                    Strings::single_default_application_info_message(&desktop_entry, &mime_type);
-                info_label.set_label(&info_message);
-                true
-            } else {
-                false
-            }
-        } else {
-            false
-        };
-
-        info_label.set_visible(show_info_label);
-    }
-
-    fn create_mime_type_pane_detail_row(
-        &self,
-        mime_type_entry: &MimeTypeEntry,
-        application_entry: &ApplicationEntry,
-        num_application_entries_in_list: u32,
-    ) -> ActionRow {
-        let mime_type = mime_type_entry.mime_type();
-        let check_button = CheckButton::builder()
-            .valign(Align::Center)
-            .can_focus(false)
-            .build();
-
-        let row = if application_entry.desktop_entry_id().is_some() {
-            let (is_system_default_application, is_assigned_application) = {
-                let stores = self.stores();
-                let stores = stores.borrow();
-                let mime_associations_store = stores.mime_associations_store();
-                let desktop_entry_id = application_entry
-                    .desktop_entry_id()
-                    .expect("Expect to get desktop entry id");
-
-                let is_default_application = mime_associations_store
-                    .system_default_application_for(&mime_type)
-                    == Some(&desktop_entry_id);
-                let is_assigned_application = mime_associations_store
-                    .default_application_for(&mime_type)
-                    == Some(&desktop_entry_id);
-                (is_default_application, is_assigned_application)
-            };
-
-            check_button.set_active(is_assigned_application);
-
-            check_button.connect_toggled(
-                clone!(@weak self as window, @strong application_entry, @strong mime_type => move |check_button| {
-                    let is_single_checkbox = num_application_entries_in_list == 1;
-
-                    if check_button.is_active() {
-                        let desktop_entry_id = application_entry.desktop_entry_id().expect("Expect to get desktop entry id");
-                        window.assign_application_to_mimetype(&mime_type, Some(&desktop_entry_id));
-                    } else if is_single_checkbox {
-                        // only send the unchecked signal if this is a single checkbox, not a multi-element radio button
-                        window.assign_application_to_mimetype(&mime_type, None);
-                    }
-                }),
-            );
-            let row = ActionRow::builder()
-                .activatable_widget(&check_button)
-                .build();
-            row.add_prefix(&check_button);
-
-            let desktop_entry = application_entry
-                .desktop_entry()
-                .expect("Expect to get desktop entry id from ApplicationEntry");
-            let title = desktop_entry.name().unwrap_or("<Unnamed Application>");
-            row.set_title(title);
-
-            if is_system_default_application {
-                row.set_subtitle(
-                    Strings::application_is_system_default_handler_for_mimetype_short(&mime_type)
-                        .as_str(),
-                );
-            }
-
-            row
-        } else {
-            // This is a "None" row; the check button will be selected if nothing is assigned to this mime type.
-            // Selecting this item will unset bindings to this mimetype
-
-            let stores = self.stores();
-            let stores = stores.borrow();
-            let mime_associations_store = stores.mime_associations_store();
-            let desktop_entry_store = stores.desktop_entry_store();
-
-            let an_application_is_assigned = mime_associations_store
-                .default_application_for(&mime_type)
-                .is_some_and(|desktop_entry_id| {
-                    desktop_entry_store
-                        .find_desktop_entry_with_id(desktop_entry_id)
-                        .is_some_and(|e| e.appears_valid_application())
-                });
-
-            let can_assign_none = !mime_associations_store
-                .system_default_application_for(&mime_type)
-                .is_some_and(|desktop_entry_id| {
-                    desktop_entry_store
-                        .find_desktop_entry_with_id(desktop_entry_id)
-                        .is_some_and(|e| e.appears_valid_application())
-                });
-
-            check_button.set_active(!an_application_is_assigned);
-            check_button.connect_toggled(
-                clone!(@weak self as window, @strong mime_type => move |check_button| {
-                    if check_button.is_active() {
-                        window.mime_type_pane_detail_on_select_none(&mime_type);
-                    }
-                }),
-            );
-
-            let row = ActionRow::builder()
-                .activatable_widget(&check_button)
-                .build();
-            row.add_prefix(&check_button);
-            row.set_title(Strings::assign_no_application_list_item());
-            row.set_sensitive(can_assign_none);
-
-            row
-        };
-
-        // RadioButtons work by putting check buttons in a group; we check if the group exists
-        // and add this check button if it does; otherwise, we need to make a new group from
-        // our first check button. It's ugly holding this state in the window, but here we are.
-        if let Some(group) = self.imp().application_check_button_group.borrow().as_ref() {
-            check_button.set_group(Some(group));
-            return row;
-        }
-
-        // this is the first vended row, use its check button to stand as the group
-        self.imp()
-            .application_check_button_group
-            .borrow_mut()
-            .replace(check_button);
-
-        row
-    }
-
-    fn create_mime_type_pane_primary_row(&self, model: &MimeTypeEntry) -> ListBoxRow {
-        let stores = self.stores();
-        let stores = stores.borrow();
-        let mime_info_store = stores.mime_info_store();
-
-        let mime_type = &model.mime_type();
-        let mime_info = mime_info_store.get_info_for_mime_type(mime_type);
-
-        let mime_type_label = Label::builder()
-            .wrap(true)
-            .wrap_mode(pango::WrapMode::Word)
-            .xalign(0.0)
-            .css_classes(vec!["mime-type"])
-            .build();
-
-        mime_type_label.set_text(&mime_type.to_string());
-
-        let content = Box::builder()
-            .orientation(Orientation::Vertical)
-            .css_classes(vec!["content"])
-            .build();
-
-        content.append(&mime_type_label);
-
-        if let Some(name) = mime_info.and_then(|info| info.comment()) {
-            let file_type_name_label = Label::builder()
-                .wrap(true)
-                .wrap_mode(pango::WrapMode::Word)
-                .xalign(0.0)
-                .css_classes(vec!["mime-type-description"])
-                .build();
-
-            file_type_name_label.set_text(name);
-
-            content.append(&file_type_name_label);
-        }
-
-        ListBoxRow::builder().child(&content).build()
-    }
-
-    fn mime_type_pane_detail_on_select_none(&self, mime_type: &MimeType) {
-        self.assign_application_to_mimetype(mime_type, None);
-        self.reload_active_page();
-    }
-}
-
-//
-// Application Pane
-//
-
-impl MainWindow {
-    fn setup_applications_pane(&self) {
-        log::debug!("MainWindow::setup_applications_pane",);
-        let application_list_box = &self.imp().applications_list_box;
-
-        self.bind_applications_pane_model();
-
-        // Listen for selection
-        application_list_box.connect_row_activated(clone!(@weak self as window => move |_, row|{
-            let index = row.index();
-            let model = window.application_entries().item(index as u32)
-                .expect("Expected valid item index")
-                .downcast::<ApplicationEntry>()
-                .expect("MainWindow::application_entries should only contain ApplicationEntry");
-            window.show_application_pane_detail(&model);
-        }));
-
-        // Select first entry
-        let row = application_list_box.row_at_index(0);
-        application_list_box.select_row(row.as_ref());
-        self.show_application_pane_detail(
-            &self
-                .application_entries()
-                .item(0)
-                .expect("Expect non-empty application entries model")
-                .downcast::<ApplicationEntry>()
-                .expect("MainWindow::application_entries should only contain ApplicationEntry"),
-        );
-    }
-
-    /// Binds the `MainWindow::application_entries` list model to the `MainWindow::application_list_box`,
-    /// this can be called any time to "reload" the list view contents.
-    fn bind_applications_pane_model(&self) {
-        self.imp().applications_list_box.bind_model(
-            Some(&self.application_entries()),
-            clone!(@weak self as window => @default-panic, move |obj| {
-                let model = obj
-                    .downcast_ref()
-                    .unwrap();
-                let row = Self::create_application_pane_primary_row(model);
-                row.upcast()
-            }),
-        );
-    }
-
-    fn show_application_pane_detail(&self, application_entry: &ApplicationEntry) {
-        let model = NoSelection::new(Some(application_entry.mime_type_assignments()));
-
-        self.imp().application_to_mime_type_assignment_list_box.bind_model(Some(&model),
-            clone!(@weak self as window, @strong application_entry => @default-panic, move |obj| {
-                let model = obj.downcast_ref().expect("The object should be of type `MimeTypeEntry`.");
-                let row = window.create_application_pane_detail_row(&application_entry, model);
-                row.upcast()
-            }));
-
-        self.imp()
-            .application_to_mime_type_assignment_list_box
-            .set_selection_mode(SelectionMode::None);
-
-        self.imp()
-            .currently_selected_application_entry
-            .borrow_mut()
-            .replace(application_entry.clone());
-    }
-
-    fn create_application_pane_detail_row(
-        self,
-        application_entry: &ApplicationEntry,
-        mime_type_entry: &MimeTypeEntry,
-    ) -> ActionRow {
-        let check_button = CheckButton::builder()
-            .valign(Align::Center)
-            .can_focus(false)
-            .build();
-
-        let row = ActionRow::builder()
-            .activatable_widget(&check_button)
-            .build();
-        row.add_prefix(&check_button);
-
-        let mime_type = mime_type_entry.mime_type();
-        let desktop_entry = application_entry
-            .desktop_entry()
-            .expect("Expect to get desktop entry id from ApplicationEntry");
-        let (is_system_default_application, is_assigned_application) = {
-            let stores = self.stores();
-            let stores = stores.borrow();
-            let mime_associations_store = stores.mime_associations_store();
-
-            let is_system_default_application = mime_associations_store
-                .system_default_application_for(&mime_type)
-                == Some(desktop_entry.id());
-            let is_assigned_application = mime_associations_store
-                .default_application_for(&mime_type)
-                == Some(desktop_entry.id());
-            (is_system_default_application, is_assigned_application)
-        };
-
-        row.set_title(mime_type.to_string().as_str());
-
-        if is_system_default_application {
-            row.set_subtitle(
-                &Strings::application_is_system_default_handler_for_mimetype_long(
-                    &desktop_entry,
-                    &mime_type,
-                ),
-            );
-
-            if is_assigned_application {
-                check_button.set_sensitive(false);
-                check_button.set_active(true);
-                row.set_sensitive(false);
-            }
-        }
-
-        if is_assigned_application {
-            check_button.set_active(true);
-        }
-
-        check_button.connect_toggled(clone!(@weak self as window, @strong desktop_entry, @strong mime_type => move |check_button| {
-            if check_button.is_active() {
-                window.assign_application_to_mimetype(&mime_type, Some(&desktop_entry.id()));
-            } else {
-                window.assign_application_to_mimetype(&mime_type, None);
-            }
-        }));
-
-        row
-    }
-
-    fn create_application_pane_primary_row(application_entry: &ApplicationEntry) -> ListBoxRow {
-        let application_name_label = Label::builder()
-            .wrap(true)
-            .wrap_mode(pango::WrapMode::Word)
-            .xalign(0.0)
-            .css_classes(vec!["display_name"])
-            .build();
-
-        let desktop_entry_id_label = Label::builder()
-            .wrap(true)
-            .wrap_mode(pango::WrapMode::Word)
-            .xalign(0.0)
-            .css_classes(vec!["desktop_entry_id"])
-            .build();
-
-        let content = Box::builder()
-            .orientation(Orientation::Vertical)
-            .css_classes(vec!["content"])
-            .build();
-
-        content.append(&application_name_label);
-        content.append(&desktop_entry_id_label);
-
-        let desktop_entry = &application_entry
-            .desktop_entry()
-            .expect("Expect to get desktop entry id from ApplicationEntry");
-        application_name_label.set_text(desktop_entry.name().unwrap_or("<Unnamed Application>"));
-        desktop_entry_id_label.set_text(desktop_entry.id().id());
-
-        ListBoxRow::builder().child(&content).build()
     }
 }

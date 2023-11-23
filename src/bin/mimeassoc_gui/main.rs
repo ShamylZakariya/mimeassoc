@@ -156,7 +156,7 @@ fn build_ui(app: &adw::Application) {
     // ));
 
     if let Some(command) = command {
-        window.perform_command(command);
+        window.app_controller().perform_command(command);
     }
 
     window.present();
