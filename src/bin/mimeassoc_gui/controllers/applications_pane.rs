@@ -4,6 +4,7 @@ use std::rc::Rc;
 use adw::subclass::prelude::*;
 use adw::{prelude::*, *};
 use gtk::{glib::*, *};
+use mimeassoc::DesktopEntryId;
 
 use crate::model::*;
 use crate::ui::{MainWindow, Strings};
@@ -21,7 +22,7 @@ mod imp {
         pub window: OnceCell<WeakRef<MainWindow>>,
         pub app_controller: OnceCell<WeakRef<AppController>>,
         pub application_entries: OnceCell<gio::ListStore>,
-        pub currently_selected_application_entry: RefCell<Option<ApplicationEntry>>,
+        pub current_selection: RefCell<Option<ApplicationEntry>>,
     }
 
     // The central trait for subclassing a GObject
@@ -45,7 +46,6 @@ glib::wrapper! {
 
 impl ApplicationsPaneController {
     pub fn new(window: WeakRef<MainWindow>, app_controller: WeakRef<AppController>) -> Self {
-        log::debug!("ApplicationsPaneController::new");
         let instance: ApplicationsPaneController = Object::builder().build();
         instance.imp().window.set(window).unwrap();
         instance.imp().app_controller.set(app_controller).unwrap();
@@ -54,19 +54,62 @@ impl ApplicationsPaneController {
         instance
     }
 
-    pub fn reload(&self) {}
+    pub fn reload(&self) {
+        let application_entry = self.imp().current_selection.borrow().clone();
+        if let Some(application_entry) = application_entry {
+            self.show_detail(&application_entry);
+        }
+    }
 
-    pub fn setup(&self) {
-        log::debug!("ApplicationsPaneController::setup");
+    pub fn show_application(&self, desktop_entry_id: &DesktopEntryId) {
+        let window = self.window();
 
+        let application_entry = ApplicationEntry::new(desktop_entry_id, self.stores());
+        self.show_detail(&application_entry);
+
+        // select this app in the list box. This is weirdly complex, perhaps there's a better way?
+        let applications_list_box = &window.imp().applications_list_box;
+        let application_entries = self.application_entries();
+        let count = application_entries.n_items();
+        for i in 0..count {
+            let model = application_entries.item(i)
+                        .expect("Expected a valid row index")
+                        .downcast::<ApplicationEntry>()
+                        .expect("MainWindow::application_entries() model should contain instances of ApplicationEntry only");
+
+            if let Some(id) = model.desktop_entry_id() {
+                if &id == desktop_entry_id {
+                    applications_list_box
+                        .select_row(applications_list_box.row_at_index(i as i32).as_ref());
+
+                    if i > 0 {
+                        crate::ui::scroll_listbox_to_selected_row(applications_list_box.get());
+                    }
+                }
+            }
+        }
+    }
+
+    fn setup(&self) {
         self.build_model();
-        self.bind_model();
 
         let window = self.window();
-        let application_list_box = &window.imp().applications_list_box;
+        let applications_list_box = &window.imp().applications_list_box;
+
+        // bind the model to the list box
+        applications_list_box.bind_model(
+            Some(self.application_entries()),
+            clone!(@weak self as controller => @default-panic, move |obj| {
+                let model = obj
+                    .downcast_ref()
+                    .unwrap();
+                let row = Self::create_application_pane_primary_row(model);
+                row.upcast()
+            }),
+        );
 
         // Listen for selection
-        application_list_box.connect_row_activated(
+        applications_list_box.connect_row_activated(
             clone!(@weak self as controller => move |_, row|{
                 let index = row.index();
                 let model = controller.application_entries().item(index as u32)
@@ -78,8 +121,8 @@ impl ApplicationsPaneController {
         );
 
         // Select first entry
-        let row = application_list_box.row_at_index(0);
-        application_list_box.select_row(row.as_ref());
+        let row = applications_list_box.row_at_index(0);
+        applications_list_box.select_row(row.as_ref());
         self.show_detail(
             &self
                 .application_entries()
@@ -90,12 +133,8 @@ impl ApplicationsPaneController {
         );
     }
 
+    /// Builds the ListStore model which backs the applications listbox
     fn build_model(&self) {
-        self.imp()
-            .application_entries
-            .set(gio::ListStore::with_type(ApplicationEntry::static_type()))
-            .unwrap();
-
         let stores = self.stores();
         let borrowed_stores = stores.borrow();
         let apps = borrowed_stores.desktop_entry_store();
@@ -109,27 +148,13 @@ impl ApplicationsPaneController {
             .map(|de| ApplicationEntry::new(de.id(), stores.clone()))
             .collect::<Vec<_>>();
 
-        self.application_entries()
-            .extend_from_slice(&application_entries);
+        let model = gio::ListStore::with_type(ApplicationEntry::static_type());
+        model.extend_from_slice(&application_entries);
+
+        self.imp().application_entries.set(model).unwrap();
     }
 
-    /// Binds the `MainWindow::application_entries` list model to the `MainWindow::application_list_box`,
-    /// this can be called any time to "reload" the list view contents.
-    fn bind_model(&self) {
-        let window = self.window();
-        window.imp().applications_list_box.bind_model(
-            Some(self.application_entries()),
-            clone!(@weak self as controller => @default-panic, move |obj| {
-                let model = obj
-                    .downcast_ref()
-                    .unwrap();
-                let row = Self::create_application_pane_primary_row(model);
-                row.upcast()
-            }),
-        );
-    }
-
-    pub fn show_detail(&self, application_entry: &ApplicationEntry) {
+    fn show_detail(&self, application_entry: &ApplicationEntry) {
         let model = NoSelection::new(Some(application_entry.mime_type_assignments()));
 
         let window = self.window();
@@ -146,7 +171,7 @@ impl ApplicationsPaneController {
             .set_selection_mode(SelectionMode::None);
 
         self.imp()
-            .currently_selected_application_entry
+            .current_selection
             .borrow_mut()
             .replace(application_entry.clone());
     }
@@ -240,7 +265,7 @@ impl ApplicationsPaneController {
         let app_controller = self.app_controller();
         check_button.connect_toggled(clone!(@weak app_controller, @strong desktop_entry, @strong mime_type => move |check_button| {
             if check_button.is_active() {
-                app_controller.assign_application_to_mimetype(&mime_type, Some(&desktop_entry.id()));
+                app_controller.assign_application_to_mimetype(&mime_type, Some(desktop_entry.id()));
             } else {
                 app_controller.assign_application_to_mimetype(&mime_type, None);
             }
@@ -271,7 +296,7 @@ impl ApplicationsPaneController {
         self.app_controller().stores()
     }
 
-    pub fn application_entries(&self) -> &gio::ListStore {
+    fn application_entries(&self) -> &gio::ListStore {
         self.imp().application_entries.get().unwrap()
     }
 }

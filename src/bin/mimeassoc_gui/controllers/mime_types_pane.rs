@@ -48,7 +48,6 @@ glib::wrapper! {
 
 impl MimeTypesPaneController {
     pub fn new(window: WeakRef<MainWindow>, app_controller: WeakRef<AppController>) -> Self {
-        log::debug!("MimeTypesViewModel::new");
         let instance: MimeTypesPaneController = Object::builder().build();
         instance.imp().window.set(window).unwrap();
         instance.imp().app_controller.set(app_controller).unwrap();
@@ -58,23 +57,62 @@ impl MimeTypesPaneController {
     }
 
     pub fn reload(&self) {
-        log::debug!("MimeTypesPaneController::reload");
-
-        let mime_type_entry = self.imp().current_selection.borrow().as_ref().cloned();
+        let mime_type_entry = self.imp().current_selection.borrow().clone();
         if let Some(mime_type_entry) = mime_type_entry {
             self.show_detail(&mime_type_entry);
         }
     }
 
-    fn setup(&self) {
-        log::debug!("MimeTypesPaneController::setup");
+    pub fn mime_type_entries(&self) -> &gio::ListStore {
+        self.imp().mime_type_entries.get().unwrap()
+    }
 
+    pub fn show_mime_type(&self, mime_type: &MimeType) {
+        let window = self.window();
+
+        // Show the detail pane for this mime type
+        let mime_type_entry = MimeTypeEntry::new(mime_type, self.stores());
+        self.show_detail(&mime_type_entry);
+
+        // Select this mime type in the list box
+        let mime_types_list_box = &window.imp().mime_types_list_box;
+        let mime_type_entries = self.mime_type_entries();
+        let count = mime_type_entries.n_items();
+        for i in 0..count {
+            let model = mime_type_entries.item(i)
+                        .expect("Expected a valid row index")
+                        .downcast::<MimeTypeEntry>()
+                        .expect("MainWindow::mime_type_entries() model should contain instances of MimeTypeEntry only");
+            if &model.mime_type() == mime_type {
+                if let Some(row) = mime_types_list_box.row_at_index(i as i32) {
+                    mime_types_list_box.select_row(Some(&row));
+
+                    if i > 0 {
+                        crate::ui::scroll_listbox_to_selected_row(mime_types_list_box.get());
+                    }
+                }
+
+                break;
+            }
+        }
+    }
+
+    fn setup(&self) {
         self.build_model();
-        self.bind_model();
 
         // bind to selection events
         let window = self.window();
         let mime_types_list_box = &window.imp().mime_types_list_box;
+
+        mime_types_list_box.bind_model(
+            Some(self.mime_type_entries()),
+            clone!(@weak self as controller => @default-panic, move | obj | {
+                let model = obj.downcast_ref().unwrap();
+                let row = controller.create_selection_row(model);
+                row.upcast()
+            }),
+        );
+
         mime_types_list_box.connect_row_activated(clone!(@weak self as controller => move |_, row|{
             let index = row.index();
             let model = controller.mime_type_entries().item(index as u32)
@@ -120,16 +158,8 @@ impl MimeTypesPaneController {
         self.app_controller().stores()
     }
 
-    pub fn mime_type_entries(&self) -> &gio::ListStore {
-        self.imp().mime_type_entries.get().unwrap()
-    }
-
+    /// Builds the ListStore model which backs the mime types listbox
     fn build_model(&self) {
-        self.imp()
-            .mime_type_entries
-            .set(gio::ListStore::with_type(MimeTypeEntry::static_type()))
-            .unwrap();
-
         let stores = self.stores();
         let borrowed_stores = stores.borrow();
         let mime_associations_store = borrowed_stores.mime_associations_store();
@@ -143,23 +173,10 @@ impl MimeTypesPaneController {
             .filter(|e| e.supported_application_entries().n_items() > 0)
             .collect::<Vec<_>>();
 
-        self.mime_type_entries()
-            .extend_from_slice(&mime_type_entries);
-    }
+        let model = gio::ListStore::with_type(MimeTypeEntry::static_type());
+        model.extend_from_slice(&mime_type_entries);
 
-    /// Binds the `mime_type_entries` list model to the `mime_types_list_box`,
-    /// this can be called any time to "reload" the primary/left-hand side mime types list view.
-    fn bind_model(&self) {
-        let window = self.window();
-
-        window.imp().mime_types_list_box.bind_model(
-            Some(self.mime_type_entries()),
-            clone!(@weak self as controller => @default-panic, move | obj | {
-                let model = obj.downcast_ref().unwrap();
-                let row = controller.create_selection_row(model);
-                row.upcast()
-            }),
-        );
+        self.imp().mime_type_entries.set(model).unwrap();
     }
 
     /// Creates a row for the primary/selection list box
@@ -205,7 +222,7 @@ impl MimeTypesPaneController {
 
     /// Shows detail for the provided MimeTypeEntry - this is generally
     /// called in response to user tapping a selection in the primary list box
-    pub fn show_detail(&self, mime_type_entry: &MimeTypeEntry) {
+    fn show_detail(&self, mime_type_entry: &MimeTypeEntry) {
         // flag that we're currently viewing this mime type
         self.imp()
             .current_selection

@@ -46,7 +46,6 @@ glib::wrapper! {
 
 impl AppController {
     pub fn new(window: glib::object::WeakRef<MainWindow>) -> Self {
-        log::debug!("AppController::new");
         let instance: AppController = Object::builder().build();
 
         // basic setup of instance
@@ -356,75 +355,15 @@ impl AppController {
     }
 
     pub fn perform_command(&self, command: MainWindowCommand) {
-        // FIXME: These should be rolled into their respective controllers, no?
-
         match command {
             MainWindowCommand::ShowMimeType(mime_type) => {
                 self.show_page(MainWindowPage::MimeTypes);
-
-                let mime_types_pane_controller = self.mime_types_pane_controller();
-                let window = self.window();
-
-                // Show the detail pane for this mime type
-                let mime_type_entry = MimeTypeEntry::new(&mime_type, self.stores());
-                mime_types_pane_controller.show_detail(&mime_type_entry);
-
-                // Select this mime type in the list box
-                let mime_types_list_box = &window.imp().mime_types_list_box;
-                let mime_type_entries = mime_types_pane_controller.mime_type_entries();
-                let count = mime_type_entries.n_items();
-                for i in 0..count {
-                    let model = mime_type_entries.item(i)
-                        .expect("Expected a valid row index")
-                        .downcast::<MimeTypeEntry>()
-                        .expect("MainWindow::mime_type_entries() model should contain instances of MimeTypeEntry only");
-                    if model.mime_type() == mime_type {
-                        if let Some(row) = mime_types_list_box.row_at_index(i as i32) {
-                            mime_types_list_box.select_row(Some(&row));
-
-                            if i > 0 {
-                                crate::ui::scroll_listbox_to_selected_row(
-                                    mime_types_list_box.get(),
-                                );
-                            }
-                        }
-
-                        break;
-                    }
-                }
+                self.mime_types_pane_controller().show_mime_type(&mime_type);
             }
             MainWindowCommand::ShowApplication(desktop_entry_id) => {
                 self.show_page(MainWindowPage::Applications);
-
-                let applications_pane_controller = self.applications_pane_controller();
-                let window = self.window();
-
-                let application_entry = ApplicationEntry::new(&desktop_entry_id, self.stores());
-                applications_pane_controller.show_detail(&application_entry);
-
-                // select this app in the list box
-                let applications_list_box = &window.imp().applications_list_box;
-                let application_entries = applications_pane_controller.application_entries();
-                let count = application_entries.n_items();
-                for i in 0..count {
-                    let model = application_entries.item(i)
-                        .expect("Expected a valid row index")
-                        .downcast::<ApplicationEntry>()
-                        .expect("MainWindow::application_entries() model should contain instances of ApplicationEntry only");
-
-                    if let Some(id) = model.desktop_entry_id() {
-                        if id == desktop_entry_id {
-                            applications_list_box
-                                .select_row(applications_list_box.row_at_index(i as i32).as_ref());
-
-                            if i > 0 {
-                                crate::ui::scroll_listbox_to_selected_row(
-                                    applications_list_box.get(),
-                                );
-                            }
-                        }
-                    }
-                }
+                self.applications_pane_controller()
+                    .show_application(&desktop_entry_id);
             }
         }
     }

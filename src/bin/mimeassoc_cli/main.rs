@@ -123,7 +123,7 @@ fn main() {
     };
 
     for mime_type in desktop_entry_store.mime_types() {
-        if let Err(e) = mime_associations_store.add_added_associations(&mime_type, &vec![]) {
+        if let Err(e) = mime_associations_store.add_added_associations(&mime_type, &[]) {
             panic!(
                 "Unable to add mimetypes from desktop entry store to mime association store {:?}",
                 e

@@ -76,7 +76,7 @@ impl Stores {
         for mime_type in instance.desktop_entry_store.mime_types() {
             if let Err(e) = instance
                 .mime_associations_store
-                .add_added_associations(&mime_type, &vec![])
+                .add_added_associations(&mime_type, &[])
             {
                 anyhow::bail!(
                 "Unable to add mimetypes from desktop entry store to mime association store {:?}", e);
