@@ -263,6 +263,13 @@ impl MimeTypeAssociationScope {
 
 pub struct MimeTypeAssociationStore {
     scopes: Vec<MimeTypeAssociationScope>,
+
+    // this flag is used only for tests. Defaults to true, which means
+    // that an app must be installed and executable (e.g., passes
+    // DesktopEntry::appears_valid_application) for assignments. For
+    // testing we don't care since it adds a burden of having certain
+    // apps installed.
+    verify_app_is_valid: bool,
 }
 
 impl MimeTypeAssociationStore {
@@ -277,7 +284,10 @@ impl MimeTypeAssociationStore {
             scopes.push(MimeTypeAssociationScope::load(file_path)?);
         }
 
-        Ok(Self { scopes })
+        Ok(Self {
+            scopes,
+            verify_app_is_valid: true,
+        })
     }
 
     /// Reload the mime associations passed in to `MimeAssociationStore::load` during construction.
@@ -454,7 +464,7 @@ impl MimeTypeAssociationStore {
     ) -> anyhow::Result<()> {
         // sanity checks
         for desktop_entry in desktop_entries.iter() {
-            if !desktop_entry.appears_valid_application() {
+            if self.verify_app_is_valid && !desktop_entry.appears_valid_application() {
                 anyhow::bail!(
                     "DesktopEntry \"{}\" does not appear to be a valid launchable application",
                     desktop_entry.id()
@@ -500,7 +510,7 @@ impl MimeTypeAssociationStore {
         mime_type: &MimeType,
         desktop_entry: &DesktopEntry,
     ) -> anyhow::Result<()> {
-        if !desktop_entry.appears_valid_application() {
+        if self.verify_app_is_valid && !desktop_entry.appears_valid_application() {
             anyhow::bail!(
                 "DesktopEntry \"{}\" does not appear to be a valid launchable application",
                 desktop_entry.id()
@@ -657,6 +667,9 @@ mod tests {
         associations.scopes[2].is_user_customizable = false;
         associations.scopes[3].is_user_customizable = false;
 
+        // we disable requirement that apps are valid and installed for our tests
+        associations.verify_app_is_valid = false;
+
         Ok(associations)
     }
 
@@ -667,6 +680,7 @@ mod tests {
             DesktopEntryStore::load(&[test_user_applications(), test_sys_applications()])?;
 
         let associations = create_test_associations()?;
+
         Ok((entries, associations))
     }
 
@@ -1096,7 +1110,7 @@ mod tests {
 
     #[test]
     fn added_associations_line_roundtrip_works() -> anyhow::Result<()> {
-        let input = "image/png=org.gimp.GIMP.desktop;";
+        let input = "image/png=org.gimp.GIMP.desktop";
         let (mime_type, desktop_entries) = MimeTypeAssociationScope::parse_line(&input)?;
         let output = MimeTypeAssociationScope::generate_added_associations_line(
             &mime_type,
@@ -1104,7 +1118,7 @@ mod tests {
         );
         assert_eq!(input, &output);
 
-        let input = "x-scheme-handler/https=org.mozilla.firefox.desktop;google-chrome.desktop;";
+        let input = "x-scheme-handler/https=org.mozilla.firefox.desktop;google-chrome.desktop";
         let (mime_type, desktop_entries) = MimeTypeAssociationScope::parse_line(&input)?;
         let output = MimeTypeAssociationScope::generate_added_associations_line(
             &mime_type,
