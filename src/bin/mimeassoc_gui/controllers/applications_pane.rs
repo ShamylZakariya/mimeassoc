@@ -7,7 +7,8 @@ use gtk::{glib::*, *};
 use mimeassoc::DesktopEntryId;
 
 use crate::model::*;
-use crate::ui::{MainWindow, Strings};
+use crate::resources::Strings;
+use crate::ui::MainWindow;
 
 use super::AppController;
 

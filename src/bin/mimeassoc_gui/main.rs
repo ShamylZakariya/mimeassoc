@@ -1,7 +1,8 @@
 mod common;
-mod model;
-mod ui;
 mod controllers;
+mod model;
+mod resources;
+mod ui;
 
 use gtk::{gdk::Display, glib::*, prelude::*, *};
 use mimeassoc::*;
@@ -148,12 +149,13 @@ fn build_ui(app: &adw::Application) {
 
     let window = ui::MainWindow::new(app);
 
-    let command = Some(ui::MainWindowCommand::ShowMimeType(
-        MimeType::parse("application/pdf").unwrap(),
-    ));
-    // let command = Some(ui::MainWindowCommand::ShowApplication(
-    //     DesktopEntryId::parse("code.desktop").unwrap(),
+    // let command = Some(ui::MainWindowCommand::ShowMimeType(
+    //     MimeType::parse("application/pdf").unwrap(),
     // ));
+
+    let command = Some(ui::MainWindowCommand::ShowApplication(
+        DesktopEntryId::parse("code.desktop").unwrap(),
+    ));
 
     if let Some(command) = command {
         window.app_controller().perform_command(command);

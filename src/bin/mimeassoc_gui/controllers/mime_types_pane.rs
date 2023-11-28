@@ -7,6 +7,7 @@ use gtk::{glib::*, *};
 use mimeassoc::*;
 
 use crate::model::*;
+use crate::resources::Strings;
 use crate::ui::MainWindow;
 
 use super::AppController;
@@ -280,10 +281,8 @@ impl MimeTypesPaneController {
 
             if is_system_default {
                 // TODO: Move this into some kind of string table
-                let info_message = crate::ui::Strings::single_default_application_info_message(
-                    &desktop_entry,
-                    &mime_type,
-                );
+                let info_message =
+                    Strings::single_default_application_info_message(&desktop_entry, &mime_type);
                 info_label.set_label(&info_message);
                 true
             } else {
@@ -355,10 +354,8 @@ impl MimeTypesPaneController {
 
             if is_system_default_application {
                 row.set_subtitle(
-                    crate::ui::Strings::application_is_system_default_handler_for_mimetype_short(
-                        &mime_type,
-                    )
-                    .as_str(),
+                    Strings::application_is_system_default_handler_for_mimetype_short(&mime_type)
+                        .as_str(),
                 );
             }
 
@@ -401,7 +398,7 @@ impl MimeTypesPaneController {
                 .activatable_widget(&check_button)
                 .build();
             row.add_prefix(&check_button);
-            row.set_title(crate::ui::Strings::assign_no_application_list_item());
+            row.set_title(Strings::assign_no_application_list_item());
             row.set_sensitive(can_assign_none);
 
             row
