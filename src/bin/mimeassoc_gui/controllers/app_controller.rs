@@ -7,8 +7,8 @@ use gtk::glib::*;
 use mimeassoc::*;
 
 use crate::model::*;
-use crate::ui::{MainWindow, MainWindowCommand, MainWindowPage};
 use crate::resources::Strings;
+use crate::ui::{MainWindow, MainWindowCommand, MainWindowPage};
 
 use super::{ApplicationsPaneController, MimeTypesPaneController};
 
@@ -218,14 +218,14 @@ impl AppController {
             .expect("Expect window instance to be valid")
     }
 
-    fn mime_types_pane_controller(&self) -> &MimeTypesPaneController {
+    pub fn mime_types_pane_controller(&self) -> &MimeTypesPaneController {
         self.imp()
             .mime_types_pane_controller
             .get()
             .expect("Expect MimeTypesPaneController to be assigned")
     }
 
-    fn applications_pane_controller(&self) -> &ApplicationsPaneController {
+    pub fn applications_pane_controller(&self) -> &ApplicationsPaneController {
         self.imp()
             .applications_pane_controller
             .get()

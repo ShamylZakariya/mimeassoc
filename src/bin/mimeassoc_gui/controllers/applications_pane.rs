@@ -91,6 +91,14 @@ impl ApplicationsPaneController {
         }
     }
 
+    pub fn on_select_all(&self) {
+        log::debug!("on_select_all");
+    }
+
+    pub fn on_select_none(&self) {
+        log::debug!("on_select_none");
+    }
+
     fn setup(&self) {
         self.build_model();
 

@@ -61,6 +61,12 @@ mod imp {
 
         #[template_child]
         pub application_to_mime_type_assignment_list_box: TemplateChild<ListBox>,
+
+        #[template_child]
+        pub application_detail_select_all: TemplateChild<Button>,
+
+        #[template_child]
+        pub application_detail_select_none: TemplateChild<Button>,
     }
 
     // The central trait for subclassing a GObject
@@ -152,12 +158,24 @@ impl MainWindow {
     }
 
     fn setup_ui(&self) {
-        // wire up the save button
+        // wire up buttons
         self.imp()
             .commit_button
             .connect_clicked(clone!(@weak self as window => move |_|{
                 window.app_controller().commit_changes();
             }));
+
+        self.imp().application_detail_select_all.connect_clicked(
+            clone!(@weak self as window => move |_|{
+                window.app_controller().applications_pane_controller().on_select_all();
+            }),
+        );
+
+        self.imp().application_detail_select_none.connect_clicked(
+            clone!(@weak self as window => move |_|{
+                window.app_controller().applications_pane_controller().on_select_none();
+            }),
+        );
 
         // listen for when user switches between MimeTypes and Applications panes
         self.imp().stack.connect_visible_child_notify(

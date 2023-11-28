@@ -154,7 +154,7 @@ fn build_ui(app: &adw::Application) {
     // ));
 
     let command = Some(ui::MainWindowCommand::ShowApplication(
-        DesktopEntryId::parse("code.desktop").unwrap(),
+        DesktopEntryId::parse("helix.desktop").unwrap(),
     ));
 
     if let Some(command) = command {

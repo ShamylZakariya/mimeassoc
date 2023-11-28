@@ -198,16 +198,52 @@
                     <property name="vexpand">True</property>
                     <property name="hexpand">True</property>
                     <property name="child">
-                      <object class="GtkListBox" id="application_to_mime_type_assignment_list_box">
-                        <property name="valign">start</property>
-                        <property name="name">application_to_mime_type_assignment_list_box</property>
-                        <style>
-                          <class name="boxed-list" />
-                        </style>
+
+
+                      <object class="GtkBox" id="application_detail">
+                        <property name="orientation">vertical</property>
+
+                        <child>
+                          <object class="GtkBox">
+                            <property name="name">application_detail_button_row</property>
+                            <property name="orientation">horizontal</property>
+                            <property name="halign">end</property>
+                            <child>
+                              <object class="GtkButton" id="application_detail_select_all">
+                                <property name="label">Select All</property>
+                                <style>
+                                  <class name="button-row-button" />
+                                </style>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkButton" id="application_detail_select_none">
+                                <property name="label">Select None</property>
+                                <style>
+                                  <class name="button-row-button" />
+                                </style>
+                              </object>
+                            </child>
+                          </object>
+
+                        </child>
+
+                        <child>
+
+                          <object class="GtkListBox" id="application_to_mime_type_assignment_list_box">
+                            <property name="valign">start</property>
+                            <property name="name">application_to_mime_type_assignment_list_box</property>
+                            <style>
+                              <class name="boxed-list" />
+                            </style>
+                          </object>
+
+                        </child>
+
                       </object>
                     </property>
-                  </object>
 
+                  </object>
                 </child>
               </object>
 

@@ -43,6 +43,17 @@
     Applications Pane
 */
 
+#application_detail_button_row {
+    margin-top: 12pt;
+    margin-bottom: 0pt;
+    margin-left: 12pt;
+    margin-right: 12pt;
+}
+
+#application_detail_button_row .button-row-button {
+    margin-left: 12pt;
+}
+
 #application_to_mime_type_assignment_list_box {
     margin-top: 12pt;
     margin-bottom: 12pt;
