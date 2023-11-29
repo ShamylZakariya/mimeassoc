@@ -158,7 +158,9 @@ impl MainWindow {
     }
 
     fn setup_ui(&self) {
-        // wire up buttons
+        // wire up buttons - note, AppController instance isn't created yet when setup_ui
+        // is run, so we defer access to the time of invocation.
+
         self.imp()
             .commit_button
             .connect_clicked(clone!(@weak self as window => move |_|{
@@ -190,7 +192,8 @@ impl MainWindow {
     }
 
     fn setup_actions(&self) {
-        log::debug!("MainWindow::setup_actions");
+        // wire up actions - note, AppController instance isn't created yet when setup_ui
+        // is run, so we defer access to the time of invocation.
 
         let action_show_mime_types = gtk::gio::SimpleAction::new("show-mime-types", None);
         action_show_mime_types.connect_activate(clone!(@weak self as window => move |_, _|{

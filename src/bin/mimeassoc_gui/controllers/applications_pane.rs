@@ -76,7 +76,7 @@ impl ApplicationsPaneController {
             let model = application_entries.item(i)
                         .expect("Expected a valid row index")
                         .downcast::<ApplicationEntry>()
-                        .expect("MainWindow::application_entries() model should contain instances of ApplicationEntry only");
+                        .expect("ApplicationsPaneController::application_entries() model should contain instances of ApplicationEntry only");
 
             if let Some(id) = model.desktop_entry_id() {
                 if &id == desktop_entry_id {
@@ -93,10 +93,41 @@ impl ApplicationsPaneController {
 
     pub fn on_select_all(&self) {
         log::debug!("on_select_all");
+        self.select_all_or_none(true);
     }
 
     pub fn on_select_none(&self) {
         log::debug!("on_select_none");
+        self.select_all_or_none(false);
+    }
+
+    fn select_all_or_none(&self, all: bool) {
+        let app_controller = self.app_controller();
+        let application_entry = self.imp().current_selection.borrow().clone();
+        if let Some(application_entry) = application_entry {
+            let desktop_entry_id = application_entry
+                .desktop_entry_id()
+                .expect("Expect ApplicationEntry to have a valid DesktopEntryId");
+
+            let mime_types = application_entry.mime_type_assignments();
+            for i in 0..mime_types.n_items() {
+                let mime_type_entry = mime_types.item(i).expect("Expected a valid row index")
+                        .downcast::<MimeTypeEntry>()
+                        .expect("ApplicationsPaneController::application_entries() model should contain instances of MimeTypeEntry only");
+
+                if all {
+                    app_controller.assign_application_to_mimetype(
+                        &mime_type_entry.mime_type(),
+                        Some(&desktop_entry_id),
+                    );
+                } else {
+                    app_controller
+                        .assign_application_to_mimetype(&mime_type_entry.mime_type(), None);
+                }
+            }
+
+            self.show_detail(&application_entry);
+        }
     }
 
     fn setup(&self) {
@@ -124,7 +155,7 @@ impl ApplicationsPaneController {
                 let model = controller.application_entries().item(index as u32)
                     .expect("Expected valid item index")
                     .downcast::<ApplicationEntry>()
-                    .expect("MainWindow::application_entries should only contain ApplicationEntry");
+                    .expect("ApplicationsPaneController::application_entries should only contain ApplicationEntry");
                 controller.show_detail(&model);
             }),
         );
@@ -138,7 +169,7 @@ impl ApplicationsPaneController {
                 .item(0)
                 .expect("Expect non-empty application entries model")
                 .downcast::<ApplicationEntry>()
-                .expect("MainWindow::application_entries should only contain ApplicationEntry"),
+                .expect("ApplicationsPaneController::application_entries should only contain ApplicationEntry"),
         );
     }
 

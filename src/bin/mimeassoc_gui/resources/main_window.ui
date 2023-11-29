@@ -203,11 +203,23 @@
                       <object class="GtkBox" id="application_detail">
                         <property name="orientation">vertical</property>
 
+                        <!-- mime types list box -->
+                        <child>
+                          <object class="GtkListBox" id="application_to_mime_type_assignment_list_box">
+                            <property name="valign">start</property>
+                            <property name="name">application_to_mime_type_assignment_list_box</property>
+                            <style>
+                              <class name="boxed-list" />
+                            </style>
+                          </object>
+                        </child>
+
+                        <!-- select all/none button row -->
                         <child>
                           <object class="GtkBox">
                             <property name="name">application_detail_button_row</property>
                             <property name="orientation">horizontal</property>
-                            <property name="halign">end</property>
+                            <property name="halign">start</property>
                             <child>
                               <object class="GtkButton" id="application_detail_select_all">
                                 <property name="label">Select All</property>
@@ -225,20 +237,8 @@
                               </object>
                             </child>
                           </object>
-
                         </child>
 
-                        <child>
-
-                          <object class="GtkListBox" id="application_to_mime_type_assignment_list_box">
-                            <property name="valign">start</property>
-                            <property name="name">application_to_mime_type_assignment_list_box</property>
-                            <style>
-                              <class name="boxed-list" />
-                            </style>
-                          </object>
-
-                        </child>
 
                       </object>
                     </property>

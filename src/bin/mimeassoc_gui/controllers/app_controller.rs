@@ -82,7 +82,7 @@ impl AppController {
         desktop_entry_id: Option<&DesktopEntryId>,
     ) {
         log::debug!(
-            "MainWindow::assign_application_to_mimetype application: {:?} mime_type: {}",
+            "AppController::assign_application_to_mimetype application: {:?} mime_type: {}",
             desktop_entry_id,
             mime_type,
         );
@@ -113,7 +113,7 @@ impl AppController {
     }
 
     pub fn discard_uncommitted_changes(&self) {
-        log::debug!("MainWindow::discard_uncommitted_changes",);
+        log::debug!("AppController::discard_uncommitted_changes",);
 
         let stores = self.stores();
         if let Err(e) = stores.borrow_mut().discard_uncommitted_changes() {
@@ -125,7 +125,7 @@ impl AppController {
     }
 
     pub fn undo(&self) {
-        log::debug!("MainWindow::undo",);
+        log::debug!("AppController::undo",);
 
         let stores = self.stores();
         let mut stores = stores.borrow_mut();
@@ -146,7 +146,7 @@ impl AppController {
                 self.imp()
                     .stores
                     .set(Rc::new(RefCell::new(stores)))
-                    .expect("MainWindow::setup_models() should only be set once");
+                    .expect("AppController::setup_models() should only be set once");
                 self.store_was_mutated();
             }
             Err(e) => self.show_error("Uh oh", "Unable to load necessary data", &e),
@@ -154,7 +154,7 @@ impl AppController {
     }
 
     fn reset_user_default_application_assignments(&self) {
-        log::debug!("MainWindow::reset_user_default_application_assignments",);
+        log::debug!("AppController::reset_user_default_application_assignments",);
 
         if let Err(e) = self
             .stores()
@@ -259,7 +259,7 @@ impl AppController {
             .imp()
             .undo_action
             .get()
-            .expect("Expect MainWindow::setup_actions to have run already")
+            .expect("Expect AppController::setup_actions to have run already")
             .set_enabled(can_undo);
     }
 }
@@ -271,7 +271,7 @@ impl AppController {
 impl AppController {
     /// Show user a dialog asking if they want to reset application assignments.
     pub fn query_reset_user_default_application_assignments(&self) {
-        log::debug!("MainWindow::reset_user_default_application_assignments",);
+        log::debug!("AppController::reset_user_default_application_assignments",);
 
         let window = self.window();
         let cancel_response = "cancel";
@@ -314,7 +314,7 @@ impl AppController {
 
     /// Show user a dialog asking if they want to clear orphaned application assignments.
     pub fn query_prune_orphaned_application_assignments(&self) {
-        log::debug!("MainWindow::query_prune_orphaned_application_assignments",);
+        log::debug!("AppController::query_prune_orphaned_application_assignments",);
 
         let window = self.window();
         let cancel_response = "cancel";
@@ -377,11 +377,11 @@ impl AppController {
         let page_selection_model = window.imp().stack.pages();
         match page {
             crate::ui::MainWindowPage::MimeTypes => {
-                log::debug!("MainWindow::show_page - MimeTypes",);
+                log::debug!("AppController::show_page - MimeTypes",);
                 page_selection_model.select_item(0, true);
             }
             crate::ui::MainWindowPage::Applications => {
-                log::debug!("MainWindow::show_page - Applications",);
+                log::debug!("AppController::show_page - Applications",);
                 page_selection_model.select_item(1, true);
             }
         }
@@ -411,12 +411,12 @@ impl AppController {
     }
 
     pub fn show_toast(&self, message: &str) {
-        log::debug!("MainWindow::show_toast: {}", message,);
+        log::debug!("AppController::show_toast: {}", message,);
     }
 
     pub fn show_error(&self, title: &str, message: &str, error: &anyhow::Error) {
         log::error!(
-            "MainWindow::show_error title: {}, message: {} error: {:?}",
+            "AppController::show_error title: {}, message: {} error: {:?}",
             title,
             message,
             error

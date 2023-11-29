@@ -83,7 +83,7 @@ impl MimeTypesPaneController {
             let model = mime_type_entries.item(i)
                         .expect("Expected a valid row index")
                         .downcast::<MimeTypeEntry>()
-                        .expect("MainWindow::mime_type_entries() model should contain instances of MimeTypeEntry only");
+                        .expect("MimeTypesPaneController::mime_type_entries() model should contain instances of MimeTypeEntry only");
             if &model.mime_type() == mime_type {
                 if let Some(row) = mime_types_list_box.row_at_index(i as i32) {
                     mime_types_list_box.select_row(Some(&row));
@@ -119,7 +119,7 @@ impl MimeTypesPaneController {
             let model = controller.mime_type_entries().item(index as u32)
                 .expect("Expected a valid row index")
                 .downcast::<MimeTypeEntry>()
-                .expect("MainWindow::mime_type_entries() model should contain instances of MimeTypeEntry only");
+                .expect("MimeTypesPaneController::mime_type_entries() model should contain instances of MimeTypeEntry only");
             controller.show_detail(&model);
         }));
 
@@ -133,7 +133,7 @@ impl MimeTypesPaneController {
                 .expect("Expect non-empty mime type entries model")
                 .downcast::<MimeTypeEntry>()
                 .expect(
-                    "MainWindow::mime_type_entries() model should contain instances of MimeTypeEntry only",
+                    "MimeTypesPaneController::mime_type_entries() model should contain instances of MimeTypeEntry only",
                 ));
     }
 
