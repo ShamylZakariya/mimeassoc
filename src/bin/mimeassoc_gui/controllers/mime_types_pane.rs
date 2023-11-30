@@ -68,7 +68,7 @@ impl MimeTypesPaneController {
         self.imp().mime_type_entries.get().unwrap()
     }
 
-    pub fn show_mime_type(&self, mime_type: &MimeType) {
+    pub fn select_mime_type(&self, mime_type: &MimeType) {
         let window = self.window();
 
         // Show the detail pane for this mime type
@@ -406,7 +406,8 @@ impl MimeTypesPaneController {
 
         // RadioButtons work by putting check buttons in a group; we check if the group exists
         // and add this check button if it does; otherwise, we need to make a new group from
-        // our first check button. It's ugly holding this state in the window, but here we are.
+        // our first check button. NOTE: We early-return here because we are borrowing the
+        // application_check_button_group, and need to let it go out of scope to borrow_mut later.
         if let Some(group) = self.imp().application_check_button_group.borrow().as_ref() {
             check_button.set_group(Some(group));
             return row;

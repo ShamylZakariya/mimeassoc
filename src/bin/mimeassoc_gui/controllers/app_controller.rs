@@ -104,9 +104,9 @@ impl AppController {
         // Note: we're treating the page selection model as single selection
         let page_selection_model = self.window().imp().stack.pages();
         if page_selection_model.is_selected(0) {
-            self.mime_types_pane_controller().reload();
-        } else if page_selection_model.is_selected(1) {
             self.applications_pane_controller().reload();
+        } else if page_selection_model.is_selected(1) {
+            self.mime_types_pane_controller().reload();
         } else {
             unreachable!("Somehow the page selection model has a page other than [0,1] selected.")
         }
@@ -357,14 +357,15 @@ impl AppController {
 
     pub fn perform_command(&self, command: MainWindowCommand) {
         match command {
-            MainWindowCommand::ShowMimeType(mime_type) => {
-                self.show_page(MainWindowPage::MimeTypes);
-                self.mime_types_pane_controller().show_mime_type(&mime_type);
-            }
             MainWindowCommand::ShowApplication(desktop_entry_id) => {
                 self.show_page(MainWindowPage::Applications);
                 self.applications_pane_controller()
-                    .show_application(&desktop_entry_id);
+                    .select_application(&desktop_entry_id);
+            }
+            MainWindowCommand::ShowMimeType(mime_type) => {
+                self.show_page(MainWindowPage::MimeTypes);
+                self.mime_types_pane_controller()
+                    .select_mime_type(&mime_type);
             }
         }
     }
@@ -376,12 +377,12 @@ impl AppController {
         let window = self.window();
         let page_selection_model = window.imp().stack.pages();
         match page {
-            crate::ui::MainWindowPage::MimeTypes => {
-                log::debug!("AppController::show_page - MimeTypes",);
-                page_selection_model.select_item(0, true);
-            }
             crate::ui::MainWindowPage::Applications => {
                 log::debug!("AppController::show_page - Applications",);
+                page_selection_model.select_item(0, true);
+            }
+            crate::ui::MainWindowPage::MimeTypes => {
+                log::debug!("AppController::show_page - MimeTypes",);
                 page_selection_model.select_item(1, true);
             }
         }

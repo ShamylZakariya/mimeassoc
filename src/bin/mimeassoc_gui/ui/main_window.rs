@@ -119,8 +119,8 @@ pub enum MainWindowCommand {
 
 #[derive(Debug)]
 pub enum MainWindowPage {
-    MimeTypes,
     Applications,
+    MimeTypes,
 }
 
 impl MainWindowPage {

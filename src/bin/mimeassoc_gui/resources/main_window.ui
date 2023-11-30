@@ -3,12 +3,12 @@
   <menu id="main-menu">
     <section>
       <item>
-        <attribute name="label" translatable="yes">Show _Mime Types</attribute>
-        <attribute name="action">win.show-mime-types</attribute>
-      </item>
-      <item>
         <attribute name="label" translatable="yes">Show _Applications</attribute>
         <attribute name="action">win.show-applications</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Show _Mime Types</attribute>
+        <attribute name="action">win.show-mime-types</attribute>
       </item>
       <item>
         <attribute name="label" translatable="yes">Undo</attribute>
@@ -81,83 +81,7 @@
     </child>
     <child>
       <object class="AdwViewStack" id="stack">
-        <child>
-          <object class="AdwViewStackPage" id="mime_types_page">
-            <property name="name">mime_types_page</property>
-            <property name="title" translatable="yes">Mime Types</property>
-            <property name="icon-name">emblem-documents-symbolic</property>
-            <property name="child">
 
-              <object class="GtkBox" id="mime_types_box">
-                <property name="orientation">horizontal</property>
-                <child>
-
-                  <!-- MimeTypes Page left-hand side, showing mime types list -->
-                  <object class="GtkScrolledWindow" id="mime_types_scrolled_window">
-                    <property name="hscrollbar-policy">never</property>
-                    <property name="min-content-height">420</property>
-                    <property name="width-request">320</property>
-                    <property name="vexpand">True</property>
-                    <property name="child">
-                      <object class="GtkListBox" id="mime_types_list_box">
-                        <property name="valign">start</property>
-                        <property name="name">mime_types_list_box</property>
-                        <style>
-                          <class name="navigation-sidebar" />
-                        </style>
-                      </object>
-                    </property>
-                  </object>
-
-                </child>
-
-                <child>
-
-                  <!-- MimeTypes Page detail, showing application assignment list box -->
-                  <object class="GtkScrolledWindow"
-                    id="mime_type_pane_detail_scrolled_window">
-                    <property name="hscrollbar-policy">never</property>
-                    <property name="min-content-height">420</property>
-                    <property name="vexpand">True</property>
-                    <property name="hexpand">True</property>
-                    <property name="child">
-
-                      <object class="GtkBox">
-                        <property name="orientation">vertical</property>
-                        <child>
-                          <object class="GtkListBox"
-                            id="mime_type_pane_detail_applications_list_box">
-                            <property name="valign">start</property>
-                            <property name="name">mime_type_pane_detail_applications_list_box</property>
-                            <style>
-                              <class name="boxed-list" />
-                            </style>
-                          </object>
-
-                        </child>
-                        <child>
-                          <object class="GtkLabel"
-                            id="mime_type_pane_detail_info_label">
-                            <property name="name">system-default-handler-warning-message</property>
-                            <property name="label">This is the system default, and no other application handling this mimetype is installed.</property>
-                            <property name="wrap">true</property>
-                            <property name="lines">-1</property>
-                          </object>
-
-                        </child>
-                      </object>
-
-
-                    </property>
-                  </object>
-
-                </child>
-              </object>
-
-
-            </property>
-          </object>
-        </child>
         <child>
           <object class="AdwViewStackPage" id="applications_page">
             <property name="name">applications_page</property>
@@ -246,6 +170,84 @@
                   </object>
                 </child>
               </object>
+
+            </property>
+          </object>
+        </child>
+
+        <child>
+          <object class="AdwViewStackPage" id="mime_types_page">
+            <property name="name">mime_types_page</property>
+            <property name="title" translatable="yes">Mime Types</property>
+            <property name="icon-name">emblem-documents-symbolic</property>
+            <property name="child">
+
+              <object class="GtkBox" id="mime_types_box">
+                <property name="orientation">horizontal</property>
+                <child>
+
+                  <!-- MimeTypes Page left-hand side, showing mime types list -->
+                  <object class="GtkScrolledWindow" id="mime_types_scrolled_window">
+                    <property name="hscrollbar-policy">never</property>
+                    <property name="min-content-height">420</property>
+                    <property name="width-request">320</property>
+                    <property name="vexpand">True</property>
+                    <property name="child">
+                      <object class="GtkListBox" id="mime_types_list_box">
+                        <property name="valign">start</property>
+                        <property name="name">mime_types_list_box</property>
+                        <style>
+                          <class name="navigation-sidebar" />
+                        </style>
+                      </object>
+                    </property>
+                  </object>
+
+                </child>
+
+                <child>
+
+                  <!-- MimeTypes Page detail, showing application assignment list box -->
+                  <object class="GtkScrolledWindow"
+                    id="mime_type_pane_detail_scrolled_window">
+                    <property name="hscrollbar-policy">never</property>
+                    <property name="min-content-height">420</property>
+                    <property name="vexpand">True</property>
+                    <property name="hexpand">True</property>
+                    <property name="child">
+
+                      <object class="GtkBox">
+                        <property name="orientation">vertical</property>
+                        <child>
+                          <object class="GtkListBox"
+                            id="mime_type_pane_detail_applications_list_box">
+                            <property name="valign">start</property>
+                            <property name="name">mime_type_pane_detail_applications_list_box</property>
+                            <style>
+                              <class name="boxed-list" />
+                            </style>
+                          </object>
+
+                        </child>
+                        <child>
+                          <object class="GtkLabel"
+                            id="mime_type_pane_detail_info_label">
+                            <property name="name">system-default-handler-warning-message</property>
+                            <property name="label">This is the system default, and no other application handling this mimetype is installed.</property>
+                            <property name="wrap">true</property>
+                            <property name="lines">-1</property>
+                          </object>
+
+                        </child>
+                      </object>
+
+
+                    </property>
+                  </object>
+
+                </child>
+              </object>
+
 
             </property>
           </object>

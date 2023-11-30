@@ -62,7 +62,7 @@ impl ApplicationsPaneController {
         }
     }
 
-    pub fn show_application(&self, desktop_entry_id: &DesktopEntryId) {
+    pub fn select_application(&self, desktop_entry_id: &DesktopEntryId) {
         let window = self.window();
 
         let application_entry = ApplicationEntry::new(desktop_entry_id, self.stores());
