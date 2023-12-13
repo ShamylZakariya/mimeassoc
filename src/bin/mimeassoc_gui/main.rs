@@ -1,5 +1,5 @@
 mod common;
-mod controllers;
+// mod controllers;
 mod model;
 mod resources;
 mod ui;
@@ -153,13 +153,13 @@ fn build_ui(app: &adw::Application) {
     //     MimeType::parse("application/pdf").unwrap(),
     // ));
 
-    let command = Some(ui::MainWindowCommand::ShowApplication(
-        DesktopEntryId::parse("helix.desktop").unwrap(),
-    ));
+    // let command = Some(ui::MainWindowCommand::ShowApplication(
+    //     DesktopEntryId::parse("helix.desktop").unwrap(),
+    // ));
 
-    if let Some(command) = command {
-        window.app_controller().perform_command(command);
-    }
+    // if let Some(command) = command {
+    //     window.app_controller().perform_command(command);
+    // }
 
     window.present();
 }
