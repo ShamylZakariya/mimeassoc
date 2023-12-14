@@ -49,211 +49,106 @@
     </section>
   </menu>
 
-  <template class="MainWindow" parent="GtkApplicationWindow">
+  <template class="MainWindow" parent="AdwApplicationWindow">
     <property name="title" translatable="yes">MimeAssoc</property>
-    <property name="default_width">920</property>
-    <property name="default_height">600</property>
+    <property name="width-request">960</property>
+    <property name="height-request">600</property>
+    <child>
+      <object class="AdwBreakpoint">
+        <condition>max-width: 500sp</condition>
+        <setter object="split_view" property="collapsed">True</setter>
+      </object>
+    </child>
+    <property name="content">
+      <object class="AdwNavigationSplitView" id="split_view">
+        <property name="min-sidebar-width">200</property>
+        <property name="sidebar">
+          <object class="AdwNavigationPage">
+            <!--Primary View -->
 
-    <child type="titlebar">
-      <object class="AdwHeaderBar">
-        <property name="title-widget">
-          <object class="AdwViewSwitcher" id="switcher">
-            <property name="stack">stack</property>
-            <property name="policy">wide</property>
+
+            <property name="title" bind-source="MainWindow"
+              bind-property="title" bind-flags="sync-create" />
+            <property name="child">
+              <object class="AdwToolbarView">
+                <child type="top">
+                  <object class="AdwHeaderBar">
+                    <child type="end">
+                      <object class="GtkMenuButton">
+                        <property name="icon-name">open-menu-symbolic</property>
+                        <property name="tooltip-text" translatable="yes">Main Menu</property>
+                        <property name="menu-model">main-menu</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <property name="content">
+                  <object class="GtkScrolledWindow">
+                    <property name="child">
+                      <!-- Primary View Contents -->
+
+                      <object class="GtkListBox" id="collections_list">
+                        <style>
+                          <class name="navigation-sidebar" />
+                        </style>
+                      </object>
+
+                      <!-- Primary View Contents -->
+                    </property>
+                  </object>
+                </property>
+              </object>
+            </property>
+
+            <!-- Primary View -->
           </object>
         </property>
-        <child type="start">
-          <object class="GtkButton" id="commit_button">
-            <property name="label">Commit</property>
-            <style>
-              <class name="suggested-action" />
-            </style>
-          </object>
-        </child>
-        <child type="end">
-          <object class="GtkMenuButton">
-            <property name="icon-name">open-menu-symbolic</property>
-            <property name="menu-model">main-menu</property>
-            <property name="tooltip-text" translatable="yes">Main Menu</property>
-          </object>
-        </child>
-      </object>
-    </child>
-    <child>
-      <object class="AdwViewStack" id="stack">
+        <property name="content">
+          <object class="AdwNavigationPage">
+            <!--Detail View -->
 
-        <child>
-          <object class="AdwViewStackPage" id="applications_page">
-            <property name="name">applications_page</property>
-            <property name="title" translatable="yes">Applications</property>
-            <property name="icon-name">system-run-symbolic</property>
+
+            <property name="title" translatable="true">Content</property>
+            <property name="tag">content</property>
             <property name="child">
-
-              <object class="GtkBox" id="applications_box">
-                <property name="orientation">horizontal</property>
-                <child>
-
-                  <!-- Applications Page left-hand side, showing applications list -->
-                  <object class="GtkScrolledWindow" id="applications_scrolled_window">
-                    <property name="hscrollbar-policy">never</property>
-                    <property name="min-content-height">420</property>
-                    <property name="width-request">320</property>
-                    <property name="vexpand">True</property>
-                    <property name="child">
-                      <object class="GtkListBox" id="applications_list_box">
-                        <property name="valign">start</property>
-                        <property name="name">applications_list_box</property>
+              <object class="AdwToolbarView">
+                <child type="top">
+                  <object class="AdwHeaderBar">
+                    <property name="show-title">false</property>
+                    <child type="end">
+                      <object class="GtkButton" id="commit_button">
+                        <property name="label">Commit</property>
                         <style>
-                          <class name="navigation-sidebar" />
+                          <class name="suggested-action" />
                         </style>
                       </object>
-                    </property>
+
+                    </child>
                   </object>
-
                 </child>
+                <property name="content">
+                  <!-- Detail View Contents -->
 
-                <child>
-
-                  <!-- Applications Page right-hand side, showing mime assignment list box -->
-                  <object class="GtkScrolledWindow"
-                    id="application_to_mime_type_assignment_scrolled_window">
-                    <property name="hscrollbar-policy">never</property>
-                    <property name="min-content-height">420</property>
-                    <property name="vexpand">True</property>
-                    <property name="hexpand">True</property>
-                    <property name="child">
-
-
-                      <object class="GtkBox" id="application_detail">
-                        <property name="orientation">vertical</property>
-
-                        <!-- mime types list box -->
-                        <child>
-                          <object class="GtkListBox" id="application_to_mime_type_assignment_list_box">
-                            <property name="valign">start</property>
-                            <property name="name">application_to_mime_type_assignment_list_box</property>
-                            <style>
-                              <class name="boxed-list" />
-                            </style>
-                          </object>
-                        </child>
-
-                        <!-- select all/none button row -->
-                        <child>
-                          <object class="GtkBox">
-                            <property name="name">application_detail_button_row</property>
-                            <property name="orientation">horizontal</property>
-                            <property name="halign">start</property>
-                            <child>
-                              <object class="GtkButton" id="application_detail_select_all">
-                                <property name="label">Select All</property>
-                                <style>
-                                  <class name="button-row-button" />
-                                </style>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkButton" id="application_detail_select_none">
-                                <property name="label">Select None</property>
-                                <style>
-                                  <class name="button-row-button" />
-                                </style>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-
-
+                  <object class="AdwStatusPage">
+                    <property name="title" translatable="true">Content</property>
+                    <child>
+                      <object class="GtkLinkButton">
+                        <property name="label" translatable="true">API Reference</property>
+                        <property name="uri">https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.4/class.NavigationSplitView.html</property>
                       </object>
-                    </property>
-
+                    </child>
                   </object>
-                </child>
+
+                  <!-- Detail View Contents -->
+                </property>
               </object>
-
             </property>
+
+            <!-- Detail View -->
           </object>
-        </child>
-
-        <child>
-          <object class="AdwViewStackPage" id="mime_types_page">
-            <property name="name">mime_types_page</property>
-            <property name="title" translatable="yes">Mime Types</property>
-            <property name="icon-name">emblem-documents-symbolic</property>
-            <property name="child">
-
-              <object class="GtkBox" id="mime_types_box">
-                <property name="orientation">horizontal</property>
-                <child>
-
-                  <!-- MimeTypes Page left-hand side, showing mime types list -->
-                  <object class="GtkScrolledWindow" id="mime_types_scrolled_window">
-                    <property name="hscrollbar-policy">never</property>
-                    <property name="min-content-height">420</property>
-                    <property name="width-request">320</property>
-                    <property name="vexpand">True</property>
-                    <property name="child">
-                      <object class="GtkListBox" id="mime_types_list_box">
-                        <property name="valign">start</property>
-                        <property name="name">mime_types_list_box</property>
-                        <style>
-                          <class name="navigation-sidebar" />
-                        </style>
-                      </object>
-                    </property>
-                  </object>
-
-                </child>
-
-                <child>
-
-                  <!-- MimeTypes Page detail, showing application assignment list box -->
-                  <object class="GtkScrolledWindow"
-                    id="mime_type_pane_detail_scrolled_window">
-                    <property name="hscrollbar-policy">never</property>
-                    <property name="min-content-height">420</property>
-                    <property name="vexpand">True</property>
-                    <property name="hexpand">True</property>
-                    <property name="child">
-
-                      <object class="GtkBox">
-                        <property name="orientation">vertical</property>
-                        <child>
-                          <object class="GtkListBox"
-                            id="mime_type_pane_detail_applications_list_box">
-                            <property name="valign">start</property>
-                            <property name="name">mime_type_pane_detail_applications_list_box</property>
-                            <style>
-                              <class name="boxed-list" />
-                            </style>
-                          </object>
-
-                        </child>
-                        <child>
-                          <object class="GtkLabel"
-                            id="mime_type_pane_detail_info_label">
-                            <property name="name">system-default-handler-warning-message</property>
-                            <property name="label">This is the system default, and no other application handling this mimetype is installed.</property>
-                            <property name="wrap">true</property>
-                            <property name="lines">-1</property>
-                          </object>
-
-                        </child>
-                      </object>
-
-
-                    </property>
-                  </object>
-
-                </child>
-              </object>
-
-
-            </property>
-          </object>
-        </child>
-
+        </property>
       </object>
-    </child>
+    </property>
   </template>
+
 </interface>

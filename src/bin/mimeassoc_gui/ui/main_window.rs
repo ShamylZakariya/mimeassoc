@@ -101,7 +101,7 @@ mod imp {
         // `NAME` needs to match `class` attribute of template
         const NAME: &'static str = "MainWindow";
         type Type = super::MainWindow;
-        type ParentType = gtk::ApplicationWindow;
+        type ParentType = adw::ApplicationWindow;
 
         fn class_init(klass: &mut Self::Class) {
             klass.bind_template();
@@ -135,11 +135,13 @@ mod imp {
 
     // Trait shared by all application windows
     impl ApplicationWindowImpl for MainWindow {}
+
+    impl AdwApplicationWindowImpl for MainWindow {}
 }
 
 glib::wrapper! {
     pub struct MainWindow(ObjectSubclass<imp::MainWindow>)
-        @extends gtk::ApplicationWindow, gtk::Window, gtk::Widget,
+        @extends adw::ApplicationWindow, gtk::ApplicationWindow, gtk::Window, gtk::Widget,
         @implements gio::ActionGroup, gio::ActionMap, gtk::Accessible, gtk::Buildable,
                     gtk::ConstraintTarget, gtk::Native, gtk::Root, gtk::ShortcutManager;
 }
