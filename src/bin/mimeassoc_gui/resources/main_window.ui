@@ -61,7 +61,7 @@
     </child>
     <property name="content">
       <object class="AdwNavigationSplitView" id="split_view">
-        <property name="min-sidebar-width">200</property>
+        <property name="min-sidebar-width">280</property>
         <property name="sidebar">
           <object class="AdwNavigationPage">
             <!--Primary View -->
@@ -83,19 +83,71 @@
                   </object>
                 </child>
                 <property name="content">
-                  <object class="GtkScrolledWindow">
-                    <property name="child">
-                      <!-- Primary View Contents -->
+                  <!-- Primary View Contents -->
 
-                      <object class="GtkListBox" id="collections_list">
-                        <style>
-                          <class name="navigation-sidebar" />
-                        </style>
+                  <object class="GtkBox">
+                    <property name="margin-top">6</property>
+                    <property name="margin-bottom">6</property>
+                    <property name="orientation">vertical</property>
+                    <property name="spacing">6</property>
+                    <child>
+
+                      <object class="GtkBox">
+                        <property name="margin-start">6</property>
+                        <property name="margin-end">6</property>
+                        <property name="orientation">horizontal</property>
+                        <property name="halign">center</property>
+                        <property name="spacing">6</property>
+                        <child>
+                          <object class="GtkToggleButton" id="mode_group_id">
+                            <property name="group">mode_group_id</property>
+                            <child>
+                              <object class="AdwButtonContent">
+                                <property name="label" translatable="true">Applications</property>
+                                <property name="icon-name">system-run-symbolic</property>
+                              </object>
+                            </child>
+                          </object>
+
+                        </child>
+                        <child>
+
+                          <object class="GtkToggleButton">
+                            <property name="group">mode_group_id</property>
+                            <child>
+                              <object class="AdwButtonContent">
+                                <property name="label" translatable="true">Mime Types</property>
+                                <property name="icon-name">emblem-documents-symbolic</property>
+                              </object>
+                            </child>
+                          </object>
+
+                        </child>
+
                       </object>
 
-                      <!-- Primary View Contents -->
-                    </property>
+                    </child>
+                    <child>
+
+                      <!-- scrolled window -->
+                      <object class="GtkScrolledWindow">
+                        <property name="child">
+
+                          <object class="GtkListBox" id="collections_list">
+                            <style>
+                              <class name="navigation-sidebar" />
+                            </style>
+                          </object>
+
+                        </property>
+                      </object> <!-- scrolled window -->
+
+
+                    </child>
                   </object>
+
+
+                  <!-- Primary View Contents -->
                 </property>
               </object>
             </property>
