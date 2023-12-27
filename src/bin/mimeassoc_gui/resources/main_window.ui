@@ -61,7 +61,7 @@
     </child>
     <property name="content">
       <object class="AdwNavigationSplitView" id="split_view">
-        <property name="min-sidebar-width">280</property>
+        <property name="min-sidebar-width">360</property>
         <property name="sidebar">
           <object class="AdwNavigationPage">
             <!--Primary View -->
@@ -137,6 +137,7 @@
                         <property name="child">
 
                           <object class="GtkListBox" id="collections_list">
+                            <property name="name">collections_list</property>
                             <style>
                               <class name="navigation-sidebar" />
                             </style>

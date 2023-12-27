@@ -287,6 +287,7 @@ impl ApplicationsModeController {
         let application_name_label = Label::builder()
             .wrap(true)
             .wrap_mode(pango::WrapMode::Word)
+            .ellipsize(pango::EllipsizeMode::Middle)
             .xalign(0.0)
             .css_classes(vec!["display_name"])
             .build();
@@ -294,6 +295,7 @@ impl ApplicationsModeController {
         let desktop_entry_id_label = Label::builder()
             .wrap(true)
             .wrap_mode(pango::WrapMode::Word)
+            .ellipsize(pango::EllipsizeMode::Middle)
             .xalign(0.0)
             .css_classes(vec!["desktop_entry_id"])
             .build();

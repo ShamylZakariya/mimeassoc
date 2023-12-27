@@ -1,23 +1,29 @@
 /*
-    Mime Types Pane
+    Collections List
 */
 
-#mime_types_list_box {}
+#collections_list {}
 
-#mime_types_list_box .content {
+#collections_list .content {
     margin-top: 8pt;
     margin-bottom: 8pt;
     margin-left: 8pt;
     margin-right: 8pt;
 }
 
-#mime_types_list_box .mime-type {
+#collections_list .mime-type,
+#collections_list .display_name {
     font-weight: bold;
 }
 
-#mime_types_list_box .mime-type-description {
+#collections_list .mime-type-description,
+#collections_list .desktop_entry_id {
     opacity: 0.7;
 }
+
+/*
+
+*/
 
 #mime_type_pane_detail_applications_list_box {
     margin-top: 12pt;
@@ -66,12 +72,4 @@
     margin-bottom: 8pt;
     margin-left: 8pt;
     margin-right: 8pt;
-}
-
-#applications_list_box .display_name {
-    font-weight: bold;
-}
-
-#applications_list_box .desktop_entry_id {
-    opacity: 0.7;
 }

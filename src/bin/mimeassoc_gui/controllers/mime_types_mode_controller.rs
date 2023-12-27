@@ -205,6 +205,7 @@ impl MimeTypesModeController {
         let mime_type_label = Label::builder()
             .wrap(true)
             .wrap_mode(pango::WrapMode::Word)
+            .ellipsize(pango::EllipsizeMode::Middle)
             .xalign(0.0)
             .css_classes(vec!["mime-type"])
             .build();
@@ -222,6 +223,7 @@ impl MimeTypesModeController {
             let file_type_name_label = Label::builder()
                 .wrap(true)
                 .wrap_mode(pango::WrapMode::Word)
+                .ellipsize(pango::EllipsizeMode::Middle)
                 .xalign(0.0)
                 .css_classes(vec!["mime-type-description"])
                 .build();
