@@ -19,24 +19,25 @@ mod imp {
     use gtk::glib;
 
     #[derive(Default)]
-    pub struct MimeTypesPaneController {
+    pub struct MimeTypesModeController {
         pub window: OnceCell<WeakRef<MainWindow>>,
         pub app_controller: OnceCell<WeakRef<AppController>>,
         pub mime_type_entries: OnceCell<gio::ListStore>,
 
         pub application_check_button_group: RefCell<Option<CheckButton>>,
         pub current_selection: RefCell<Option<MimeTypeEntry>>,
+        pub signal_handlers: RefCell<Vec<SignalHandlerId>>,
     }
 
     // The central trait for subclassing a GObject
     #[glib::object_subclass]
-    impl ObjectSubclass for MimeTypesPaneController {
-        const NAME: &'static str = "MimeTypesPaneController";
-        type Type = super::MimeTypesPaneController;
+    impl ObjectSubclass for MimeTypesModeController {
+        const NAME: &'static str = "MimeTypesModeController";
+        type Type = super::MimeTypesModeController;
     }
 
     // Trait shared by all GObjects
-    impl ObjectImpl for MimeTypesPaneController {
+    impl ObjectImpl for MimeTypesModeController {
         fn constructed(&self) {
             Self::parent_constructed(self);
         }
@@ -44,16 +45,14 @@ mod imp {
 }
 
 glib::wrapper! {
-    pub struct MimeTypesPaneController(ObjectSubclass<imp::MimeTypesPaneController>);
+    pub struct MimeTypesModeController(ObjectSubclass<imp::MimeTypesModeController>);
 }
 
-impl MimeTypesPaneController {
+impl MimeTypesModeController {
     pub fn new(window: WeakRef<MainWindow>, app_controller: WeakRef<AppController>) -> Self {
-        let instance: MimeTypesPaneController = Object::builder().build();
+        let instance: MimeTypesModeController = Object::builder().build();
         instance.imp().window.set(window).unwrap();
         instance.imp().app_controller.set(app_controller).unwrap();
-        instance.setup();
-
         instance
     }
 
@@ -76,20 +75,20 @@ impl MimeTypesPaneController {
         self.show_detail(&mime_type_entry);
 
         // Select this mime type in the list box
-        let mime_types_list_box = &window.imp().mime_types_list_box;
+        let list_box = &window.imp().collections_list;
         let mime_type_entries = self.mime_type_entries();
         let count = mime_type_entries.n_items();
         for i in 0..count {
             let model = mime_type_entries.item(i)
                         .expect("Expected a valid row index")
                         .downcast::<MimeTypeEntry>()
-                        .expect("MimeTypesPaneController::mime_type_entries() model should contain instances of MimeTypeEntry only");
+                        .expect("MimeTypesModeController::mime_type_entries() model should contain instances of MimeTypeEntry only");
             if &model.mime_type() == mime_type {
-                if let Some(row) = mime_types_list_box.row_at_index(i as i32) {
-                    mime_types_list_box.select_row(Some(&row));
+                if let Some(row) = list_box.row_at_index(i as i32) {
+                    list_box.select_row(Some(&row));
 
                     if i > 0 {
-                        crate::ui::scroll_listbox_to_selected_row(mime_types_list_box.get());
+                        crate::ui::scroll_listbox_to_selected_row(list_box.get());
                     }
                 }
 
@@ -98,14 +97,14 @@ impl MimeTypesPaneController {
         }
     }
 
-    fn setup(&self) {
+    pub fn activate(&self) {
         self.build_model();
 
         // bind to selection events
         let window = self.window();
-        let mime_types_list_box = &window.imp().mime_types_list_box;
+        let list_box = &window.imp().collections_list;
 
-        mime_types_list_box.bind_model(
+        list_box.bind_model(
             Some(self.mime_type_entries()),
             clone!(@weak self as controller => @default-panic, move | obj | {
                 let model = obj.downcast_ref().unwrap();
@@ -114,18 +113,20 @@ impl MimeTypesPaneController {
             }),
         );
 
-        mime_types_list_box.connect_row_activated(clone!(@weak self as controller => move |_, row|{
+        let s_id = list_box.connect_row_activated(clone!(@weak self as controller => move |_, row|{
             let index = row.index();
             let model = controller.mime_type_entries().item(index as u32)
                 .expect("Expected a valid row index")
                 .downcast::<MimeTypeEntry>()
-                .expect("MimeTypesPaneController::mime_type_entries() model should contain instances of MimeTypeEntry only");
+                .expect("MimeTypesModeController::mime_type_entries() model should contain instances of MimeTypeEntry only");
             controller.show_detail(&model);
         }));
 
+        self.imp().signal_handlers.replace(vec![s_id]);
+
         // Select first entry
-        let row = mime_types_list_box.row_at_index(0);
-        mime_types_list_box.select_row(row.as_ref());
+        let row = list_box.row_at_index(0);
+        list_box.select_row(row.as_ref());
         self.show_detail(
             &self
                 .mime_type_entries()
@@ -133,8 +134,16 @@ impl MimeTypesPaneController {
                 .expect("Expect non-empty mime type entries model")
                 .downcast::<MimeTypeEntry>()
                 .expect(
-                    "MimeTypesPaneController::mime_type_entries() model should contain instances of MimeTypeEntry only",
+                    "MimeTypesModeController::mime_type_entries() model should contain instances of MimeTypeEntry only",
                 ));
+    }
+
+    pub fn deactivate(&self) {
+        let window = self.window();
+        let signal_handler_ids = self.imp().signal_handlers.take();
+        for s_id in signal_handler_ids.into_iter() {
+            window.imp().collections_list.disconnect(s_id);
+        }
     }
 
     fn window(&self) -> MainWindow {
@@ -161,6 +170,10 @@ impl MimeTypesPaneController {
 
     /// Builds the ListStore model which backs the mime types listbox
     fn build_model(&self) {
+        if self.imp().mime_type_entries.get().is_some() {
+            return;
+        }
+
         let stores = self.stores();
         let borrowed_stores = stores.borrow();
         let mime_associations_store = borrowed_stores.mime_associations_store();
@@ -224,75 +237,77 @@ impl MimeTypesPaneController {
     /// Shows detail for the provided MimeTypeEntry - this is generally
     /// called in response to user tapping a selection in the primary list box
     fn show_detail(&self, mime_type_entry: &MimeTypeEntry) {
-        // flag that we're currently viewing this mime type
-        self.imp()
-            .current_selection
-            .borrow_mut()
-            .replace(mime_type_entry.clone());
+        log::warn!("show_detail unimplemented")
 
-        let window = self.window();
-        let list_box = &window.imp().mime_type_pane_detail_applications_list_box;
-        list_box.set_selection_mode(SelectionMode::None);
+        // // flag that we're currently viewing this mime type
+        // self.imp()
+        //     .current_selection
+        //     .borrow_mut()
+        //     .replace(mime_type_entry.clone());
 
-        // Reset the application check button group before building the list; it will be
-        // assigned to the first created list item, and if there are subsequent items, they
-        // will use it as a group, making them into radio buttons.
-        self.imp()
-            .application_check_button_group
-            .borrow_mut()
-            .take();
+        // let window = self.window();
+        // let list_box = &window.imp().mime_type_pane_detail_applications_list_box;
+        // list_box.set_selection_mode(SelectionMode::None);
 
-        let application_entries = mime_type_entry.supported_application_entries();
-        let model_count = application_entries.n_items();
+        // // Reset the application check button group before building the list; it will be
+        // // assigned to the first created list item, and if there are subsequent items, they
+        // // will use it as a group, making them into radio buttons.
+        // self.imp()
+        //     .application_check_button_group
+        //     .borrow_mut()
+        //     .take();
 
-        //insert an empty entry at beginning of list - this will be the None entry
-        application_entries.insert(0, &ApplicationEntry::none());
+        // let application_entries = mime_type_entry.supported_application_entries();
+        // let model_count = application_entries.n_items();
 
-        let model = NoSelection::new(Some(application_entries));
-        list_box.bind_model(Some(&model),
-            clone!(@weak self as controller, @strong mime_type_entry => @default-panic, move |obj| {
-                let application_entry = obj.downcast_ref().expect("The object should be of type `ApplicationEntry`.");
-                controller.create_detail_row(&mime_type_entry, application_entry, model_count).upcast()
-            }));
+        // //insert an empty entry at beginning of list - this will be the None entry
+        // application_entries.insert(0, &ApplicationEntry::none());
 
-        // Update the info label - basically, if only one application is shown, and it is the
-        // system default handler for the mime type, it will be presented in a disabled state
-        // in ::create_application_row, and here we show an info label to explain why
+        // let model = NoSelection::new(Some(application_entries));
+        // list_box.bind_model(Some(&model),
+        //     clone!(@weak self as controller, @strong mime_type_entry => @default-panic, move |obj| {
+        //         let application_entry = obj.downcast_ref().expect("The object should be of type `ApplicationEntry`.");
+        //         controller.create_detail_row(&mime_type_entry, application_entry, model_count).upcast()
+        //     }));
 
-        let info_label = &window.imp().mime_type_pane_detail_info_label;
-        let show_info_label = if model_count == 1 {
-            // if the number of items is 1, and that item is the system default, show the info message
-            let desktop_entry = model
-                .item(1) // Recall, there's an empty ApplicationEntry at position 0
-                .unwrap()
-                .downcast_ref::<ApplicationEntry>()
-                .unwrap()
-                .desktop_entry()
-                .expect("Expect to receive a DesktopEntry from the ApplicationEntry");
+        // // Update the info label - basically, if only one application is shown, and it is the
+        // // system default handler for the mime type, it will be presented in a disabled state
+        // // in ::create_application_row, and here we show an info label to explain why
 
-            let mime_type = mime_type_entry.mime_type();
+        // let info_label = &window.imp().mime_type_pane_detail_info_label;
+        // let show_info_label = if model_count == 1 {
+        //     // if the number of items is 1, and that item is the system default, show the info message
+        //     let desktop_entry = model
+        //         .item(1) // Recall, there's an empty ApplicationEntry at position 0
+        //         .unwrap()
+        //         .downcast_ref::<ApplicationEntry>()
+        //         .unwrap()
+        //         .desktop_entry()
+        //         .expect("Expect to receive a DesktopEntry from the ApplicationEntry");
 
-            let stores = self.stores();
-            let stores = stores.borrow();
-            let mime_association_store = stores.mime_associations_store();
-            let is_system_default = mime_association_store
-                .system_default_application_for(&mime_type)
-                == Some(desktop_entry.id());
+        //     let mime_type = mime_type_entry.mime_type();
 
-            if is_system_default {
-                // TODO: Move this into some kind of string table
-                let info_message =
-                    Strings::single_default_application_info_message(&desktop_entry, &mime_type);
-                info_label.set_label(&info_message);
-                true
-            } else {
-                false
-            }
-        } else {
-            false
-        };
+        //     let stores = self.stores();
+        //     let stores = stores.borrow();
+        //     let mime_association_store = stores.mime_associations_store();
+        //     let is_system_default = mime_association_store
+        //         .system_default_application_for(&mime_type)
+        //         == Some(desktop_entry.id());
 
-        info_label.set_visible(show_info_label);
+        //     if is_system_default {
+        //         // TODO: Move this into some kind of string table
+        //         let info_message =
+        //             Strings::single_default_application_info_message(&desktop_entry, &mime_type);
+        //         info_label.set_label(&info_message);
+        //         true
+        //     } else {
+        //         false
+        //     }
+        // } else {
+        //     false
+        // };
+
+        // info_label.set_visible(show_info_label);
     }
 
     fn create_detail_row(

@@ -1,5 +1,5 @@
 mod common;
-// mod controllers;
+mod controllers;
 mod model;
 mod resources;
 mod ui;
@@ -144,22 +144,32 @@ fn setup_shortcuts(app: &adw::Application) {
     app.set_accels_for_action("app.quit", &["<Ctrl>Q"]);
 }
 
+fn setup_main_window(window: &ui::MainWindow, command: Option<controllers::MainWindowCommand>) {
+    if let Some(command) = command {
+        window.app_controller().perform_command(command);
+    } else {
+        window
+            .app_controller()
+            .set_mode(controllers::Mode::ApplicationMode);
+    }
+}
+
 fn build_ui(app: &adw::Application) {
     log::debug!("main::build_ui");
 
     let window = ui::MainWindow::new(app);
 
-    // let command = Some(ui::MainWindowCommand::ShowMimeType(
+    let mut command: Option<controllers::MainWindowCommand> = None;
+
+    // command = Some(controllers::MainWindowCommand::ShowMimeType(
     //     MimeType::parse("application/pdf").unwrap(),
     // ));
 
-    // let command = Some(ui::MainWindowCommand::ShowApplication(
+    // command = Some(controllers::MainWindowCommand::ShowApplication(
     //     DesktopEntryId::parse("helix.desktop").unwrap(),
     // ));
 
-    // if let Some(command) = command {
-    //     window.app_controller().perform_command(command);
-    // }
+    setup_main_window(&window, command);
 
     window.present();
 }

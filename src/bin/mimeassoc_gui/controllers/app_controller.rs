@@ -8,9 +8,25 @@ use mimeassoc::*;
 
 use crate::model::*;
 use crate::resources::Strings;
-use crate::ui::{MainWindow, MainWindowCommand, MainWindowPage};
+use crate::ui::MainWindow;
 
-use super::{ApplicationsPaneController, MimeTypesPaneController};
+use super::{ApplicationsModeController, MimeTypesModeController};
+
+/// Represents a command which can be sent to the main window. This is primarily
+/// meant for easing manual testing, but could be used to handle gui cmdline arguments,
+/// for example taking the app directly to a specified mime type.
+#[derive(Debug)]
+pub enum MainWindowCommand {
+    ShowMimeType(MimeType),
+    ShowApplication(DesktopEntryId),
+}
+
+/// Represents the top-level "page" the app is displaying, Applications or Mime Types.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Mode {
+    ApplicationMode,
+    MimeTypeMode,
+}
 
 mod imp {
     use super::*;
@@ -20,10 +36,11 @@ mod imp {
 
     #[derive(Default)]
     pub struct AppController {
+        pub mode: RefCell<Option<Mode>>,
         pub window: OnceCell<WeakRef<MainWindow>>,
         pub stores: OnceCell<Rc<RefCell<Stores>>>,
-        pub mime_types_pane_controller: OnceCell<MimeTypesPaneController>,
-        pub applications_pane_controller: OnceCell<ApplicationsPaneController>,
+        pub mime_types_mode_controller: OnceCell<MimeTypesModeController>,
+        pub applications_mode_controller: OnceCell<ApplicationsModeController>,
     }
 
     // The central trait for subclassing a GObject
@@ -59,8 +76,8 @@ impl AppController {
 
         instance
             .imp()
-            .mime_types_pane_controller
-            .set(MimeTypesPaneController::new(
+            .mime_types_mode_controller
+            .set(MimeTypesModeController::new(
                 window.clone(),
                 weak_self.clone(),
             ))
@@ -68,11 +85,49 @@ impl AppController {
 
         instance
             .imp()
-            .applications_pane_controller
-            .set(ApplicationsPaneController::new(window, weak_self))
+            .applications_mode_controller
+            .set(ApplicationsModeController::new(window, weak_self))
             .unwrap();
 
         instance
+    }
+
+    pub fn set_mode(&self, mode: Mode) {
+        let is_different = match self.imp().mode.borrow().as_ref() {
+            Some(current_mode) => *current_mode != mode,
+            None => true,
+        };
+
+        if !is_different {
+            log::debug!("set_mode({:?}) - mode unchanged, skipping", mode);
+            return;
+        }
+
+        log::debug!("set_mode({:?})", mode);
+
+        let window = self.window();
+        match mode {
+            Mode::ApplicationMode => {
+                self.mime_types_mode_controller().deactivate();
+                window.imp().mode_selector_mime_types.set_active(false);
+
+                self.applications_mode_controller().activate();
+                window.imp().mode_selector_applications.set_active(true);
+            }
+            Mode::MimeTypeMode => {
+                self.applications_mode_controller().deactivate();
+                window.imp().mode_selector_applications.set_active(false);
+
+                self.mime_types_mode_controller().activate();
+                window.imp().mode_selector_mime_types.set_active(true);
+            }
+        }
+
+        self.imp().mode.replace(Some(mode));
+    }
+
+    pub fn mode(&self) -> Mode {
+        self.imp().mode.borrow().unwrap_or(Mode::ApplicationMode)
     }
 
     /// Assigns an application to handle a specified mimetype. E.g., assign Firefox to handle text/html
@@ -101,15 +156,17 @@ impl AppController {
     }
 
     pub fn reload_active_page(&self) {
-        // Note: we're treating the page selection model as single selection
-        let page_selection_model = self.window().imp().stack.pages();
-        if page_selection_model.is_selected(0) {
-            self.applications_pane_controller().reload();
-        } else if page_selection_model.is_selected(1) {
-            self.mime_types_pane_controller().reload();
-        } else {
-            unreachable!("Somehow the page selection model has a page other than [0,1] selected.")
-        }
+        log::warn!("reload_active_page unimplemented")
+
+        // // Note: we're treating the page selection model as single selection
+        // let page_selection_model = self.window().imp().stack.pages();
+        // if page_selection_model.is_selected(0) {
+        //     self.applications_pane_controller().reload();
+        // } else if page_selection_model.is_selected(1) {
+        //     self.mime_types_pane_controller().reload();
+        // } else {
+        //     unreachable!("Somehow the page selection model has a page other than [0,1] selected.")
+        // }
     }
 
     pub fn discard_uncommitted_changes(&self) {
@@ -184,11 +241,6 @@ impl AppController {
         self.store_was_mutated();
     }
 
-    pub fn on_current_page_changed(&self, to_page: crate::ui::MainWindowPage) {
-        log::debug!("current_page_changed to_page: {:?}", to_page);
-        self.reload_active_page();
-    }
-
     fn prune_orphaned_application_assignments(&self) {
         if let Err(e) = self
             .stores()
@@ -218,18 +270,18 @@ impl AppController {
             .expect("Expect window instance to be valid")
     }
 
-    pub fn mime_types_pane_controller(&self) -> &MimeTypesPaneController {
+    pub fn mime_types_mode_controller(&self) -> &MimeTypesModeController {
         self.imp()
-            .mime_types_pane_controller
+            .mime_types_mode_controller
             .get()
-            .expect("Expect MimeTypesPaneController to be assigned")
+            .expect("Expect MimeTypesModeController to be assigned")
     }
 
-    pub fn applications_pane_controller(&self) -> &ApplicationsPaneController {
+    pub fn applications_mode_controller(&self) -> &ApplicationsModeController {
         self.imp()
-            .applications_pane_controller
+            .applications_mode_controller
             .get()
-            .expect("Expect ApplicationsPaneController to be assigned")
+            .expect("Expect ApplicationsModeController to be assigned")
     }
 
     pub fn stores(&self) -> Rc<RefCell<Stores>> {
@@ -358,32 +410,14 @@ impl AppController {
     pub fn perform_command(&self, command: MainWindowCommand) {
         match command {
             MainWindowCommand::ShowApplication(desktop_entry_id) => {
-                self.show_page(MainWindowPage::Applications);
-                self.applications_pane_controller()
+                self.set_mode(Mode::ApplicationMode);
+                self.applications_mode_controller()
                     .select_application(&desktop_entry_id);
             }
             MainWindowCommand::ShowMimeType(mime_type) => {
-                self.show_page(MainWindowPage::MimeTypes);
-                self.mime_types_pane_controller()
+                self.set_mode(Mode::MimeTypeMode);
+                self.mime_types_mode_controller()
                     .select_mime_type(&mime_type);
-            }
-        }
-    }
-
-    /// Show one of the main window pages
-    pub fn show_page(&self, page: MainWindowPage) {
-        // Note: we're treating the page selection model as single selection.
-        // TODO: Wrap it in a SingleSelection? Is this possible?
-        let window = self.window();
-        let page_selection_model = window.imp().stack.pages();
-        match page {
-            crate::ui::MainWindowPage::Applications => {
-                log::debug!("AppController::show_page - Applications",);
-                page_selection_model.select_item(0, true);
-            }
-            crate::ui::MainWindowPage::MimeTypes => {
-                log::debug!("AppController::show_page - MimeTypes",);
-                page_selection_model.select_item(1, true);
             }
         }
     }

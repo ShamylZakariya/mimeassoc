@@ -92,15 +92,16 @@
                     <property name="spacing">6</property>
                     <child>
 
+                      <!-- horizontal box holding mode selector -->
                       <object class="GtkBox">
                         <property name="margin-start">6</property>
                         <property name="margin-end">6</property>
                         <property name="orientation">horizontal</property>
                         <property name="halign">center</property>
                         <property name="spacing">6</property>
+
                         <child>
-                          <object class="GtkToggleButton" id="mode_group_id">
-                            <property name="group">mode_group_id</property>
+                          <object class="GtkToggleButton" id="mode_selector_applications">
                             <child>
                               <object class="AdwButtonContent">
                                 <property name="label" translatable="true">Applications</property>
@@ -108,12 +109,11 @@
                               </object>
                             </child>
                           </object>
-
                         </child>
-                        <child>
 
-                          <object class="GtkToggleButton">
-                            <property name="group">mode_group_id</property>
+                        <child>
+                          <object class="GtkToggleButton" id="mode_selector_mime_types">
+                            <property name="group">mode_selector_applications</property>
                             <child>
                               <object class="AdwButtonContent">
                                 <property name="label" translatable="true">Mime Types</property>
@@ -121,16 +121,19 @@
                               </object>
                             </child>
                           </object>
-
                         </child>
 
                       </object>
 
                     </child>
+
+                    <!-- TODO: this will be a good place for the search field -->
+
                     <child>
 
-                      <!-- scrolled window -->
+                      <!-- collections list view / scrolled window  -->
                       <object class="GtkScrolledWindow">
+                        <property name="vexpand">true</property>
                         <property name="child">
 
                           <object class="GtkListBox" id="collections_list">
@@ -140,7 +143,7 @@
                           </object>
 
                         </property>
-                      </object> <!-- scrolled window -->
+                      </object>
 
 
                     </child>

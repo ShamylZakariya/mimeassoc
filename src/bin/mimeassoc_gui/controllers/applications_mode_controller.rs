@@ -19,22 +19,23 @@ mod imp {
     use gtk::glib;
 
     #[derive(Default)]
-    pub struct ApplicationsPaneController {
+    pub struct ApplicationsModeController {
         pub window: OnceCell<WeakRef<MainWindow>>,
         pub app_controller: OnceCell<WeakRef<AppController>>,
         pub application_entries: OnceCell<gio::ListStore>,
         pub current_selection: RefCell<Option<ApplicationEntry>>,
+        pub signal_handlers: RefCell<Vec<SignalHandlerId>>,
     }
 
     // The central trait for subclassing a GObject
     #[glib::object_subclass]
-    impl ObjectSubclass for ApplicationsPaneController {
-        const NAME: &'static str = "ApplicationsPaneController";
-        type Type = super::ApplicationsPaneController;
+    impl ObjectSubclass for ApplicationsModeController {
+        const NAME: &'static str = "ApplicationsModeController";
+        type Type = super::ApplicationsModeController;
     }
 
     // Trait shared by all GObjects
-    impl ObjectImpl for ApplicationsPaneController {
+    impl ObjectImpl for ApplicationsModeController {
         fn constructed(&self) {
             Self::parent_constructed(self);
         }
@@ -42,15 +43,14 @@ mod imp {
 }
 
 glib::wrapper! {
-    pub struct ApplicationsPaneController(ObjectSubclass<imp::ApplicationsPaneController>);
+    pub struct ApplicationsModeController(ObjectSubclass<imp::ApplicationsModeController>);
 }
 
-impl ApplicationsPaneController {
+impl ApplicationsModeController {
     pub fn new(window: WeakRef<MainWindow>, app_controller: WeakRef<AppController>) -> Self {
-        let instance: ApplicationsPaneController = Object::builder().build();
+        let instance: ApplicationsModeController = Object::builder().build();
         instance.imp().window.set(window).unwrap();
         instance.imp().app_controller.set(app_controller).unwrap();
-        instance.setup();
 
         instance
     }
@@ -69,22 +69,21 @@ impl ApplicationsPaneController {
         self.show_detail(&application_entry);
 
         // select this app in the list box. This is weirdly complex, perhaps there's a better way?
-        let applications_list_box = &window.imp().applications_list_box;
+        let list_box = &window.imp().collections_list;
         let application_entries = self.application_entries();
         let count = application_entries.n_items();
         for i in 0..count {
             let model = application_entries.item(i)
                         .expect("Expected a valid row index")
                         .downcast::<ApplicationEntry>()
-                        .expect("ApplicationsPaneController::application_entries() model should contain instances of ApplicationEntry only");
+                        .expect("ApplicationsModeController::application_entries() model should contain instances of ApplicationEntry only");
 
             if let Some(id) = model.desktop_entry_id() {
                 if &id == desktop_entry_id {
-                    applications_list_box
-                        .select_row(applications_list_box.row_at_index(i as i32).as_ref());
+                    list_box.select_row(list_box.row_at_index(i as i32).as_ref());
 
                     if i > 0 {
-                        crate::ui::scroll_listbox_to_selected_row(applications_list_box.get());
+                        crate::ui::scroll_listbox_to_selected_row(list_box.get());
                     }
                 }
             }
@@ -113,7 +112,7 @@ impl ApplicationsPaneController {
             for i in 0..mime_types.n_items() {
                 let mime_type_entry = mime_types.item(i).expect("Expected a valid row index")
                         .downcast::<MimeTypeEntry>()
-                        .expect("ApplicationsPaneController::application_entries() model should contain instances of MimeTypeEntry only");
+                        .expect("ApplicationsModeController::application_entries() model should contain instances of MimeTypeEntry only");
 
                 if all {
                     app_controller.assign_application_to_mimetype(
@@ -130,14 +129,14 @@ impl ApplicationsPaneController {
         }
     }
 
-    fn setup(&self) {
+    pub fn activate(&self) {
         self.build_model();
 
         let window = self.window();
-        let applications_list_box = &window.imp().applications_list_box;
+        let list_box = &window.imp().collections_list;
 
         // bind the model to the list box
-        applications_list_box.bind_model(
+        list_box.bind_model(
             Some(self.application_entries()),
             clone!(@weak self as controller => @default-panic, move |obj| {
                 let model = obj
@@ -149,32 +148,48 @@ impl ApplicationsPaneController {
         );
 
         // Listen for selection
-        applications_list_box.connect_row_activated(
+        let sid = list_box.connect_row_activated(
             clone!(@weak self as controller => move |_, row|{
                 let index = row.index();
                 let model = controller.application_entries().item(index as u32)
                     .expect("Expected valid item index")
                     .downcast::<ApplicationEntry>()
-                    .expect("ApplicationsPaneController::application_entries should only contain ApplicationEntry");
+                    .expect("ApplicationsModeController::application_entries should only contain ApplicationEntry");
                 controller.show_detail(&model);
             }),
         );
 
+        // record our signal handlers so we can clean up later
+        let signal_handler_ids = vec![sid];
+        self.imp().signal_handlers.replace(signal_handler_ids);
+
         // Select first entry
-        let row = applications_list_box.row_at_index(0);
-        applications_list_box.select_row(row.as_ref());
+        let row = list_box.row_at_index(0);
+        list_box.select_row(row.as_ref());
         self.show_detail(
             &self
                 .application_entries()
                 .item(0)
                 .expect("Expect non-empty application entries model")
                 .downcast::<ApplicationEntry>()
-                .expect("ApplicationsPaneController::application_entries should only contain ApplicationEntry"),
+                .expect("ApplicationsModeController::application_entries should only contain ApplicationEntry"),
         );
+    }
+
+    pub fn deactivate(&self) {
+        let window = self.window();
+        let signal_handler_ids = self.imp().signal_handlers.take();
+        for s_id in signal_handler_ids.into_iter() {
+            window.imp().collections_list.disconnect(s_id);
+        }
     }
 
     /// Builds the ListStore model which backs the applications listbox
     fn build_model(&self) {
+        if self.imp().application_entries.get().is_some() {
+            return;
+        }
+
         let stores = self.stores();
         let borrowed_stores = stores.borrow();
         let apps = borrowed_stores.desktop_entry_store();
@@ -195,73 +210,77 @@ impl ApplicationsPaneController {
     }
 
     fn show_detail(&self, application_entry: &ApplicationEntry) {
-        let mime_type_assignments = application_entry.mime_type_assignments();
-        let model = NoSelection::new(Some(mime_type_assignments));
+        log::warn!("show_detail unimplemented");
 
-        let window = self.window();
-        window.imp().application_to_mime_type_assignment_list_box.bind_model(Some(&model),
-            clone!(@weak self as controller, @strong application_entry => @default-panic, move |obj| {
-                let model = obj.downcast_ref().expect("The object should be of type `MimeTypeEntry`.");
-                let row = controller.create_application_pane_detail_row(&application_entry, model);
-                row.upcast()
-            }));
+        // let mime_type_assignments = application_entry.mime_type_assignments();
+        // let model = NoSelection::new(Some(mime_type_assignments));
 
-        window
-            .imp()
-            .application_to_mime_type_assignment_list_box
-            .set_selection_mode(SelectionMode::None);
+        // let window = self.window();
+        // window.imp().application_to_mime_type_assignment_list_box.bind_model(Some(&model),
+        //     clone!(@weak self as controller, @strong application_entry => @default-panic, move |obj| {
+        //         let model = obj.downcast_ref().expect("The object should be of type `MimeTypeEntry`.");
+        //         let row = controller.create_application_pane_detail_row(&application_entry, model);
+        //         row.upcast()
+        //     }));
 
-        self.imp()
-            .current_selection
-            .borrow_mut()
-            .replace(application_entry.clone());
+        // window
+        //     .imp()
+        //     .application_to_mime_type_assignment_list_box
+        //     .set_selection_mode(SelectionMode::None);
 
-        self.update_select_all_and_none_buttons();
+        // self.imp()
+        //     .current_selection
+        //     .borrow_mut()
+        //     .replace(application_entry.clone());
+
+        // self.update_select_all_and_none_buttons();
     }
 
     fn update_select_all_and_none_buttons(&self) {
-        let application_entry = self.imp().current_selection.borrow().clone();
-        if let Some(application_entry) = application_entry {
-            let mime_type_entries = application_entry.mime_type_assignments();
+        log::warn!("update_select_all_and_none_buttons unimplemented")
 
-            let (can_select_all, can_select_none) = if mime_type_entries.n_items() > 1 {
-                let desktop_entry_id = application_entry
-                    .desktop_entry_id()
-                    .expect("Expect ApplicationEntry to have a DesktopEntryId");
-                let n_items = mime_type_entries.n_items();
-                let stores = self.stores();
-                let stores = stores.borrow();
-                let mime_associations_store = stores.mime_associations_store();
-                let mut num_assigned = 0;
+        // let application_entry = self.imp().current_selection.borrow().clone();
+        // if let Some(application_entry) = application_entry {
+        //     let mime_type_entries = application_entry.mime_type_assignments();
 
-                for i in 0..n_items {
-                    let mime_type_entry = mime_type_entries.item(i).expect("Expected a valid row index")
-                            .downcast::<MimeTypeEntry>()
-                            .expect("ApplicationsPaneController::application_entries() model should contain instances of MimeTypeEntry only");
+        //     let (can_select_all, can_select_none) = if mime_type_entries.n_items() > 1 {
+        //         let desktop_entry_id = application_entry
+        //             .desktop_entry_id()
+        //             .expect("Expect ApplicationEntry to have a DesktopEntryId");
+        //         let n_items = mime_type_entries.n_items();
+        //         let stores = self.stores();
+        //         let stores = stores.borrow();
+        //         let mime_associations_store = stores.mime_associations_store();
+        //         let mut num_assigned = 0;
 
-                    let is_assigned_application = mime_associations_store
-                        .default_application_for(&mime_type_entry.mime_type())
-                        == Some(&desktop_entry_id);
-                    if is_assigned_application {
-                        num_assigned += 1;
-                    }
-                }
+        //         for i in 0..n_items {
+        //             let mime_type_entry = mime_type_entries.item(i).expect("Expected a valid row index")
+        //                     .downcast::<MimeTypeEntry>()
+        //                     .expect("ApplicationsModeController::application_entries() model should contain instances of MimeTypeEntry only");
 
-                (num_assigned < n_items, num_assigned > 0)
-            } else {
-                (false, false)
-            };
+        //             let is_assigned_application = mime_associations_store
+        //                 .default_application_for(&mime_type_entry.mime_type())
+        //                 == Some(&desktop_entry_id);
+        //             if is_assigned_application {
+        //                 num_assigned += 1;
+        //             }
+        //         }
 
-            let window = self.window();
-            window
-                .imp()
-                .application_detail_select_all
-                .set_sensitive(can_select_all);
-            window
-                .imp()
-                .application_detail_select_none
-                .set_sensitive(can_select_none);
-        }
+        //         (num_assigned < n_items, num_assigned > 0)
+        //     } else {
+        //         (false, false)
+        //     };
+
+        //     let window = self.window();
+        //     window
+        //         .imp()
+        //         .application_detail_select_all
+        //         .set_sensitive(can_select_all);
+        //     window
+        //         .imp()
+        //         .application_detail_select_none
+        //         .set_sensitive(can_select_none);
+        // }
     }
 
     fn create_application_pane_primary_row(application_entry: &ApplicationEntry) -> ListBoxRow {
