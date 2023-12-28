@@ -183,46 +183,61 @@
                 <property name="content">
                   <!-- Detail View Contents -->
 
-                  <object class="GtkScrolledWindow">
-                    <property name="vexpand">true</property>
-                    <property name="child">
-
-                      <object class="GtkBox">
-                        <property name="orientation">vertical</property>
-                        <property name="spacing">6</property>
-                        <property name="name">detail_column</property>
-
-                        <child>
-                          <object class="GtkLabel" id="detail_label_primary">
-                            <property name="name">detail_label_primary</property>
-                            <property name="label">Google Chrome</property>
-                            <property name="wrap">true</property>
-                            <property name="lines">-1</property>
-                          </object>
-                        </child>
+                  <object class="GtkBox">
+                    <property name="orientation">horizontal</property>
+                    <property name="halign">center</property>
+                    <property name="name">detail_column</property>
+                    <child>
+                      <object class="AdwClamp">
+                        <property name="maximum-size">480</property>
 
                         <child>
-                          <object class="GtkLabel" id="detail_label_secondary">
-                            <property name="name">detail_label_secondary</property>
-                            <property name="label">com.google.chrome.desktop</property>
-                            <property name="wrap">true</property>
-                            <property name="lines">-1</property>
-                          </object>
-                        </child>
+                          <object class="GtkScrolledWindow">
+                            <property name="vexpand">true</property>
+                            <property name="child">
 
-                        <child>
-                          <object class="GtkListBox" id="detail_list">
-                            <property name="name">detail_list</property>
-                            <property name="valign">start</property>
-                            <style>
-                              <class name="boxed-list" />
-                            </style>
+                              <object class="GtkBox">
+                                <property name="orientation">vertical</property>
+                                <property name="spacing">6</property>
+                                <property name="name">detail_column</property>
+
+                                <child>
+                                  <object class="GtkLabel" id="detail_label_primary">
+                                    <property name="name">detail_label_primary</property>
+                                    <property name="label">Google Chrome</property>
+                                    <property name="wrap">true</property>
+                                    <property name="lines">-1</property>
+                                  </object>
+                                </child>
+
+                                <child>
+                                  <object class="GtkLabel" id="detail_label_secondary">
+                                    <property name="name">detail_label_secondary</property>
+                                    <property name="label">com.google.chrome.desktop</property>
+                                    <property name="wrap">true</property>
+                                    <property name="lines">-1</property>
+                                  </object>
+                                </child>
+
+                                <child>
+                                  <object class="GtkListBox" id="detail_list">
+                                    <property name="name">detail_list</property>
+                                    <property name="valign">start</property>
+                                    <style>
+                                      <class name="boxed-list" />
+                                    </style>
+                                  </object>
+                                </child>
+
+                              </object>
+
+                            </property>
                           </object>
                         </child>
 
                       </object>
+                    </child>
 
-                    </property>
                   </object>
 
 

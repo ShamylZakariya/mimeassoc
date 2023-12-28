@@ -35,12 +35,13 @@
     Detail
 */
 
-#detail_column {
-    background-color: aqua;
-}
+#detail_column {}
 
 #detail_list {
-    background-color: beige;
+    margin-left: 12pt;
+    margin-right: 12pt;
+    margin-top: 12pt;
+    margin-bottom: 12pt;
 }
 
 #detail_label_primary {
