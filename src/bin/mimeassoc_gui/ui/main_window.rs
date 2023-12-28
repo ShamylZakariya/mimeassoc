@@ -30,25 +30,15 @@ mod imp {
 
         #[template_child]
         pub commit_button: TemplateChild<Button>,
-        // #[template_child]
-        // pub stack: TemplateChild<ViewStack>,
 
-        // #[template_child]
-        // pub mime_types_page: TemplateChild<ViewStackPage>,
+        #[template_child]
+        pub detail_list: TemplateChild<ListBox>,
 
-        // // mime types page UI bindings
-        // #[template_child]
-        // pub mime_types_scrolled_window: TemplateChild<ScrolledWindow>,
+        #[template_child]
+        pub detail_label_primary: TemplateChild<Label>,
 
-        // #[template_child]
-        // pub mime_types_list_box: TemplateChild<ListBox>,
-
-        // #[template_child]
-        // pub mime_type_pane_detail_scrolled_window: TemplateChild<ScrolledWindow>,
-
-        // #[template_child]
-        // pub mime_type_pane_detail_applications_list_box: TemplateChild<ListBox>,
-
+        #[template_child]
+        pub detail_label_secondary: TemplateChild<Label>,
         // #[template_child]
         // pub mime_type_pane_detail_info_label: TemplateChild<Label>,
 

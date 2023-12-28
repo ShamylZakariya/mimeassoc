@@ -210,30 +210,40 @@ impl ApplicationsModeController {
     }
 
     fn show_detail(&self, application_entry: &ApplicationEntry) {
-        log::warn!("show_detail unimplemented");
+        let mime_type_assignments = application_entry.mime_type_assignments();
+        let model = NoSelection::new(Some(mime_type_assignments));
 
-        // let mime_type_assignments = application_entry.mime_type_assignments();
-        // let model = NoSelection::new(Some(mime_type_assignments));
+        let window = self.window();
+        let list_box = &window.imp().detail_list;
 
-        // let window = self.window();
-        // window.imp().application_to_mime_type_assignment_list_box.bind_model(Some(&model),
-        //     clone!(@weak self as controller, @strong application_entry => @default-panic, move |obj| {
-        //         let model = obj.downcast_ref().expect("The object should be of type `MimeTypeEntry`.");
-        //         let row = controller.create_application_pane_detail_row(&application_entry, model);
-        //         row.upcast()
-        //     }));
+        list_box.bind_model(Some(&model),
+            clone!(@weak self as controller, @strong application_entry => @default-panic, move |obj| {
+                let model = obj.downcast_ref().expect("The object should be of type `MimeTypeEntry`.");
+                let row = controller.create_application_pane_detail_row(&application_entry, model);
+                row.upcast()
+            }));
 
-        // window
-        //     .imp()
-        //     .application_to_mime_type_assignment_list_box
-        //     .set_selection_mode(SelectionMode::None);
+        list_box.set_selection_mode(SelectionMode::None);
 
-        // self.imp()
-        //     .current_selection
-        //     .borrow_mut()
-        //     .replace(application_entry.clone());
+        self.imp()
+            .current_selection
+            .borrow_mut()
+            .replace(application_entry.clone());
 
-        // self.update_select_all_and_none_buttons();
+        self.update_detail_labels(application_entry);
+        self.update_select_all_and_none_buttons();
+    }
+
+    fn update_detail_labels(&self, application_entry: &ApplicationEntry) {
+        let window = self.window();
+        let detail_label_primary = &window.imp().detail_label_primary;
+        let detail_label_secondary = &window.imp().detail_label_secondary;
+        let desktop_entry = &application_entry
+            .desktop_entry()
+            .expect("Expect to get desktop entry id from ApplicationEntry");
+
+        detail_label_primary.set_text(desktop_entry.name().unwrap_or("<Unnamed Application>"));
+        detail_label_secondary.set_text(desktop_entry.id().id());
     }
 
     fn update_select_all_and_none_buttons(&self) {
