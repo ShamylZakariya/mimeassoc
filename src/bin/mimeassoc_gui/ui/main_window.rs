@@ -1,6 +1,7 @@
 use std::cell::OnceCell;
 
 use adw::subclass::prelude::*;
+use adw::HeaderBar;
 use adw::{prelude::*, *};
 use glib::subclass::*;
 use gtk::{glib::*, *};
@@ -9,6 +10,8 @@ use mimeassoc::*;
 ///////////////////////////////////////////////////////////////////////
 
 mod imp {
+    use adw::ffi::{AdwHeaderBar, AdwToolbarView};
+
     use super::*;
 
     #[derive(CompositeTemplate, Default)]
@@ -39,6 +42,8 @@ mod imp {
 
         #[template_child]
         pub detail_label_secondary: TemplateChild<Label>,
+        #[template_child]
+        pub detail_header_bar: TemplateChild<HeaderBar>,
         // #[template_child]
         // pub mime_type_pane_detail_info_label: TemplateChild<Label>,
 

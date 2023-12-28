@@ -167,7 +167,7 @@
             <property name="child">
               <object class="AdwToolbarView">
                 <child type="top">
-                  <object class="AdwHeaderBar">
+                  <object class="AdwHeaderBar" id="detail_header_bar">
                     <property name="show-title">false</property>
                     <child type="end">
                       <object class="GtkButton" id="commit_button">
@@ -183,18 +183,20 @@
                 <property name="content">
                   <!-- Detail View Contents -->
 
-                  <object class="GtkBox">
-                    <property name="orientation">horizontal</property>
-                    <property name="halign">center</property>
-                    <property name="name">detail_column</property>
-                    <child>
-                      <object class="AdwClamp">
-                        <property name="maximum-size">480</property>
-
+                  <object class="GtkScrolledWindow">
+                    <property name="vexpand">true</property>
+                    <property name="child">
+                      <object class="GtkBox">
+                        <property name="orientation">horizontal</property>
+                        <property name="halign">center</property>
+                        <property name="name">detail_column</property>
                         <child>
-                          <object class="GtkScrolledWindow">
-                            <property name="vexpand">true</property>
-                            <property name="child">
+
+
+                          <object class="AdwClamp">
+                            <property name="maximum-size">480</property>
+
+                            <child>
 
                               <object class="GtkBox">
                                 <property name="orientation">vertical</property>
@@ -230,28 +232,16 @@
                                 </child>
 
                               </object>
+                            </child>
 
-                            </property>
                           </object>
                         </child>
 
                       </object>
-                    </child>
 
+                    </property>
                   </object>
 
-
-                  <!--
-                  <object class="AdwStatusPage">
-                    <property name="title" translatable="true">Content</property>
-                    <child>
-                      <object class="GtkLinkButton">
-                        <property name="label" translatable="true">API Reference</property>
-                        <property name="uri">https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.4/class.NavigationSplitView.html</property>
-                      </object>
-                    </child>
-                  </object>
-                -->
 
                   <!-- Detail View Contents -->
                 </property>

@@ -165,9 +165,9 @@ fn build_ui(app: &adw::Application) {
     //     MimeType::parse("application/pdf").unwrap(),
     // ));
 
-    // command = Some(controllers::MainWindowCommand::ShowApplication(
-    //     DesktopEntryId::parse("helix.desktop").unwrap(),
-    // ));
+    command = Some(controllers::MainWindowCommand::ShowApplication(
+        DesktopEntryId::parse("org.gnome.Nautilus.desktop").unwrap(),
+    ));
 
     setup_main_window(&window, command);
 
