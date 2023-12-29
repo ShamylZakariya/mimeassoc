@@ -306,7 +306,7 @@ impl AppController {
         );
 
         let window = self.window();
-        window.imp().commit_button.set_visible(can_save);
+        window.imp().commit_button.set_sensitive(can_save);
         window
             .imp()
             .undo_action

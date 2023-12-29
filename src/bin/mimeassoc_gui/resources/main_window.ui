@@ -166,9 +166,53 @@
             <property name="tag">content</property>
             <property name="child">
               <object class="AdwToolbarView">
+
+
                 <child type="top">
                   <object class="AdwHeaderBar" id="detail_header_bar">
-                    <property name="show-title">false</property>
+                    <property name="show-title">true</property>
+                    <property name="title-widget">
+                      <object class="GtkBox">
+                        <property name="orientation">vertical</property>
+                        <property name="spacing">0</property>
+                        <child>
+                          <object class="GtkLabel" id="detail_title">
+                            <property name="name">detail_title</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkLabel" id="detail_sub_title">
+                            <property name="name">detail_sub_title</property>
+                          </object>
+                        </child>
+
+                      </object>
+
+
+                    </property>
+                  </object>
+                </child>
+
+                <child type="bottom">
+                  <object class="GtkActionBar" id="detail_footer_bar">
+                    <child type="start">
+
+                      <object class="GtkBox" id="select_all_none_buttons">
+                        <property name="orientation">horizontal</property>
+                        <property name="spacing">6</property>
+                        <child>
+                          <object class="GtkButton" id="select_all_button">
+                            <property name="label">Select All</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="select_none_button">
+                            <property name="label">Select None</property>
+                          </object>
+                        </child>
+                      </object>
+
+                    </child>
                     <child type="end">
                       <object class="GtkButton" id="commit_button">
                         <property name="label">Commit</property>
@@ -180,6 +224,7 @@
                     </child>
                   </object>
                 </child>
+
                 <property name="content">
                   <!-- Detail View Contents -->
 
@@ -203,7 +248,7 @@
                                 <property name="spacing">6</property>
                                 <property name="name">detail_column</property>
 
-                                <child>
+                                <!-- <child>
                                   <object class="GtkLabel" id="detail_label_primary">
                                     <property name="name">detail_label_primary</property>
                                     <property name="label">Google Chrome</property>
@@ -219,7 +264,7 @@
                                     <property name="wrap">true</property>
                                     <property name="lines">-1</property>
                                   </object>
-                                </child>
+                                </child> -->
 
                                 <child>
                                   <object class="GtkListBox" id="detail_list">

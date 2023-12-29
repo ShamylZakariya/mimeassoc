@@ -37,6 +37,14 @@
 
 #detail_column {}
 
+#detail_title {
+    font-weight: bold;
+}
+
+#detail_sub_title {
+    opacity: 0.75;
+}
+
 #detail_list {
     margin-left: 12pt;
     margin-right: 12pt;

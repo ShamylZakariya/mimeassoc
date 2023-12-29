@@ -136,6 +136,9 @@ impl MimeTypesModeController {
                 .expect(
                     "MimeTypesModeController::mime_type_entries() model should contain instances of MimeTypeEntry only",
                 ));
+
+        // hide the select all/none buttons in the footer
+        window.imp().select_all_none_buttons.set_visible(false);
     }
 
     pub fn deactivate(&self) {
@@ -239,7 +242,9 @@ impl MimeTypesModeController {
     /// Shows detail for the provided MimeTypeEntry - this is generally
     /// called in response to user tapping a selection in the primary list box
     fn show_detail(&self, mime_type_entry: &MimeTypeEntry) {
-        log::warn!("show_detail unimplemented")
+        log::warn!("show_detail unimplemented");
+
+        self.update_detail_labels(mime_type_entry);
 
         // // flag that we're currently viewing this mime type
         // self.imp()
@@ -310,6 +315,27 @@ impl MimeTypesModeController {
         // };
 
         // info_label.set_visible(show_info_label);
+    }
+
+    fn update_detail_labels(&self, mime_type_entry: &MimeTypeEntry) {
+        let stores = self.stores();
+        let stores = stores.borrow();
+        let mime_info_store = stores.mime_info_store();
+
+        let mime_type = &mime_type_entry.mime_type();
+        let mime_info = mime_info_store.get_info_for_mime_type(mime_type);
+
+        let window = self.window();
+        let detail_label_primary = &window.imp().detail_title;
+        let detail_label_secondary = &window.imp().detail_sub_title;
+
+        detail_label_primary.set_text(&mime_type_entry.id());
+
+        if let Some(name) = mime_info.and_then(|info| info.comment()) {
+            detail_label_secondary.set_text(name);
+        } else {
+            detail_label_secondary.set_text("");
+        }
     }
 
     fn create_detail_row(

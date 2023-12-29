@@ -11,6 +11,7 @@ use mimeassoc::*;
 
 mod imp {
     use adw::ffi::{AdwHeaderBar, AdwToolbarView};
+    use gtk::ffi::GtkActionBar;
 
     use super::*;
 
@@ -38,12 +39,25 @@ mod imp {
         pub detail_list: TemplateChild<ListBox>,
 
         #[template_child]
-        pub detail_label_primary: TemplateChild<Label>,
+        pub detail_title: TemplateChild<Label>,
 
         #[template_child]
-        pub detail_label_secondary: TemplateChild<Label>,
+        pub detail_sub_title: TemplateChild<Label>,
+
         #[template_child]
         pub detail_header_bar: TemplateChild<HeaderBar>,
+
+        #[template_child]
+        pub detail_footer_bar: TemplateChild<ActionBar>,
+
+        #[template_child]
+        pub select_all_none_buttons: TemplateChild<Box>,
+
+        #[template_child]
+        pub select_all_button: TemplateChild<Button>,
+
+        #[template_child]
+        pub select_none_button: TemplateChild<Button>,
         // #[template_child]
         // pub mime_type_pane_detail_info_label: TemplateChild<Label>,
 
@@ -161,17 +175,15 @@ impl MainWindow {
                 window.app_controller().commit_changes();
             }));
 
-        // imp.application_detail_select_all.connect_clicked(
-        //     clone!(@weak self as window => move |_|{
-        //         window.app_controller().applications_pane_controller().on_select_all();
-        //     }),
-        // );
+        imp.select_all_button
+            .connect_clicked(clone!(@weak self as window => move |_|{
+                window.app_controller().applications_mode_controller().on_select_all();
+            }));
 
-        // imp.application_detail_select_none.connect_clicked(
-        //     clone!(@weak self as window => move |_|{
-        //         window.app_controller().applications_pane_controller().on_select_none();
-        //     }),
-        // );
+        imp.select_none_button
+            .connect_clicked(clone!(@weak self as window => move |_|{
+                window.app_controller().applications_mode_controller().on_select_none();
+            }));
     }
 
     fn setup_actions(&self) {

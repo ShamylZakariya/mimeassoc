@@ -91,12 +91,10 @@ impl ApplicationsModeController {
     }
 
     pub fn on_select_all(&self) {
-        log::debug!("on_select_all");
         self.select_all_or_none(true);
     }
 
     pub fn on_select_none(&self) {
-        log::debug!("on_select_none");
         self.select_all_or_none(false);
     }
 
@@ -174,6 +172,9 @@ impl ApplicationsModeController {
                 .downcast::<ApplicationEntry>()
                 .expect("ApplicationsModeController::application_entries should only contain ApplicationEntry"),
         );
+
+        // reveal the select all/none buttons group
+        window.imp().select_all_none_buttons.set_visible(true);
     }
 
     pub fn deactivate(&self) {
@@ -235,62 +236,58 @@ impl ApplicationsModeController {
     }
 
     fn update_detail_labels(&self, application_entry: &ApplicationEntry) {
-        let window = self.window();
-        let detail_label_primary = &window.imp().detail_label_primary;
-        let detail_label_secondary = &window.imp().detail_label_secondary;
         let desktop_entry = &application_entry
             .desktop_entry()
             .expect("Expect to get desktop entry id from ApplicationEntry");
+
+        let window = self.window();
+        let detail_label_primary = &window.imp().detail_title;
+        let detail_label_secondary = &window.imp().detail_sub_title;
 
         detail_label_primary.set_text(desktop_entry.name().unwrap_or("<Unnamed Application>"));
         detail_label_secondary.set_text(desktop_entry.id().id());
     }
 
     fn update_select_all_and_none_buttons(&self) {
-        log::warn!("update_select_all_and_none_buttons unimplemented")
+        let application_entry = self.imp().current_selection.borrow().clone();
+        if let Some(application_entry) = application_entry {
+            let mime_type_entries = application_entry.mime_type_assignments();
 
-        // let application_entry = self.imp().current_selection.borrow().clone();
-        // if let Some(application_entry) = application_entry {
-        //     let mime_type_entries = application_entry.mime_type_assignments();
+            let (can_select_all, can_select_none) = if mime_type_entries.n_items() > 1 {
+                let desktop_entry_id = application_entry
+                    .desktop_entry_id()
+                    .expect("Expect ApplicationEntry to have a DesktopEntryId");
+                let n_items = mime_type_entries.n_items();
+                let stores = self.stores();
+                let stores = stores.borrow();
+                let mime_associations_store = stores.mime_associations_store();
+                let mut num_assigned = 0;
 
-        //     let (can_select_all, can_select_none) = if mime_type_entries.n_items() > 1 {
-        //         let desktop_entry_id = application_entry
-        //             .desktop_entry_id()
-        //             .expect("Expect ApplicationEntry to have a DesktopEntryId");
-        //         let n_items = mime_type_entries.n_items();
-        //         let stores = self.stores();
-        //         let stores = stores.borrow();
-        //         let mime_associations_store = stores.mime_associations_store();
-        //         let mut num_assigned = 0;
+                for i in 0..n_items {
+                    let mime_type_entry = mime_type_entries.item(i).expect("Expected a valid row index")
+                            .downcast::<MimeTypeEntry>()
+                            .expect("ApplicationsModeController::application_entries() model should contain instances of MimeTypeEntry only");
 
-        //         for i in 0..n_items {
-        //             let mime_type_entry = mime_type_entries.item(i).expect("Expected a valid row index")
-        //                     .downcast::<MimeTypeEntry>()
-        //                     .expect("ApplicationsModeController::application_entries() model should contain instances of MimeTypeEntry only");
+                    let is_assigned_application = mime_associations_store
+                        .default_application_for(&mime_type_entry.mime_type())
+                        == Some(&desktop_entry_id);
+                    if is_assigned_application {
+                        num_assigned += 1;
+                    }
+                }
 
-        //             let is_assigned_application = mime_associations_store
-        //                 .default_application_for(&mime_type_entry.mime_type())
-        //                 == Some(&desktop_entry_id);
-        //             if is_assigned_application {
-        //                 num_assigned += 1;
-        //             }
-        //         }
+                (num_assigned < n_items, num_assigned > 0)
+            } else {
+                (false, false)
+            };
 
-        //         (num_assigned < n_items, num_assigned > 0)
-        //     } else {
-        //         (false, false)
-        //     };
-
-        //     let window = self.window();
-        //     window
-        //         .imp()
-        //         .application_detail_select_all
-        //         .set_sensitive(can_select_all);
-        //     window
-        //         .imp()
-        //         .application_detail_select_none
-        //         .set_sensitive(can_select_none);
-        // }
+            let window = self.window();
+            window.imp().select_all_button.set_sensitive(can_select_all);
+            window
+                .imp()
+                .select_none_button
+                .set_sensitive(can_select_none);
+        }
     }
 
     fn create_application_pane_primary_row(application_entry: &ApplicationEntry) -> ListBoxRow {
