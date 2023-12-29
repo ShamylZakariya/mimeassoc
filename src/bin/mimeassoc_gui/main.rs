@@ -5,7 +5,6 @@ mod resources;
 mod ui;
 
 use gtk::{gdk::Display, glib::*, prelude::*, *};
-use mimeassoc::*;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -113,8 +112,6 @@ fn main() -> glib::ExitCode {
 }
 
 fn load_css() {
-    log::debug!("main::load_css");
-
     let provider = CssProvider::new();
     provider.load_from_resource("/org/zakariya/MimeAssoc/style.css");
 
@@ -126,8 +123,6 @@ fn load_css() {
 }
 
 fn setup_shortcuts(app: &adw::Application) {
-    log::debug!("main::setup_shortcuts");
-
     // I presume `app` has an `app.quit` but I couldn't find documentation for it, so make our own
     let action_close = gio::SimpleAction::new("quit", None);
     action_close.connect_activate(clone!(@weak app => move |_, _| {
@@ -155,20 +150,17 @@ fn setup_main_window(window: &ui::MainWindow, command: Option<controllers::MainW
 }
 
 fn build_ui(app: &adw::Application) {
-    log::debug!("main::build_ui");
-
-    let window = ui::MainWindow::new(app);
-
-    let mut command: Option<controllers::MainWindowCommand> = None;
-
-    // command = Some(controllers::MainWindowCommand::ShowMimeType(
-    //     MimeType::parse("application/pdf").unwrap(),
+    // let command = Some(controllers::MainWindowCommand::ShowMimeType(
+    //     mimeassoc::MimeType::parse("application/pdf").unwrap(),
     // ));
 
-    command = Some(controllers::MainWindowCommand::ShowApplication(
-        DesktopEntryId::parse("org.gnome.Nautilus.desktop").unwrap(),
-    ));
+    // let command = Some(controllers::MainWindowCommand::ShowApplication(
+    //     mimeassoc::DesktopEntryId::parse("org.gnome.Nautilus.desktop").unwrap(),
+    // ));
 
+    let command: Option<controllers::MainWindowCommand> = None;
+
+    let window = ui::MainWindow::new(app);
     setup_main_window(&window, command);
 
     window.present();

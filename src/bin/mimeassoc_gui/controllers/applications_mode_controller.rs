@@ -173,8 +173,14 @@ impl ApplicationsModeController {
                 .expect("ApplicationsModeController::application_entries should only contain ApplicationEntry"),
         );
 
-        // reveal the select all/none buttons group
+        crate::ui::scroll_listbox_to_selected_row(list_box.get());
+
+        // reveal or hide components for applications mode
         window.imp().select_all_none_buttons.set_visible(true);
+        window
+            .imp()
+            .mime_type_mode_detail_info_label
+            .set_visible(false);
     }
 
     pub fn deactivate(&self) {

@@ -5,14 +5,10 @@ use adw::HeaderBar;
 use adw::{prelude::*, *};
 use glib::subclass::*;
 use gtk::{glib::*, *};
-use mimeassoc::*;
 
 ///////////////////////////////////////////////////////////////////////
 
 mod imp {
-    use adw::ffi::{AdwHeaderBar, AdwToolbarView};
-    use gtk::ffi::GtkActionBar;
-
     use super::*;
 
     #[derive(CompositeTemplate, Default)]
@@ -58,6 +54,9 @@ mod imp {
 
         #[template_child]
         pub select_none_button: TemplateChild<Button>,
+
+        #[template_child]
+        pub mime_type_mode_detail_info_label: TemplateChild<Label>,
         // #[template_child]
         // pub mime_type_pane_detail_info_label: TemplateChild<Label>,
 

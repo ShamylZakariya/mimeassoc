@@ -248,24 +248,6 @@
                                 <property name="spacing">6</property>
                                 <property name="name">detail_column</property>
 
-                                <!-- <child>
-                                  <object class="GtkLabel" id="detail_label_primary">
-                                    <property name="name">detail_label_primary</property>
-                                    <property name="label">Google Chrome</property>
-                                    <property name="wrap">true</property>
-                                    <property name="lines">-1</property>
-                                  </object>
-                                </child>
-
-                                <child>
-                                  <object class="GtkLabel" id="detail_label_secondary">
-                                    <property name="name">detail_label_secondary</property>
-                                    <property name="label">com.google.chrome.desktop</property>
-                                    <property name="wrap">true</property>
-                                    <property name="lines">-1</property>
-                                  </object>
-                                </child> -->
-
                                 <child>
                                   <object class="GtkListBox" id="detail_list">
                                     <property name="name">detail_list</property>
@@ -274,6 +256,17 @@
                                       <class name="boxed-list" />
                                     </style>
                                   </object>
+                                </child>
+
+                                <child>
+                                  <object class="GtkLabel" id="mime_type_mode_detail_info_label">
+                                    <property name="name">system-default-handler-warning-message</property>
+                                    <property name="label">This is the system default, and no other
+                                      application handling this mimetype is installed.</property>
+                                    <property name="wrap">true</property>
+                                    <property name="lines">-1</property>
+                                  </object>
+
                                 </child>
 
                               </object>

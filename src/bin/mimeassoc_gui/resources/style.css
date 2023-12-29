@@ -2,8 +2,6 @@
     Primary Column (left col)
 */
 
-#collections_list {}
-
 #collections_list .content {
     margin-top: 8pt;
     margin-bottom: 8pt;
@@ -23,7 +21,6 @@
 
 #primary_column {
     margin-top: 6px;
-    margin-bottom: 6px;
 }
 
 #mode_selector_row {
@@ -34,8 +31,6 @@
 /*
     Detail
 */
-
-#detail_column {}
 
 #detail_title {
     font-weight: bold;
