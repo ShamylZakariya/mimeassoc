@@ -127,6 +127,8 @@ impl ApplicationsModeController {
         }
     }
 
+    /// Called by AppController to make this mode controller "active"; takes ownership of
+    /// the primary and detail views, etc.
     pub fn activate(&self) {
         self.build_model();
 
@@ -184,6 +186,7 @@ impl ApplicationsModeController {
         }
     }
 
+    /// Called by the AppController to notify that this mode controller no longer has ownership of the UI.
     pub fn deactivate(&self) {
         let window = self.window();
         let signal_handler_ids = self.imp().signal_handlers.take();
