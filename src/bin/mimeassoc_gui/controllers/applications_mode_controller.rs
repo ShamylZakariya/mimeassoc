@@ -133,6 +133,13 @@ impl ApplicationsModeController {
         let window = self.window();
         let list_box = &window.imp().collections_list;
 
+        // reveal or hide components for applications mode
+        window.imp().select_all_none_buttons.set_visible(true);
+        window
+            .imp()
+            .mime_type_mode_detail_info_label
+            .set_visible(false);
+
         // bind the model to the list box
         list_box.bind_model(
             Some(self.application_entries()),
@@ -161,26 +168,20 @@ impl ApplicationsModeController {
         let signal_handler_ids = vec![sid];
         self.imp().signal_handlers.replace(signal_handler_ids);
 
-        // Select first entry
-        let row = list_box.row_at_index(0);
-        list_box.select_row(row.as_ref());
-        self.show_detail(
-            &self
-                .application_entries()
+        // If an item was previously selected, re-select it. Otherwise select the first item
+        let current_selection = self.imp().current_selection.borrow().clone();
+        if let Some(current_selection) = current_selection.and_then(|s| s.desktop_entry_id()) {
+            self.select_application(&current_selection);
+        } else {
+            let model = self.application_entries();
+            if let Some(first_item) = model
                 .item(0)
-                .expect("Expect non-empty application entries model")
-                .downcast::<ApplicationEntry>()
-                .expect("ApplicationsModeController::application_entries should only contain ApplicationEntry"),
-        );
-
-        crate::ui::scroll_listbox_to_selected_row(list_box.get());
-
-        // reveal or hide components for applications mode
-        window.imp().select_all_none_buttons.set_visible(true);
-        window
-            .imp()
-            .mime_type_mode_detail_info_label
-            .set_visible(false);
+                .and_downcast::<ApplicationEntry>()
+                .and_then(|a| a.desktop_entry_id())
+            {
+                self.select_application(&first_item);
+            }
+        }
     }
 
     pub fn deactivate(&self) {

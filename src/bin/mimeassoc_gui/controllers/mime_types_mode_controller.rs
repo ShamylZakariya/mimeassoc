@@ -100,10 +100,13 @@ impl MimeTypesModeController {
     pub fn activate(&self) {
         self.build_model();
 
-        // bind to selection events
         let window = self.window();
-        let list_box = &window.imp().collections_list;
 
+        // hide the select all/none buttons in the footer
+        window.imp().select_all_none_buttons.set_visible(false);
+
+        // bind to selection events
+        let list_box = &window.imp().collections_list;
         list_box.bind_model(
             Some(self.mime_type_entries()),
             clone!(@weak self as controller => @default-panic, move | obj | {
@@ -124,23 +127,16 @@ impl MimeTypesModeController {
 
         self.imp().signal_handlers.replace(vec![s_id]);
 
-        // Select first entry
-        let row = list_box.row_at_index(0);
-        list_box.select_row(row.as_ref());
-        self.show_detail(
-            &self
-                .mime_type_entries()
-                .item(0)
-                .expect("Expect non-empty mime type entries model")
-                .downcast::<MimeTypeEntry>()
-                .expect(
-                    "MimeTypesModeController::mime_type_entries() modzel should contain instances of MimeTypeEntry only",
-                ));
-
-        crate::ui::scroll_listbox_to_selected_row(list_box.get());
-
-        // hide the select all/none buttons in the footer
-        window.imp().select_all_none_buttons.set_visible(false);
+        // If an item was previously selected, re-select it. Otherwise select the first item
+        let current_selection = self.imp().current_selection.borrow().clone();
+        if let Some(current_selection) = current_selection {
+            self.select_mime_type(&current_selection.mime_type());
+        } else {
+            let model = self.mime_type_entries();
+            if let Some(first_item) = model.item(0).and_downcast::<MimeTypeEntry>() {
+                self.select_mime_type(&first_item.mime_type());
+            }
+        }
     }
 
     pub fn deactivate(&self) {
