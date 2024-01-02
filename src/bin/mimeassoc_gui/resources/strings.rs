@@ -65,7 +65,7 @@ impl Strings {
     }
 
     pub fn prune_orphaned_application_assignments_dialog_body() -> &'static str {
-        "This will remove any left-over application assignments from uninstalled applications?"
+        "This will remove any left-over application assignments from uninstalled applications."
     }
     pub fn prune_orphaned_application_assignments_dialog_action_proceed() -> &'static str {
         "Clear"
