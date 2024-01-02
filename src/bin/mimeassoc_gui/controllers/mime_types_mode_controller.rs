@@ -445,7 +445,7 @@ impl MimeTypesModeController {
     fn on_select_none(&self, mime_type: &MimeType) {
         let application_controller = self.app_controller();
         application_controller.assign_application_to_mimetype(mime_type, None);
-        application_controller.reload_active_page();
+        application_controller.reload_active_mode();
     }
 
     fn window(&self) -> MainWindow {

@@ -139,17 +139,9 @@ fn setup_shortcuts(app: &adw::Application) {
     app.set_accels_for_action("app.quit", &["<Ctrl>Q"]);
 }
 
-fn setup_main_window(window: &ui::MainWindow, command: Option<controllers::MainWindowCommand>) {
-    if let Some(command) = command {
-        window.app_controller().perform_command(command);
-    } else {
-        window
-            .app_controller()
-            .set_mode(controllers::Mode::ApplicationMode);
-    }
-}
-
 fn build_ui(app: &adw::Application) {
+    let window = ui::MainWindow::new(app);
+
     // let command = Some(controllers::MainWindowCommand::ShowMimeType(
     //     mimeassoc::MimeType::parse("application/pdf").unwrap(),
     // ));
@@ -160,8 +152,13 @@ fn build_ui(app: &adw::Application) {
 
     let command: Option<controllers::MainWindowCommand> = None;
 
-    let window = ui::MainWindow::new(app);
-    setup_main_window(&window, command);
+    if let Some(command) = command {
+        window.app_controller().perform_command(command);
+    } else {
+        window
+            .app_controller()
+            .set_mode(controllers::Mode::ApplicationMode);
+    }
 
     window.present();
 }

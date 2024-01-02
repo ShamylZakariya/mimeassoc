@@ -155,18 +155,11 @@ impl AppController {
         self.store_was_mutated();
     }
 
-    pub fn reload_active_page(&self) {
-        log::warn!("reload_active_page unimplemented")
-
-        // // Note: we're treating the page selection model as single selection
-        // let page_selection_model = self.window().imp().stack.pages();
-        // if page_selection_model.is_selected(0) {
-        //     self.applications_pane_controller().reload();
-        // } else if page_selection_model.is_selected(1) {
-        //     self.mime_types_pane_controller().reload();
-        // } else {
-        //     unreachable!("Somehow the page selection model has a page other than [0,1] selected.")
-        // }
+    pub fn reload_active_mode(&self) {
+        match self.mode() {
+            Mode::ApplicationMode => self.applications_mode_controller().reload(),
+            Mode::MimeTypeMode => self.mime_types_mode_controller().reload(),
+        }
     }
 
     pub fn discard_uncommitted_changes(&self) {
@@ -178,7 +171,7 @@ impl AppController {
         }
 
         self.store_was_mutated();
-        self.reload_active_page();
+        self.reload_active_mode();
     }
 
     pub fn undo(&self) {
@@ -193,7 +186,7 @@ impl AppController {
         if let Err(e) = result {
             self.show_error("Oh bother!", "Unable to perform undo", &e);
         } else {
-            self.reload_active_page();
+            self.reload_active_mode();
         }
     }
 
@@ -229,7 +222,7 @@ impl AppController {
         // Persist our changes and reload display
         self.show_toast("Application assignments result to system default successfully");
         self.commit_changes();
-        self.reload_active_page();
+        self.reload_active_mode();
     }
 
     pub fn commit_changes(&self) {
@@ -258,7 +251,7 @@ impl AppController {
         // Persist our changes and reload display
         self.show_toast("Orphaned application assignments cleared successfully");
         self.commit_changes();
-        self.reload_active_page();
+        self.reload_active_mode();
     }
 
     fn window(&self) -> MainWindow {
