@@ -147,7 +147,7 @@ impl AppController {
             .borrow_mut()
             .set_application_to_mimetype_binding(mime_type, desktop_entry_id)
         {
-            self.show_error("Error", "Unable to assign application to mimetype", &e);
+            self.show_error("Unable to assign application to mimetype", &e);
             return;
         }
 
@@ -167,7 +167,7 @@ impl AppController {
 
         let stores = self.stores();
         if let Err(e) = stores.borrow_mut().discard_uncommitted_changes() {
-            self.show_error("Error", "Unable to reload mime associations", &e);
+            self.show_error("Unable to reload mime associations", &e);
         }
 
         self.store_was_mutated();
@@ -184,7 +184,7 @@ impl AppController {
 
         self.store_was_mutated();
         if let Err(e) = result {
-            self.show_error("Oh bother!", "Unable to perform undo", &e);
+            self.show_error("Unable to perform undo", &e);
         } else {
             self.reload_active_mode();
         }
@@ -199,7 +199,7 @@ impl AppController {
                     .expect("AppController::setup_models() should only be set once");
                 self.store_was_mutated();
             }
-            Err(e) => self.show_error("Uh oh", "Unable to load necessary data", &e),
+            Err(e) => self.show_error("Unable to load necessary data", &e),
         }
     }
 
@@ -212,7 +212,6 @@ impl AppController {
             .reset_user_default_application_assignments()
         {
             self.show_error(
-                "Oh no",
                 "Unable to reset assigned applications to sytem defaults.",
                 &e,
             );
@@ -227,7 +226,7 @@ impl AppController {
 
     pub fn commit_changes(&self) {
         if let Err(e) = self.stores().borrow_mut().save() {
-            self.show_error("Oh no", "Unable to save changes", &e);
+            self.show_error("Unable to save changes", &e);
         } else {
             self.show_toast("Committed changes successfully");
         }
@@ -240,11 +239,7 @@ impl AppController {
             .borrow_mut()
             .prune_orphaned_application_assignments()
         {
-            self.show_error(
-                "Oh no",
-                "Unable clear out orphaned application assignments.",
-                &e,
-            );
+            self.show_error("Unable clear out orphaned application assignments.", &e);
             return;
         }
 
@@ -445,12 +440,32 @@ impl AppController {
         self.window().imp().toast_overlay.add_toast(toast);
     }
 
-    pub fn show_error(&self, title: &str, message: &str, error: &anyhow::Error) {
+    pub fn show_error(&self, message: &str, error: &anyhow::Error) {
         log::error!(
-            "AppController::show_error title: {}, message: {} error: {:?}",
-            title,
+            "AppController::show_error message: {} error: {:?}",
             message,
             error
         );
+
+        let window = self.window();
+        let ok_response = "ok";
+
+        // Create new dialog
+        let dialog = adw::MessageDialog::builder()
+            .heading(Strings::error_dialog_title())
+            .body(Strings::error_dialog_body(
+                message,
+                error.to_string().as_str(),
+            ))
+            .transient_for(&window)
+            .modal(true)
+            .destroy_with_parent(true)
+            .default_response(ok_response)
+            .build();
+
+        dialog.add_responses(&[(ok_response, Strings::ok())]);
+
+        dialog.set_response_appearance(ok_response, ResponseAppearance::Suggested);
+        dialog.present();
     }
 }

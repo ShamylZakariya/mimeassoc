@@ -71,6 +71,16 @@ impl Strings {
         "Clear"
     }
 
+    // Strings for Error dialog
+
+    pub fn error_dialog_title() -> &'static str {
+        "Error"
+    }
+
+    pub fn error_dialog_body(message: &str, error: &str) -> String {
+        format!("{}\nError: \"{}\"", message, error)
+    }
+
     // Strings for About box
 
     pub fn about_window_release_notes() -> &'static str {
@@ -95,6 +105,10 @@ impl Strings {
     }
 
     // Etc
+
+    pub fn ok() -> &'static str {
+        "Ok"
+    }
 
     pub fn cancel() -> &'static str {
         "Cancel"
