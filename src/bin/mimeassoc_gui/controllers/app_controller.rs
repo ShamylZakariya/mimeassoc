@@ -440,6 +440,9 @@ impl AppController {
 
     pub fn show_toast(&self, message: &str) {
         log::debug!("AppController::show_toast: {}", message,);
+
+        let toast = adw::Toast::builder().title(message).timeout(1).build();
+        self.window().imp().toast_overlay.add_toast(toast);
     }
 
     pub fn show_error(&self, title: &str, message: &str, error: &anyhow::Error) {

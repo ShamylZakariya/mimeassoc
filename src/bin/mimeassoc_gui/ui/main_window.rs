@@ -1,8 +1,8 @@
 use std::cell::OnceCell;
 
 use adw::subclass::prelude::*;
-use adw::HeaderBar;
 use adw::{prelude::*, *};
+use adw::{HeaderBar, ToastOverlay};
 use glib::subclass::*;
 use gtk::{glib::*, *};
 
@@ -57,30 +57,9 @@ mod imp {
 
         #[template_child]
         pub mime_type_mode_detail_info_label: TemplateChild<Label>,
-        // #[template_child]
-        // pub mime_type_pane_detail_info_label: TemplateChild<Label>,
 
-        // // applications page UI bindings
-        // #[template_child]
-        // pub applications_page: TemplateChild<ViewStackPage>,
-
-        // #[template_child]
-        // pub applications_scrolled_window: TemplateChild<ScrolledWindow>,
-
-        // #[template_child]
-        // pub applications_list_box: TemplateChild<ListBox>,
-
-        // #[template_child]
-        // pub application_to_mime_type_assignment_scrolled_window: TemplateChild<ScrolledWindow>,
-
-        // #[template_child]
-        // pub application_to_mime_type_assignment_list_box: TemplateChild<ListBox>,
-
-        // #[template_child]
-        // pub application_detail_select_all: TemplateChild<Button>,
-
-        // #[template_child]
-        // pub application_detail_select_none: TemplateChild<Button>,
+        #[template_child]
+        pub toast_overlay: TemplateChild<ToastOverlay>,
     }
 
     // The central trait for subclassing a GObject

@@ -60,236 +60,243 @@
       </object>
     </child>
     <property name="content">
-      <object class="AdwNavigationSplitView" id="split_view">
-        <property name="min-sidebar-width">360</property>
-        <property name="sidebar">
-          <object class="AdwNavigationPage">
-            <!--Primary View -->
+      <object class="AdwToastOverlay" id="toast_overlay">
+        <child>
+
+          <object class="AdwNavigationSplitView" id="split_view">
+            <property name="min-sidebar-width">360</property>
+            <property name="sidebar">
+              <object class="AdwNavigationPage">
+                <!--Primary View -->
 
 
-            <property name="title" bind-source="MainWindow"
-              bind-property="title" bind-flags="sync-create" />
-            <property name="child">
-              <object class="AdwToolbarView">
-                <child type="top">
-                  <object class="AdwHeaderBar">
-                    <child type="end">
-                      <object class="GtkMenuButton">
-                        <property name="icon-name">open-menu-symbolic</property>
-                        <property name="tooltip-text" translatable="yes">Main Menu</property>
-                        <property name="menu-model">main-menu</property>
+                <property name="title" bind-source="MainWindow"
+                  bind-property="title" bind-flags="sync-create" />
+                <property name="child">
+                  <object class="AdwToolbarView">
+                    <child type="top">
+                      <object class="AdwHeaderBar">
+                        <child type="end">
+                          <object class="GtkMenuButton">
+                            <property name="icon-name">open-menu-symbolic</property>
+                            <property name="tooltip-text" translatable="yes">Main Menu</property>
+                            <property name="menu-model">main-menu</property>
+                          </object>
+                        </child>
                       </object>
                     </child>
-                  </object>
-                </child>
-                <property name="content">
-                  <!-- Primary View Contents -->
+                    <property name="content">
+                      <!-- Primary View Contents -->
 
-                  <object class="GtkBox">
-                    <property name="orientation">vertical</property>
-                    <property name="spacing">6</property>
-                    <property name="name">primary_column</property>
-                    <child>
-
-                      <!-- horizontal box holding mode selector -->
                       <object class="GtkBox">
-                        <property name="orientation">horizontal</property>
-                        <property name="halign">center</property>
+                        <property name="orientation">vertical</property>
                         <property name="spacing">6</property>
-                        <property name="name">mode_selector_row</property>
-
+                        <property name="name">primary_column</property>
                         <child>
-                          <object class="GtkToggleButton" id="mode_selector_applications">
+
+                          <!-- horizontal box holding mode selector -->
+                          <object class="GtkBox">
+                            <property name="orientation">horizontal</property>
+                            <property name="halign">center</property>
+                            <property name="spacing">6</property>
+                            <property name="name">mode_selector_row</property>
+
                             <child>
-                              <object class="AdwButtonContent">
-                                <property name="label" translatable="true">Applications</property>
-                                <property name="icon-name">system-run-symbolic</property>
+                              <object class="GtkToggleButton" id="mode_selector_applications">
+                                <child>
+                                  <object class="AdwButtonContent">
+                                    <property name="label" translatable="true">Applications</property>
+                                    <property name="icon-name">system-run-symbolic</property>
+                                  </object>
+                                </child>
                               </object>
                             </child>
-                          </object>
-                        </child>
 
-                        <child>
-                          <object class="GtkToggleButton" id="mode_selector_mime_types">
-                            <property name="group">mode_selector_applications</property>
                             <child>
-                              <object class="AdwButtonContent">
-                                <property name="label" translatable="true">Mime Types</property>
-                                <property name="icon-name">emblem-documents-symbolic</property>
+                              <object class="GtkToggleButton" id="mode_selector_mime_types">
+                                <property name="group">mode_selector_applications</property>
+                                <child>
+                                  <object class="AdwButtonContent">
+                                    <property name="label" translatable="true">Mime Types</property>
+                                    <property name="icon-name">emblem-documents-symbolic</property>
+                                  </object>
+                                </child>
                               </object>
                             </child>
+
                           </object>
+
                         </child>
 
+                        <!-- TODO: this will be a good place for the search field -->
+
+                        <child>
+
+                          <!-- collections list view / scrolled window  -->
+                          <object class="GtkScrolledWindow">
+                            <property name="vexpand">true</property>
+                            <property name="child">
+
+                              <object class="GtkListBox" id="collections_list">
+                                <property name="name">collections_list</property>
+                                <style>
+                                  <class name="navigation-sidebar" />
+                                </style>
+                              </object>
+
+                            </property>
+                          </object>
+
+
+                        </child>
                       </object>
 
+
+                      <!-- Primary View Contents -->
+                    </property>
+                  </object>
+                </property>
+
+                <!-- Primary View -->
+              </object>
+            </property>
+            <property name="content">
+              <object class="AdwNavigationPage">
+                <!--Detail View -->
+
+
+                <property name="title" translatable="true">Content</property>
+                <property name="tag">content</property>
+                <property name="child">
+                  <object class="AdwToolbarView">
+
+
+                    <child type="top">
+                      <object class="AdwHeaderBar" id="detail_header_bar">
+                        <property name="show-title">true</property>
+                        <property name="title-widget">
+                          <object class="GtkBox">
+                            <property name="orientation">vertical</property>
+                            <property name="spacing">0</property>
+                            <child>
+                              <object class="GtkLabel" id="detail_title">
+                                <property name="name">detail_title</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkLabel" id="detail_sub_title">
+                                <property name="name">detail_sub_title</property>
+                              </object>
+                            </child>
+
+                          </object>
+
+
+                        </property>
+                      </object>
                     </child>
 
-                    <!-- TODO: this will be a good place for the search field -->
+                    <child type="bottom">
+                      <object class="GtkActionBar" id="detail_footer_bar">
+                        <child type="start">
 
-                    <child>
+                          <object class="GtkBox" id="select_all_none_buttons">
+                            <property name="orientation">horizontal</property>
+                            <property name="spacing">6</property>
+                            <child>
+                              <object class="GtkButton" id="select_all_button">
+                                <property name="label">Select All</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkButton" id="select_none_button">
+                                <property name="label">Select None</property>
+                              </object>
+                            </child>
+                          </object>
 
-                      <!-- collections list view / scrolled window  -->
+                        </child>
+                        <child type="end">
+                          <object class="GtkButton" id="commit_button">
+                            <property name="label">Commit</property>
+                            <style>
+                              <class name="suggested-action" />
+                            </style>
+                          </object>
+
+                        </child>
+                      </object>
+                    </child>
+
+                    <property name="content">
+                      <!-- Detail View Contents -->
+
                       <object class="GtkScrolledWindow">
                         <property name="vexpand">true</property>
                         <property name="child">
+                          <object class="GtkBox">
+                            <property name="orientation">horizontal</property>
+                            <property name="halign">center</property>
+                            <property name="name">detail_column</property>
+                            <child>
 
-                          <object class="GtkListBox" id="collections_list">
-                            <property name="name">collections_list</property>
-                            <style>
-                              <class name="navigation-sidebar" />
-                            </style>
+
+                              <object class="AdwClamp">
+                                <property name="maximum-size">480</property>
+
+                                <child>
+
+                                  <object class="GtkBox">
+                                    <property name="orientation">vertical</property>
+                                    <property name="spacing">6</property>
+                                    <property name="name">detail_column</property>
+
+                                    <child>
+                                      <object class="GtkListBox" id="detail_list">
+                                        <property name="name">detail_list</property>
+                                        <property name="valign">start</property>
+                                        <style>
+                                          <class name="boxed-list" />
+                                        </style>
+                                      </object>
+                                    </child>
+
+                                    <child>
+                                      <object class="GtkLabel" id="mime_type_mode_detail_info_label">
+                                        <property name="name">system-default-handler-warning-message</property>
+                                        <property name="label">This is the system default, and no other
+                                          application handling this mimetype is installed.</property>
+                                        <property name="wrap">true</property>
+                                        <property name="lines">-1</property>
+                                      </object>
+
+                                    </child>
+
+                                  </object>
+                                </child>
+
+                              </object>
+                            </child>
+
                           </object>
 
                         </property>
                       </object>
 
 
-                    </child>
-                  </object>
-
-
-                  <!-- Primary View Contents -->
-                </property>
-              </object>
-            </property>
-
-            <!-- Primary View -->
-          </object>
-        </property>
-        <property name="content">
-          <object class="AdwNavigationPage">
-            <!--Detail View -->
-
-
-            <property name="title" translatable="true">Content</property>
-            <property name="tag">content</property>
-            <property name="child">
-              <object class="AdwToolbarView">
-
-
-                <child type="top">
-                  <object class="AdwHeaderBar" id="detail_header_bar">
-                    <property name="show-title">true</property>
-                    <property name="title-widget">
-                      <object class="GtkBox">
-                        <property name="orientation">vertical</property>
-                        <property name="spacing">0</property>
-                        <child>
-                          <object class="GtkLabel" id="detail_title">
-                            <property name="name">detail_title</property>
-                          </object>
-                        </child>
-                        <child>
-                          <object class="GtkLabel" id="detail_sub_title">
-                            <property name="name">detail_sub_title</property>
-                          </object>
-                        </child>
-
-                      </object>
-
-
+                      <!-- Detail View Contents -->
                     </property>
                   </object>
-                </child>
-
-                <child type="bottom">
-                  <object class="GtkActionBar" id="detail_footer_bar">
-                    <child type="start">
-
-                      <object class="GtkBox" id="select_all_none_buttons">
-                        <property name="orientation">horizontal</property>
-                        <property name="spacing">6</property>
-                        <child>
-                          <object class="GtkButton" id="select_all_button">
-                            <property name="label">Select All</property>
-                          </object>
-                        </child>
-                        <child>
-                          <object class="GtkButton" id="select_none_button">
-                            <property name="label">Select None</property>
-                          </object>
-                        </child>
-                      </object>
-
-                    </child>
-                    <child type="end">
-                      <object class="GtkButton" id="commit_button">
-                        <property name="label">Commit</property>
-                        <style>
-                          <class name="suggested-action" />
-                        </style>
-                      </object>
-
-                    </child>
-                  </object>
-                </child>
-
-                <property name="content">
-                  <!-- Detail View Contents -->
-
-                  <object class="GtkScrolledWindow">
-                    <property name="vexpand">true</property>
-                    <property name="child">
-                      <object class="GtkBox">
-                        <property name="orientation">horizontal</property>
-                        <property name="halign">center</property>
-                        <property name="name">detail_column</property>
-                        <child>
-
-
-                          <object class="AdwClamp">
-                            <property name="maximum-size">480</property>
-
-                            <child>
-
-                              <object class="GtkBox">
-                                <property name="orientation">vertical</property>
-                                <property name="spacing">6</property>
-                                <property name="name">detail_column</property>
-
-                                <child>
-                                  <object class="GtkListBox" id="detail_list">
-                                    <property name="name">detail_list</property>
-                                    <property name="valign">start</property>
-                                    <style>
-                                      <class name="boxed-list" />
-                                    </style>
-                                  </object>
-                                </child>
-
-                                <child>
-                                  <object class="GtkLabel" id="mime_type_mode_detail_info_label">
-                                    <property name="name">system-default-handler-warning-message</property>
-                                    <property name="label">This is the system default, and no other
-                                      application handling this mimetype is installed.</property>
-                                    <property name="wrap">true</property>
-                                    <property name="lines">-1</property>
-                                  </object>
-
-                                </child>
-
-                              </object>
-                            </child>
-
-                          </object>
-                        </child>
-
-                      </object>
-
-                    </property>
-                  </object>
-
-
-                  <!-- Detail View Contents -->
                 </property>
+
+                <!-- Detail View -->
               </object>
             </property>
+          </object> <!-- AdwNavigationSplitView -->
 
-            <!-- Detail View -->
-          </object>
-        </property>
-      </object>
+        </child>
+      </object> <!-- AdwToatsOverlay -->
+
     </property>
   </template>
 
