@@ -60,6 +60,9 @@ mod imp {
 
         #[template_child]
         pub toast_overlay: TemplateChild<ToastOverlay>,
+
+        #[template_child]
+        pub search_entry: TemplateChild<SearchEntry>,
     }
 
     // The central trait for subclassing a GObject

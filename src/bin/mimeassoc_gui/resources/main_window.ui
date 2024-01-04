@@ -129,6 +129,11 @@
                         </child>
 
                         <!-- TODO: this will be a good place for the search field -->
+                        <child>
+                          <object class="GtkSearchEntry" id="search_entry">
+                            <property name="name">search_entry</property>
+                          </object>
+                        </child>
 
                         <child>
 
