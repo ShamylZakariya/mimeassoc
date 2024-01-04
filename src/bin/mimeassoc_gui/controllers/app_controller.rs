@@ -448,7 +448,7 @@ impl AppController {
         );
 
         let window = self.window();
-        let ok_response = "ok";
+        let copy_to_clipboard_response = "ctcp";
 
         // Create new dialog
         let dialog = adw::MessageDialog::builder()
@@ -460,12 +460,34 @@ impl AppController {
             .transient_for(&window)
             .modal(true)
             .destroy_with_parent(true)
-            .default_response(ok_response)
+            .default_response(copy_to_clipboard_response)
             .build();
 
-        dialog.add_responses(&[(ok_response, Strings::ok())]);
+        dialog.add_responses(&[(
+            copy_to_clipboard_response,
+            Strings::error_dialog_copy_to_clipboard(),
+        )]);
 
-        dialog.set_response_appearance(ok_response, ResponseAppearance::Suggested);
+        dialog.set_response_appearance(copy_to_clipboard_response, ResponseAppearance::Suggested);
+
+        let message_copy = message.to_string();
+        let error_message = format!("{:?}", error);
+        dialog.connect_response(
+            None,
+            clone!(@weak self as app_controller => move |dialog, response|{
+                dialog.destroy();
+                if response == copy_to_clipboard_response {
+                    app_controller.copy_error_to_clipboard(message_copy.as_str(), error_message.as_str());
+                    return;
+                }
+            }),
+        );
+
         dialog.present();
+    }
+
+    fn copy_error_to_clipboard(&self, message: &str, error: &str) {
+        let clipboard = self.window().clipboard();
+        clipboard.set_text(format!("{}\n{}", message, error).as_str());
     }
 }

@@ -78,7 +78,11 @@ impl Strings {
     }
 
     pub fn error_dialog_body(message: &str, error: &str) -> String {
-        format!("{}\nError: \"{}\"", message, error)
+        format!("{}\n{}", message, error)
+    }
+
+    pub fn error_dialog_copy_to_clipboard() -> &'static str {
+        "Copy to Clipboard"
     }
 
     // Strings for About box
@@ -105,10 +109,6 @@ impl Strings {
     }
 
     // Etc
-
-    pub fn ok() -> &'static str {
-        "Ok"
-    }
 
     pub fn cancel() -> &'static str {
         "Cancel"
