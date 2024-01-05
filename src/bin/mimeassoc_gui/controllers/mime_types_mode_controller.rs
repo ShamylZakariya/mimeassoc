@@ -150,6 +150,10 @@ impl MimeTypesModeController {
         }
     }
 
+    pub fn on_search_changed(&self, new_search_string: Option<&str>) {
+        log::debug!("on_search_changed: {:?}", new_search_string);
+    }
+
     /// Builds the ListStore model which backs the mime types listbox
     fn build_model(&self) {
         if self.imp().mime_type_entries.get().is_some() {

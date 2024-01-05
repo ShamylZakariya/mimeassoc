@@ -195,6 +195,10 @@ impl ApplicationsModeController {
         }
     }
 
+    pub fn on_search_changed(&self, new_search_string: Option<&str>) {
+        log::debug!("on_search_changed: {:?}", new_search_string);
+    }
+
     /// Builds the ListStore model which backs the applications listbox
     fn build_model(&self) {
         if self.imp().application_entries.get().is_some() {

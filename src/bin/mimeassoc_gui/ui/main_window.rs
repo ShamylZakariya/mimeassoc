@@ -165,6 +165,12 @@ impl MainWindow {
             .connect_clicked(clone!(@weak self as window => move |_|{
                 window.app_controller().applications_mode_controller().on_select_none();
             }));
+
+        imp.search_entry.connect_search_changed(
+            clone!(@weak self as window => move |_|{
+                window.app_controller().on_search_changed();
+            }),
+        );
     }
 
     fn setup_actions(&self) {

@@ -124,6 +124,9 @@ impl AppController {
         }
 
         self.imp().mode.replace(Some(mode));
+
+        // notify the new mode of the current search string
+        self.on_search_changed();
     }
 
     pub fn mode(&self) -> Mode {
@@ -489,5 +492,26 @@ impl AppController {
     fn copy_error_to_clipboard(&self, message: &str, error: &str) {
         let clipboard = self.window().clipboard();
         clipboard.set_text(format!("{}\n{}", message, error).as_str());
+    }
+
+    fn current_search_string(&self) -> Option<String> {
+        let window = self.window();
+        let entry = &window.imp().search_entry;
+        if entry.text().is_empty() {
+            None
+        } else {
+            Some(entry.text().to_string())
+        }
+    }
+
+    pub fn on_search_changed(&self) {
+        match self.mode() {
+            Mode::ApplicationMode => self
+                .applications_mode_controller()
+                .on_search_changed(self.current_search_string().as_deref()),
+            Mode::MimeTypeMode => self
+                .mime_types_mode_controller()
+                .on_search_changed(self.current_search_string().as_deref()),
+        }
     }
 }
