@@ -25,6 +25,7 @@ mod imp {
         pub application_entries: OnceCell<gio::ListStore>,
         pub current_selection: RefCell<Option<ApplicationEntry>>,
         pub signal_handlers: RefCell<Vec<SignalHandlerId>>,
+        pub current_search_string: RefCell<Option<String>>,
     }
 
     // The central trait for subclassing a GObject
@@ -149,8 +150,15 @@ impl ApplicationsModeController {
                 let model = obj
                     .downcast_ref()
                     .unwrap();
-                let row = Self::create_application_pane_primary_row(model);
+                let row = Self::create_primary_row(model);
                 row.upcast()
+            }),
+        );
+
+        // delegate filtering to ApplicationsModeController::filter_func
+        list_box.set_filter_func(
+            clone!(@weak self as controller => @default-panic,  move |row| {
+                controller.filter_func(row)
             }),
         );
 
@@ -189,6 +197,13 @@ impl ApplicationsModeController {
     /// Called by the AppController to notify that this mode controller no longer has ownership of the UI.
     pub fn deactivate(&self) {
         let window = self.window();
+
+        // unset our filter func
+        window
+            .imp()
+            .collections_list
+            .set_filter_func(super::default_listbox_filter_func);
+
         let signal_handler_ids = self.imp().signal_handlers.take();
         for s_id in signal_handler_ids.into_iter() {
             window.imp().collections_list.disconnect(s_id);
@@ -196,7 +211,34 @@ impl ApplicationsModeController {
     }
 
     pub fn on_search_changed(&self, new_search_string: Option<&str>) {
-        log::debug!("on_search_changed: {:?}", new_search_string);
+        self.imp()
+            .current_search_string
+            .replace(new_search_string.map(str::to_string));
+        self.window().imp().collections_list.invalidate_filter()
+    }
+
+    fn filter_func(&self, row: &ListBoxRow) -> bool {
+        if let Some(current_search_string) = self.imp().current_search_string.borrow().as_ref() {
+            let current_search_string = current_search_string.to_lowercase();
+
+            let index = row.index();
+            let application_entry = self.application_entries().item(index as u32)
+                        .expect("Expected valid item index")
+                        .downcast::<ApplicationEntry>()
+                        .expect("ApplicationsModeController::application_entries should only contain ApplicationEntry");
+
+            let desktop_entry = &application_entry
+                .desktop_entry()
+                .expect("Expect to get desktop entry id from ApplicationEntry");
+
+            let display_name = desktop_entry.name().unwrap_or("").to_lowercase();
+            let id = desktop_entry.id().id().to_lowercase();
+
+            display_name.contains(current_search_string.as_str())
+                || id.contains(current_search_string.as_str())
+        } else {
+            true
+        }
     }
 
     /// Builds the ListStore model which backs the applications listbox
@@ -234,7 +276,7 @@ impl ApplicationsModeController {
         list_box.bind_model(Some(&model),
             clone!(@weak self as controller, @strong application_entry => @default-panic, move |obj| {
                 let model = obj.downcast_ref().expect("The object should be of type `MimeTypeEntry`.");
-                let row = controller.create_application_pane_detail_row(&application_entry, model);
+                let row = controller.create_detail_row(&application_entry, model);
                 row.upcast()
             }));
 
@@ -304,7 +346,7 @@ impl ApplicationsModeController {
         }
     }
 
-    fn create_application_pane_primary_row(application_entry: &ApplicationEntry) -> ListBoxRow {
+    fn create_primary_row(application_entry: &ApplicationEntry) -> ListBoxRow {
         let application_name_label = Label::builder()
             .wrap(true)
             .wrap_mode(pango::WrapMode::Word)
@@ -338,7 +380,7 @@ impl ApplicationsModeController {
         ListBoxRow::builder().child(&content).build()
     }
 
-    fn create_application_pane_detail_row(
+    fn create_detail_row(
         self,
         application_entry: &ApplicationEntry,
         mime_type_entry: &MimeTypeEntry,

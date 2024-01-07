@@ -23,10 +23,10 @@ mod imp {
         pub window: OnceCell<WeakRef<MainWindow>>,
         pub app_controller: OnceCell<WeakRef<AppController>>,
         pub mime_type_entries: OnceCell<gio::ListStore>,
-
         pub application_check_button_group: RefCell<Option<CheckButton>>,
         pub current_selection: RefCell<Option<MimeTypeEntry>>,
         pub signal_handlers: RefCell<Vec<SignalHandlerId>>,
+        pub current_search_string: RefCell<Option<String>>,
     }
 
     // The central trait for subclassing a GObject
@@ -113,8 +113,15 @@ impl MimeTypesModeController {
             Some(self.mime_type_entries()),
             clone!(@weak self as controller => @default-panic, move | obj | {
                 let model = obj.downcast_ref().unwrap();
-                let row = controller.create_selection_row(model);
+                let row = controller.create_primary_row(model);
                 row.upcast()
+            }),
+        );
+
+        // delegate filtering to MimeTypesModeController::filter_func
+        list_box.set_filter_func(
+            clone!(@weak self as controller => @default-panic,  move |row| {
+                controller.filter_func(row)
             }),
         );
 
@@ -144,6 +151,13 @@ impl MimeTypesModeController {
     /// Called by the AppController to notify that this mode controller no longer has ownership of the UI.
     pub fn deactivate(&self) {
         let window = self.window();
+
+        // unset our filter func
+        window
+            .imp()
+            .collections_list
+            .set_filter_func(super::default_listbox_filter_func);
+
         let signal_handler_ids = self.imp().signal_handlers.take();
         for s_id in signal_handler_ids.into_iter() {
             window.imp().collections_list.disconnect(s_id);
@@ -151,7 +165,54 @@ impl MimeTypesModeController {
     }
 
     pub fn on_search_changed(&self, new_search_string: Option<&str>) {
-        log::debug!("on_search_changed: {:?}", new_search_string);
+        self.imp()
+            .current_search_string
+            .replace(new_search_string.map(str::to_string));
+        self.window().imp().collections_list.invalidate_filter()
+    }
+
+    fn filter_func(&self, row: &ListBoxRow) -> bool {
+        if let Some(current_search_string) = self.imp().current_search_string.borrow().as_ref() {
+            let current_search_string = current_search_string.to_lowercase();
+
+            let index = row.index();
+            let mime_type_entry = self
+                .mime_type_entries()
+                .item(index as u32)
+                .expect("Expected valid item index")
+                .downcast::<MimeTypeEntry>()
+                .expect(
+                    "MimeTypesModeController::mime_type_entries should only contain MimeTypeEntry",
+                );
+
+            let stores = self.stores();
+            let stores = stores.borrow();
+            let mime_info_store = stores.mime_info_store();
+            let mime_type = &mime_type_entry.mime_type();
+
+            if mime_type
+                .to_string()
+                .to_lowercase()
+                .contains(current_search_string.as_str())
+            {
+                return true;
+            }
+
+            let mime_info = mime_info_store.get_info_for_mime_type(mime_type);
+
+            if let Some(comment) = mime_info.and_then(|info| info.comment()) {
+                if comment
+                    .to_lowercase()
+                    .contains(current_search_string.as_str())
+                {
+                    return true;
+                }
+            }
+
+            false
+        } else {
+            true
+        }
     }
 
     /// Builds the ListStore model which backs the mime types listbox
@@ -180,7 +241,7 @@ impl MimeTypesModeController {
     }
 
     /// Creates a row for the primary/selection list box
-    fn create_selection_row(&self, model: &MimeTypeEntry) -> ListBoxRow {
+    fn create_primary_row(&self, model: &MimeTypeEntry) -> ListBoxRow {
         let stores = self.stores();
         let stores = stores.borrow();
         let mime_info_store = stores.mime_info_store();
