@@ -79,11 +79,11 @@ impl MimeTypesModeController {
         let mime_type_entries = self.mime_type_entries();
         let count = mime_type_entries.n_items();
         for i in 0..count {
-            let model = mime_type_entries.item(i)
+            let mime_type_entry = mime_type_entries.item(i)
                         .expect("Expected a valid row index")
                         .downcast::<MimeTypeEntry>()
                         .expect("MimeTypesModeController::mime_type_entries() model should contain instances of MimeTypeEntry only");
-            if &model.mime_type() == mime_type {
+            if &mime_type_entry.mime_type() == mime_type {
                 if let Some(row) = list_box.row_at_index(i as i32) {
                     list_box.select_row(Some(&row));
 
@@ -112,8 +112,8 @@ impl MimeTypesModeController {
         list_box.bind_model(
             Some(self.mime_type_entries()),
             clone!(@weak self as controller => @default-panic, move | obj | {
-                let model = obj.downcast_ref().unwrap();
-                let row = controller.create_primary_row(model);
+                let mime_type_entry = obj.downcast_ref().unwrap();
+                let row = controller.create_primary_row(mime_type_entry);
                 row.upcast()
             }),
         );
@@ -127,11 +127,11 @@ impl MimeTypesModeController {
 
         let s_id = list_box.connect_row_activated(clone!(@weak self as controller => move |_, row|{
             let index = row.index();
-            let model = controller.mime_type_entries().item(index as u32)
+            let mime_type_entry = controller.mime_type_entries().item(index as u32)
                 .expect("Expected a valid row index")
                 .downcast::<MimeTypeEntry>()
                 .expect("MimeTypesModeController::mime_type_entries() model should contain instances of MimeTypeEntry only");
-            controller.show_detail(&model);
+            controller.show_detail(&mime_type_entry);
         }));
 
         self.imp().signal_handlers.replace(vec![s_id]);
@@ -141,8 +141,8 @@ impl MimeTypesModeController {
         if let Some(current_selection) = current_selection {
             self.select_mime_type(&current_selection.mime_type());
         } else {
-            let model = self.mime_type_entries();
-            if let Some(first_item) = model.item(0).and_downcast::<MimeTypeEntry>() {
+            let list_store = self.mime_type_entries();
+            if let Some(first_item) = list_store.item(0).and_downcast::<MimeTypeEntry>() {
                 self.select_mime_type(&first_item.mime_type());
             }
         }
@@ -234,10 +234,10 @@ impl MimeTypesModeController {
             .filter(|e| e.supported_application_entries().n_items() > 0)
             .collect::<Vec<_>>();
 
-        let model = gio::ListStore::with_type(MimeTypeEntry::static_type());
-        model.extend_from_slice(&mime_type_entries);
+        let list_store = gio::ListStore::with_type(MimeTypeEntry::static_type());
+        list_store.extend_from_slice(&mime_type_entries);
 
-        self.imp().mime_type_entries.set(model).unwrap();
+        self.imp().mime_type_entries.set(list_store).unwrap();
     }
 
     /// Creates a row for the primary/selection list box
@@ -307,7 +307,7 @@ impl MimeTypesModeController {
             .take();
 
         let application_entries = mime_type_entry.supported_application_entries();
-        let model_count = application_entries.n_items();
+        let num_application_entries = application_entries.n_items();
 
         //insert an empty entry at beginning of list - this will be the None entry
         application_entries.insert(0, &ApplicationEntry::none());
@@ -316,7 +316,7 @@ impl MimeTypesModeController {
         list_box.bind_model(Some(&model),
             clone!(@weak self as controller, @strong mime_type_entry => @default-panic, move |obj| {
                 let application_entry = obj.downcast_ref().expect("The object should be of type `ApplicationEntry`.");
-                controller.create_detail_row(&mime_type_entry, application_entry, model_count).upcast()
+                controller.create_detail_row(&mime_type_entry, application_entry, num_application_entries).upcast()
             }));
 
         // Update the info label - basically, if only one application is shown, and it is the
@@ -324,7 +324,7 @@ impl MimeTypesModeController {
         // in ::create_application_row, and here we show an info label to explain why
 
         let info_label = &window.imp().mime_type_mode_detail_info_label;
-        let show_info_label = if model_count == 1 {
+        let show_info_label = if num_application_entries == 1 {
             // if the number of items is 1, and that item is the system default, show the info message
             let desktop_entry = model
                 .item(1) // Recall, there's an empty ApplicationEntry at position 0

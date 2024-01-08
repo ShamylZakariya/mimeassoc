@@ -74,12 +74,12 @@ impl ApplicationsModeController {
         let application_entries = self.application_entries();
         let count = application_entries.n_items();
         for i in 0..count {
-            let model = application_entries.item(i)
+            let application_entry = application_entries.item(i)
                         .expect("Expected a valid row index")
                         .downcast::<ApplicationEntry>()
                         .expect("ApplicationsModeController::application_entries() model should contain instances of ApplicationEntry only");
 
-            if let Some(id) = model.desktop_entry_id() {
+            if let Some(id) = application_entry.desktop_entry_id() {
                 if &id == desktop_entry_id {
                     list_box.select_row(list_box.row_at_index(i as i32).as_ref());
 
@@ -147,10 +147,10 @@ impl ApplicationsModeController {
         list_box.bind_model(
             Some(self.application_entries()),
             clone!(@weak self as controller => @default-panic, move |obj| {
-                let model = obj
+                let application_entry = obj
                     .downcast_ref()
                     .unwrap();
-                let row = Self::create_primary_row(model);
+                let row = Self::create_primary_row(application_entry);
                 row.upcast()
             }),
         );
@@ -166,11 +166,11 @@ impl ApplicationsModeController {
         let sid = list_box.connect_row_activated(
             clone!(@weak self as controller => move |_, row|{
                 let index = row.index();
-                let model = controller.application_entries().item(index as u32)
+                let application_entry = controller.application_entries().item(index as u32)
                     .expect("Expected valid item index")
                     .downcast::<ApplicationEntry>()
                     .expect("ApplicationsModeController::application_entries should only contain ApplicationEntry");
-                controller.show_detail(&model);
+                controller.show_detail(&application_entry);
             }),
         );
 
@@ -183,8 +183,8 @@ impl ApplicationsModeController {
         if let Some(current_selection) = current_selection.and_then(|s| s.desktop_entry_id()) {
             self.select_application(&current_selection);
         } else {
-            let model = self.application_entries();
-            if let Some(first_item) = model
+            let list_store = self.application_entries();
+            if let Some(first_item) = list_store
                 .item(0)
                 .and_downcast::<ApplicationEntry>()
                 .and_then(|a| a.desktop_entry_id())
@@ -260,10 +260,10 @@ impl ApplicationsModeController {
             .map(|de| ApplicationEntry::new(de.id(), stores.clone()))
             .collect::<Vec<_>>();
 
-        let model = gio::ListStore::with_type(ApplicationEntry::static_type());
-        model.extend_from_slice(&application_entries);
+        let list_store = gio::ListStore::with_type(ApplicationEntry::static_type());
+        list_store.extend_from_slice(&application_entries);
 
-        self.imp().application_entries.set(model).unwrap();
+        self.imp().application_entries.set(list_store).unwrap();
     }
 
     fn show_detail(&self, application_entry: &ApplicationEntry) {
@@ -275,8 +275,8 @@ impl ApplicationsModeController {
 
         list_box.bind_model(Some(&model),
             clone!(@weak self as controller, @strong application_entry => @default-panic, move |obj| {
-                let model = obj.downcast_ref().expect("The object should be of type `MimeTypeEntry`.");
-                let row = controller.create_detail_row(&application_entry, model);
+                let mime_type_entry = obj.downcast_ref().expect("The object should be of type `MimeTypeEntry`.");
+                let row = controller.create_detail_row(&application_entry, mime_type_entry);
                 row.upcast()
             }));
 
