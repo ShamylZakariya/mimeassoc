@@ -22,10 +22,10 @@ mod imp {
     pub struct ApplicationsModeController {
         pub window: OnceCell<WeakRef<MainWindow>>,
         pub app_controller: OnceCell<WeakRef<AppController>>,
-        pub application_entries: OnceCell<gio::ListStore>,
         pub current_selection: RefCell<Option<ApplicationEntry>>,
         pub signal_handlers: RefCell<Vec<SignalHandlerId>>,
         pub current_search_string: RefCell<Option<String>>,
+        pub collections_list_model: OnceCell<FilterListModel>,
     }
 
     // The central trait for subclassing a GObject
@@ -71,13 +71,13 @@ impl ApplicationsModeController {
 
         // select this app in the list box. This is weirdly complex, perhaps there's a better way?
         let list_box = &window.imp().collections_list;
-        let application_entries = self.application_entries();
+        let application_entries = self.collections_list_model();
         let count = application_entries.n_items();
         for i in 0..count {
             let application_entry = application_entries.item(i)
                         .expect("Expected a valid row index")
                         .downcast::<ApplicationEntry>()
-                        .expect("ApplicationsModeController::application_entries() model should contain instances of ApplicationEntry only");
+                        .expect("ApplicationsModeController::collections_list_model() model should contain instances of ApplicationEntry only");
 
             if let Some(id) = application_entry.desktop_entry_id() {
                 if &id == desktop_entry_id {
@@ -111,7 +111,7 @@ impl ApplicationsModeController {
             for i in 0..mime_types.n_items() {
                 let mime_type_entry = mime_types.item(i).expect("Expected a valid row index")
                         .downcast::<MimeTypeEntry>()
-                        .expect("ApplicationsModeController::application_entries() model should contain instances of MimeTypeEntry only");
+                        .expect("ApplicationEntry::mime_type_assignments should contain instances of MimeTypeEntry only");
 
                 if all {
                     app_controller.assign_application_to_mimetype(
@@ -144,8 +144,10 @@ impl ApplicationsModeController {
             .set_visible(false);
 
         // bind the model to the list box
+        let filtered_list_model = self.collections_list_model();
+
         list_box.bind_model(
-            Some(self.application_entries()),
+            Some(filtered_list_model),
             clone!(@weak self as controller => @default-panic, move |obj| {
                 let application_entry = obj
                     .downcast_ref()
@@ -155,18 +157,11 @@ impl ApplicationsModeController {
             }),
         );
 
-        // delegate filtering to ApplicationsModeController::filter_func
-        list_box.set_filter_func(
-            clone!(@weak self as controller => @default-panic,  move |row| {
-                controller.filter_func(row)
-            }),
-        );
-
         // Listen for selection
         let sid = list_box.connect_row_activated(
             clone!(@weak self as controller => move |_, row|{
                 let index = row.index();
-                let application_entry = controller.application_entries().item(index as u32)
+                let application_entry = controller.collections_list_model().item(index as u32)
                     .expect("Expected valid item index")
                     .downcast::<ApplicationEntry>()
                     .expect("ApplicationsModeController::application_entries should only contain ApplicationEntry");
@@ -183,7 +178,7 @@ impl ApplicationsModeController {
         if let Some(current_selection) = current_selection.and_then(|s| s.desktop_entry_id()) {
             self.select_application(&current_selection);
         } else {
-            let list_store = self.application_entries();
+            let list_store = self.collections_list_model();
             if let Some(first_item) = list_store
                 .item(0)
                 .and_downcast::<ApplicationEntry>()
@@ -197,13 +192,6 @@ impl ApplicationsModeController {
     /// Called by the AppController to notify that this mode controller no longer has ownership of the UI.
     pub fn deactivate(&self) {
         let window = self.window();
-
-        // unset our filter func
-        window
-            .imp()
-            .collections_list
-            .set_filter_func(super::default_listbox_filter_func);
-
         let signal_handler_ids = self.imp().signal_handlers.take();
         for s_id in signal_handler_ids.into_iter() {
             window.imp().collections_list.disconnect(s_id);
@@ -214,19 +202,17 @@ impl ApplicationsModeController {
         self.imp()
             .current_search_string
             .replace(new_search_string.map(str::to_string));
-        self.window().imp().collections_list.invalidate_filter()
+
+        let filtered_list_model = self.collections_list_model();
+        filtered_list_model
+            .filter()
+            .unwrap()
+            .changed(FilterChange::Different);
     }
 
-    fn filter_func(&self, row: &ListBoxRow) -> bool {
+    fn filter_func(&self, application_entry: &ApplicationEntry) -> bool {
         if let Some(current_search_string) = self.imp().current_search_string.borrow().as_ref() {
             let current_search_string = current_search_string.to_lowercase();
-
-            let index = row.index();
-            let application_entry = self.application_entries().item(index as u32)
-                        .expect("Expected valid item index")
-                        .downcast::<ApplicationEntry>()
-                        .expect("ApplicationsModeController::application_entries should only contain ApplicationEntry");
-
             let desktop_entry = &application_entry
                 .desktop_entry()
                 .expect("Expect to get desktop entry id from ApplicationEntry");
@@ -243,7 +229,7 @@ impl ApplicationsModeController {
 
     /// Builds the ListStore model which backs the applications listbox
     fn build_model(&self) {
-        if self.imp().application_entries.get().is_some() {
+        if self.imp().collections_list_model.get().is_some() {
             return;
         }
 
@@ -263,7 +249,21 @@ impl ApplicationsModeController {
         let list_store = gio::ListStore::with_type(ApplicationEntry::static_type());
         list_store.extend_from_slice(&application_entries);
 
-        self.imp().application_entries.set(list_store).unwrap();
+        let filter = CustomFilter::new(
+            clone!(@weak self as controller => @default-panic, move |obj|{
+                    let application_entry = obj
+                        .downcast_ref()
+                        .unwrap();
+                controller.filter_func(application_entry)
+            }),
+        );
+
+        let filter_list_model = FilterListModel::new(Some(list_store.clone()), Some(filter));
+
+        self.imp()
+            .collections_list_model
+            .set(filter_list_model)
+            .unwrap();
     }
 
     fn show_detail(&self, application_entry: &ApplicationEntry) {
@@ -322,7 +322,7 @@ impl ApplicationsModeController {
                 for i in 0..n_items {
                     let mime_type_entry = mime_type_entries.item(i).expect("Expected a valid row index")
                             .downcast::<MimeTypeEntry>()
-                            .expect("ApplicationsModeController::application_entries() model should contain instances of MimeTypeEntry only");
+                            .expect("ApplicationsEntry::mime_type_assignments() model should contain instances of MimeTypeEntry only");
 
                     let is_assigned_application = mime_associations_store
                         .default_application_for(&mime_type_entry.mime_type())
@@ -469,7 +469,7 @@ impl ApplicationsModeController {
         self.app_controller().stores()
     }
 
-    fn application_entries(&self) -> &gio::ListStore {
-        self.imp().application_entries.get().unwrap()
+    fn collections_list_model(&self) -> &FilterListModel {
+        self.imp().collections_list_model.get().unwrap()
     }
 }

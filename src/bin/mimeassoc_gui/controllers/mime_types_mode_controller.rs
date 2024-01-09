@@ -22,11 +22,11 @@ mod imp {
     pub struct MimeTypesModeController {
         pub window: OnceCell<WeakRef<MainWindow>>,
         pub app_controller: OnceCell<WeakRef<AppController>>,
-        pub mime_type_entries: OnceCell<gio::ListStore>,
         pub application_check_button_group: RefCell<Option<CheckButton>>,
         pub current_selection: RefCell<Option<MimeTypeEntry>>,
         pub signal_handlers: RefCell<Vec<SignalHandlerId>>,
         pub current_search_string: RefCell<Option<String>>,
+        pub collections_list_model: OnceCell<FilterListModel>,
     }
 
     // The central trait for subclassing a GObject
@@ -63,10 +63,6 @@ impl MimeTypesModeController {
         }
     }
 
-    pub fn mime_type_entries(&self) -> &gio::ListStore {
-        self.imp().mime_type_entries.get().unwrap()
-    }
-
     pub fn select_mime_type(&self, mime_type: &MimeType) {
         let window = self.window();
 
@@ -76,13 +72,13 @@ impl MimeTypesModeController {
 
         // Select this mime type in the list box
         let list_box = &window.imp().collections_list;
-        let mime_type_entries = self.mime_type_entries();
+        let mime_type_entries = self.collections_list_model();
         let count = mime_type_entries.n_items();
         for i in 0..count {
             let mime_type_entry = mime_type_entries.item(i)
                         .expect("Expected a valid row index")
                         .downcast::<MimeTypeEntry>()
-                        .expect("MimeTypesModeController::mime_type_entries() model should contain instances of MimeTypeEntry only");
+                        .expect("MimeTypesModeController::collections_list_model() model should contain instances of MimeTypeEntry only");
             if &mime_type_entry.mime_type() == mime_type {
                 if let Some(row) = list_box.row_at_index(i as i32) {
                     list_box.select_row(Some(&row));
@@ -109,8 +105,10 @@ impl MimeTypesModeController {
 
         // bind to selection events
         let list_box = &window.imp().collections_list;
+
+        // bind the model to the list box
         list_box.bind_model(
-            Some(self.mime_type_entries()),
+            Some(self.collections_list_model()),
             clone!(@weak self as controller => @default-panic, move | obj | {
                 let mime_type_entry = obj.downcast_ref().unwrap();
                 let row = controller.create_primary_row(mime_type_entry);
@@ -118,19 +116,12 @@ impl MimeTypesModeController {
             }),
         );
 
-        // delegate filtering to MimeTypesModeController::filter_func
-        list_box.set_filter_func(
-            clone!(@weak self as controller => @default-panic,  move |row| {
-                controller.filter_func(row)
-            }),
-        );
-
         let s_id = list_box.connect_row_activated(clone!(@weak self as controller => move |_, row|{
             let index = row.index();
-            let mime_type_entry = controller.mime_type_entries().item(index as u32)
+            let mime_type_entry = controller.collections_list_model().item(index as u32)
                 .expect("Expected a valid row index")
                 .downcast::<MimeTypeEntry>()
-                .expect("MimeTypesModeController::mime_type_entries() model should contain instances of MimeTypeEntry only");
+                .expect("MimeTypesModeController::collections_list_model() model should contain instances of MimeTypeEntry only");
             controller.show_detail(&mime_type_entry);
         }));
 
@@ -141,7 +132,7 @@ impl MimeTypesModeController {
         if let Some(current_selection) = current_selection {
             self.select_mime_type(&current_selection.mime_type());
         } else {
-            let list_store = self.mime_type_entries();
+            let list_store = self.collections_list_model();
             if let Some(first_item) = list_store.item(0).and_downcast::<MimeTypeEntry>() {
                 self.select_mime_type(&first_item.mime_type());
             }
@@ -151,12 +142,6 @@ impl MimeTypesModeController {
     /// Called by the AppController to notify that this mode controller no longer has ownership of the UI.
     pub fn deactivate(&self) {
         let window = self.window();
-
-        // unset our filter func
-        window
-            .imp()
-            .collections_list
-            .set_filter_func(super::default_listbox_filter_func);
 
         let signal_handler_ids = self.imp().signal_handlers.take();
         for s_id in signal_handler_ids.into_iter() {
@@ -168,22 +153,17 @@ impl MimeTypesModeController {
         self.imp()
             .current_search_string
             .replace(new_search_string.map(str::to_string));
-        self.window().imp().collections_list.invalidate_filter()
+
+        let filtered_list_model = self.collections_list_model();
+        filtered_list_model
+            .filter()
+            .unwrap()
+            .changed(FilterChange::Different);
     }
 
-    fn filter_func(&self, row: &ListBoxRow) -> bool {
+    fn filter_func(&self, mime_type_entry: &MimeTypeEntry) -> bool {
         if let Some(current_search_string) = self.imp().current_search_string.borrow().as_ref() {
             let current_search_string = current_search_string.to_lowercase();
-
-            let index = row.index();
-            let mime_type_entry = self
-                .mime_type_entries()
-                .item(index as u32)
-                .expect("Expected valid item index")
-                .downcast::<MimeTypeEntry>()
-                .expect(
-                    "MimeTypesModeController::mime_type_entries should only contain MimeTypeEntry",
-                );
 
             let stores = self.stores();
             let stores = stores.borrow();
@@ -217,7 +197,7 @@ impl MimeTypesModeController {
 
     /// Builds the ListStore model which backs the mime types listbox
     fn build_model(&self) {
-        if self.imp().mime_type_entries.get().is_some() {
+        if self.imp().collections_list_model.get().is_some() {
             return;
         }
 
@@ -237,7 +217,21 @@ impl MimeTypesModeController {
         let list_store = gio::ListStore::with_type(MimeTypeEntry::static_type());
         list_store.extend_from_slice(&mime_type_entries);
 
-        self.imp().mime_type_entries.set(list_store).unwrap();
+        let filter = CustomFilter::new(
+            clone!(@weak self as controller => @default-panic, move |obj|{
+                    let mime_type_entry = obj
+                        .downcast_ref()
+                        .unwrap();
+                controller.filter_func(mime_type_entry)
+            }),
+        );
+
+        let filter_list_model = FilterListModel::new(Some(list_store.clone()), Some(filter));
+
+        self.imp()
+            .collections_list_model
+            .set(filter_list_model)
+            .unwrap();
     }
 
     /// Creates a row for the primary/selection list box
@@ -533,5 +527,9 @@ impl MimeTypesModeController {
 
     fn stores(&self) -> Rc<RefCell<Stores>> {
         self.app_controller().stores()
+    }
+
+    fn collections_list_model(&self) -> &FilterListModel {
+        self.imp().collections_list_model.get().unwrap()
     }
 }
