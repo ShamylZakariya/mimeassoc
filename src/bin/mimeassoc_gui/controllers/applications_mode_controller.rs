@@ -10,6 +10,7 @@ use crate::model::*;
 use crate::resources::Strings;
 use crate::ui::MainWindow;
 
+use super::app_controller::FilterPrecisionChange;
 use super::AppController;
 
 mod imp {
@@ -198,7 +199,11 @@ impl ApplicationsModeController {
         }
     }
 
-    pub fn on_search_changed(&self, new_search_string: Option<&str>) {
+    pub fn on_search_changed(
+        &self,
+        new_search_string: Option<&str>,
+        precision_change: FilterPrecisionChange,
+    ) {
         self.imp()
             .current_search_string
             .replace(new_search_string.map(str::to_string));

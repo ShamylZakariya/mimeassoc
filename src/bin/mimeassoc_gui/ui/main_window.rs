@@ -167,8 +167,13 @@ impl MainWindow {
             }));
 
         imp.search_entry
-            .connect_search_changed(clone!(@weak self as window => move |_|{
-                window.app_controller().on_search_changed();
+            .connect_search_changed(clone!(@weak self as window => move |entry|{
+                let search_string = entry.text().to_string();
+                if search_string.is_empty() {
+                    window.app_controller().on_search_changed(None);
+                } else {
+                    window.app_controller().on_search_changed(Some(search_string));
+                }
             }));
     }
 

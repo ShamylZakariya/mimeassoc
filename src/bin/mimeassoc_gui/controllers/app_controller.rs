@@ -28,6 +28,39 @@ pub enum Mode {
     MimeTypeMode,
 }
 
+/// Represents the change in precision of a filter string; client selection behavior
+/// is dictated by whether the search string has become more or less precise.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum FilterPrecisionChange {
+    None,
+    MorePrecise,
+    LessPrecise,
+}
+
+impl FilterPrecisionChange {
+    pub fn change_for(
+        previous_text: Option<&str>,
+        new_text: Option<&str>,
+    ) -> FilterPrecisionChange {
+        match (previous_text, new_text) {
+            (Some(previous_text), Some(new_text)) => {
+                let previous_len = previous_text.len();
+                let new_len = new_text.len();
+                if new_len > previous_len {
+                    FilterPrecisionChange::MorePrecise
+                } else if previous_len > new_len {
+                    FilterPrecisionChange::LessPrecise
+                } else {
+                    FilterPrecisionChange::None
+                }
+            }
+            (Some(_), None) => FilterPrecisionChange::LessPrecise,
+            (None, Some(_)) => FilterPrecisionChange::MorePrecise,
+            (None, None) => FilterPrecisionChange::None,
+        }
+    }
+}
+
 mod imp {
     use super::*;
     use std::cell::OnceCell;
@@ -41,6 +74,7 @@ mod imp {
         pub stores: OnceCell<Rc<RefCell<Stores>>>,
         pub mime_types_mode_controller: OnceCell<MimeTypesModeController>,
         pub applications_mode_controller: OnceCell<ApplicationsModeController>,
+        pub current_search_string: RefCell<Option<String>>,
     }
 
     // The central trait for subclassing a GObject
@@ -126,7 +160,7 @@ impl AppController {
         self.imp().mode.replace(Some(mode));
 
         // notify the new mode of the current search string
-        self.on_search_changed();
+        self.on_search_changed(self.current_search_string());
     }
 
     pub fn mode(&self) -> Mode {
@@ -495,23 +529,34 @@ impl AppController {
     }
 
     fn current_search_string(&self) -> Option<String> {
-        let window = self.window();
-        let entry = &window.imp().search_entry;
-        if entry.text().is_empty() {
-            None
-        } else {
-            Some(entry.text().to_string())
-        }
+        self.imp().current_search_string.borrow().clone()
     }
 
-    pub fn on_search_changed(&self) {
+    pub fn on_search_changed(&self, new_search_string: Option<String>) {
+        let previous_search_string = self.current_search_string();
+        self.imp()
+            .current_search_string
+            .replace(new_search_string.clone());
+
+        let change_type = FilterPrecisionChange::change_for(
+            previous_search_string.as_deref(),
+            new_search_string.as_deref(),
+        );
+
+        log::debug!(
+            "on_search_changed prev: {:?}, new: {:?} change: {:?}",
+            previous_search_string,
+            new_search_string,
+            change_type
+        );
+
         match self.mode() {
             Mode::ApplicationMode => self
                 .applications_mode_controller()
-                .on_search_changed(self.current_search_string().as_deref()),
+                .on_search_changed(self.current_search_string().as_deref(), change_type),
             Mode::MimeTypeMode => self
                 .mime_types_mode_controller()
-                .on_search_changed(self.current_search_string().as_deref()),
+                .on_search_changed(self.current_search_string().as_deref(), change_type),
         }
     }
 }
