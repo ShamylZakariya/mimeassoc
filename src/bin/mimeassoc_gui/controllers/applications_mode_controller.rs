@@ -147,10 +147,8 @@ impl ApplicationsModeController {
             .set_visible(false);
 
         // bind the model to the list box
-        let filtered_list_model = self.collections_list_model();
-
         list_box.bind_model(
-            Some(filtered_list_model),
+            Some(self.collections_list_model()),
             clone!(@weak self as controller => @default-panic, move |obj| {
                 let application_entry = obj
                     .downcast_ref()
@@ -209,8 +207,8 @@ impl ApplicationsModeController {
             .current_search_string
             .replace(new_search_string.map(str::to_string));
 
-        let filtered_list_model = self.collections_list_model();
-        filtered_list_model
+        let filtered_model = self.filter_model();
+        filtered_model
             .filter()
             .unwrap()
             .changed(FilterChange::Different);
@@ -218,7 +216,7 @@ impl ApplicationsModeController {
         match precision_change {
             FilterPrecisionChange::None | FilterPrecisionChange::MorePrecise => {
                 // select the first element in the model
-                if let Some(first_element) = filtered_list_model
+                if let Some(first_element) = filtered_model
                     .item(0)
                     .and_downcast_ref::<ApplicationEntry>()
                     .and_then(|e| e.desktop_entry_id())
@@ -498,8 +496,12 @@ impl ApplicationsModeController {
         self.app_controller().stores()
     }
 
-    fn collections_list_model(&self) -> &FilterListModel {
+    fn filter_model(&self) -> &FilterListModel {
         self.imp().filter_model.get().unwrap()
+    }
+
+    fn collections_list_model(&self) -> &SingleSelection {
+        self.imp().selection_model.get().unwrap()
     }
 
     fn current_selection(&self) -> Option<ApplicationEntry> {
