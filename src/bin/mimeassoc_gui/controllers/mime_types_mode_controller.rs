@@ -27,7 +27,8 @@ mod imp {
         pub current_selection: RefCell<Option<MimeTypeEntry>>,
         pub signal_handlers: RefCell<Vec<SignalHandlerId>>,
         pub current_search_string: RefCell<Option<String>>,
-        pub collections_list_model: OnceCell<FilterListModel>,
+        pub filter_model: OnceCell<FilterListModel>,
+        pub selection_model: OnceCell<SingleSelection>,
     }
 
     // The central trait for subclassing a GObject
@@ -58,38 +59,25 @@ impl MimeTypesModeController {
     }
 
     pub fn reload(&self) {
-        let mime_type_entry = self.imp().current_selection.borrow().clone();
-        if let Some(mime_type_entry) = mime_type_entry {
+        if let Some(mime_type_entry) = self.current_selection() {
             self.show_detail(&mime_type_entry);
         }
     }
 
-    pub fn select_mime_type(&self, mime_type: &MimeType) {
+    pub fn select_mime_type(&self, mime_type: &MimeType, display_detail: bool) {
         let window = self.window();
-
-        // Show the detail pane for this mime type
-        let mime_type_entry = MimeTypeEntry::new(mime_type, self.stores());
-        self.show_detail(&mime_type_entry);
-
-        // Select this mime type in the list box
         let list_box = &window.imp().collections_list;
-        let mime_type_entries = self.collections_list_model();
-        let count = mime_type_entries.n_items();
-        for i in 0..count {
-            let mime_type_entry = mime_type_entries.item(i)
-                        .and_downcast::<MimeTypeEntry>()
-                        .expect("MimeTypesModeController::collections_list_model() model should contain instances of MimeTypeEntry only");
-            if &mime_type_entry.mime_type() == mime_type {
-                if let Some(row) = list_box.row_at_index(i as i32) {
-                    list_box.select_row(Some(&row));
 
-                    if i > 0 {
-                        crate::ui::scroll_listbox_to_selected_row(list_box.get());
-                    }
-                }
+        crate::ui::select_listbox_row_and_scroll_to_visible(
+            list_box.get(),
+            self.collections_list_model(),
+            |entry: MimeTypeEntry| &entry.mime_type() == mime_type,
+        );
 
-                break;
-            }
+        if display_detail {
+            // Show the detail pane for this mime type
+            let mime_type_entry = MimeTypeEntry::new(mime_type, self.stores());
+            self.show_detail(&mime_type_entry);
         }
     }
 
@@ -99,12 +87,10 @@ impl MimeTypesModeController {
         self.build_model();
 
         let window = self.window();
+        let list_box = &window.imp().collections_list;
 
         // hide the select all/none buttons in the footer
         window.imp().select_all_none_buttons.set_visible(false);
-
-        // bind to selection events
-        let list_box = &window.imp().collections_list;
 
         // bind the model to the list box
         list_box.bind_model(
@@ -116,6 +102,7 @@ impl MimeTypesModeController {
             }),
         );
 
+        // bind to selection events
         let s_id = list_box.connect_row_activated(clone!(@weak self as controller => move |_, row|{
             let index = row.index();
             let mime_type_entry = controller.collections_list_model().item(index as u32)
@@ -127,13 +114,12 @@ impl MimeTypesModeController {
         self.imp().signal_handlers.replace(vec![s_id]);
 
         // If an item was previously selected, re-select it. Otherwise select the first item
-        let current_selection = self.imp().current_selection.borrow().clone();
-        if let Some(current_selection) = current_selection {
-            self.select_mime_type(&current_selection.mime_type());
+        if let Some(current_selection) = self.current_selection() {
+            self.select_mime_type(&current_selection.mime_type(), true);
         } else {
             let list_store = self.collections_list_model();
             if let Some(first_item) = list_store.item(0).and_downcast::<MimeTypeEntry>() {
-                self.select_mime_type(&first_item.mime_type());
+                self.select_mime_type(&first_item.mime_type(), true);
             }
         }
     }
@@ -157,8 +143,7 @@ impl MimeTypesModeController {
             .current_search_string
             .replace(new_search_string.map(str::to_string));
 
-        let filtered_list_model = self.collections_list_model();
-        filtered_list_model
+        self.filter_model()
             .filter()
             .unwrap()
             .changed(FilterChange::Different);
@@ -200,7 +185,7 @@ impl MimeTypesModeController {
 
     /// Builds the ListStore model which backs the mime types listbox
     fn build_model(&self) {
-        if self.imp().collections_list_model.get().is_some() {
+        if self.imp().filter_model.get().is_some() {
             return;
         }
 
@@ -229,12 +214,15 @@ impl MimeTypesModeController {
             }),
         );
 
-        let filter_list_model = FilterListModel::new(Some(list_store.clone()), Some(filter));
+        let filter_model = FilterListModel::new(Some(list_store.clone()), Some(filter));
 
-        self.imp()
-            .collections_list_model
-            .set(filter_list_model)
-            .unwrap();
+        self.imp().filter_model.set(filter_model.clone()).unwrap();
+
+        let selection_model = SingleSelection::new(Some(filter_model));
+        selection_model.set_autoselect(true);
+        selection_model.set_can_unselect(false);
+        selection_model.select_item(0, true);
+        self.imp().selection_model.set(selection_model).unwrap();
     }
 
     /// Creates a row for the primary/selection list box
@@ -532,7 +520,15 @@ impl MimeTypesModeController {
         self.app_controller().stores()
     }
 
-    fn collections_list_model(&self) -> &FilterListModel {
-        self.imp().collections_list_model.get().unwrap()
+    fn filter_model(&self) -> &FilterListModel {
+        self.imp().filter_model.get().unwrap()
+    }
+
+    fn collections_list_model(&self) -> &SingleSelection {
+        self.imp().selection_model.get().unwrap()
+    }
+
+    fn current_selection(&self) -> Option<MimeTypeEntry> {
+        self.imp().current_selection.borrow().clone()
     }
 }

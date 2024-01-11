@@ -1,11 +1,36 @@
 mod main_window;
 
+use gtk::prelude::ListModelExt;
 // re-export for clarity
 pub use main_window::MainWindow;
 
 use gtk::{glib::*, *};
 use traits::AdjustmentExt;
 use traits::WidgetExt;
+
+/// Select the listbox row with an object from the provided model which matches the
+/// test, and scroll to make that row visible.
+pub fn select_listbox_row_and_scroll_to_visible<F, T, M>(list_box: ListBox, model: &M, test: F)
+where
+    F: Fn(T) -> bool,
+    T: IsA<glib::Object>,
+    M: ListModelExt,
+{
+    let count = model.n_items();
+    for i in 0..count {
+        let item = model.item(i)
+                        .and_downcast::<T>()
+                        .expect("ApplicationsModeController::collections_list_model() model should contain instances of ApplicationEntry only");
+        if test(item) {
+            list_box.select_row(list_box.row_at_index(i as i32).as_ref());
+
+            if i > 0 {
+                scroll_listbox_to_selected_row(list_box);
+            }
+            break;
+        }
+    }
+}
 
 /// Utility to scroll a ListBox to whichever row is currently selected.
 pub fn scroll_listbox_to_selected_row(list_box: ListBox) {

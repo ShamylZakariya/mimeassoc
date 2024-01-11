@@ -64,34 +64,19 @@ impl ApplicationsModeController {
         }
     }
 
-    pub fn select_and_display_application(&self, desktop_entry_id: &DesktopEntryId) {
-        self.select_application_in_collections_list(desktop_entry_id);
-
-        let application_entry = ApplicationEntry::new(desktop_entry_id, self.stores());
-        self.show_detail(&application_entry);
-    }
-
-    fn select_application_in_collections_list(&self, desktop_entry_id: &DesktopEntryId) {
-        // select this app in the list box. This is weirdly complex, perhaps there's a better way?
+    pub fn select_application(&self, desktop_entry_id: &DesktopEntryId, display_detail: bool) {
         let window = self.window();
         let list_box = &window.imp().collections_list;
-        let application_entries = self.collections_list_model();
-        let count = application_entries.n_items();
 
-        for i in 0..count {
-            let application_entry = application_entries.item(i)
-                        .and_downcast::<ApplicationEntry>()
-                        .expect("ApplicationsModeController::collections_list_model() model should contain instances of ApplicationEntry only");
+        crate::ui::select_listbox_row_and_scroll_to_visible(
+            list_box.get(),
+            self.collections_list_model(),
+            |entry: ApplicationEntry| entry.desktop_entry_id().as_ref() == Some(&desktop_entry_id),
+        );
 
-            if let Some(id) = application_entry.desktop_entry_id() {
-                if &id == desktop_entry_id {
-                    list_box.select_row(list_box.row_at_index(i as i32).as_ref());
-
-                    if i > 0 {
-                        crate::ui::scroll_listbox_to_selected_row(list_box.get());
-                    }
-                }
-            }
+        if display_detail {
+            let application_entry = ApplicationEntry::new(desktop_entry_id, self.stores());
+            self.show_detail(&application_entry);
         }
     }
 
@@ -170,13 +155,12 @@ impl ApplicationsModeController {
         );
 
         // record our signal handlers so we can clean up later
-        let signal_handler_ids = vec![sid];
-        self.imp().signal_handlers.replace(signal_handler_ids);
+        self.imp().signal_handlers.replace(vec![sid]);
 
         // If an item was previously selected, re-select it. Otherwise select the first item
         if let Some(current_selection) = self.current_selection().and_then(|s| s.desktop_entry_id())
         {
-            self.select_and_display_application(&current_selection);
+            self.select_application(&current_selection, true);
         } else {
             let list_store = self.collections_list_model();
             if let Some(first_item) = list_store
@@ -184,7 +168,7 @@ impl ApplicationsModeController {
                 .and_downcast::<ApplicationEntry>()
                 .and_then(|a| a.desktop_entry_id())
             {
-                self.select_and_display_application(&first_item);
+                self.select_application(&first_item, true);
             }
         }
     }
@@ -221,7 +205,7 @@ impl ApplicationsModeController {
                     .and_downcast_ref::<ApplicationEntry>()
                     .and_then(|e| e.desktop_entry_id())
                 {
-                    self.select_and_display_application(&first_element);
+                    self.select_application(&first_element, true);
                 }
             }
             FilterPrecisionChange::LessPrecise => {
@@ -230,7 +214,7 @@ impl ApplicationsModeController {
                 if let Some(current_selection) =
                     self.current_selection().and_then(|e| e.desktop_entry_id())
                 {
-                    self.select_application_in_collections_list(&current_selection);
+                    self.select_application(&current_selection, false);
                 }
             }
         }
@@ -287,7 +271,7 @@ impl ApplicationsModeController {
         let filter_model = FilterListModel::new(Some(list_store.clone()), Some(filter));
         self.imp().filter_model.set(filter_model.clone()).unwrap();
 
-        let selection_model = SingleSelection::new(Some(filter_model.clone()));
+        let selection_model = SingleSelection::new(Some(filter_model));
         selection_model.set_autoselect(true);
         selection_model.set_can_unselect(false);
         selection_model.select_item(0, true);
