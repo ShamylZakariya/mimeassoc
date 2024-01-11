@@ -26,7 +26,8 @@ mod imp {
         pub current_selection: RefCell<Option<ApplicationEntry>>,
         pub signal_handlers: RefCell<Vec<SignalHandlerId>>,
         pub current_search_string: RefCell<Option<String>>,
-        pub collections_list_model: OnceCell<FilterListModel>,
+        pub filter_model: OnceCell<FilterListModel>,
+        pub selection_model: OnceCell<SingleSelection>,
     }
 
     // The central trait for subclassing a GObject
@@ -58,26 +59,28 @@ impl ApplicationsModeController {
     }
 
     pub fn reload(&self) {
-        let application_entry = self.imp().current_selection.borrow().clone();
-        if let Some(application_entry) = application_entry {
+        if let Some(application_entry) = self.current_selection() {
             self.show_detail(&application_entry);
         }
     }
 
-    pub fn select_application(&self, desktop_entry_id: &DesktopEntryId) {
-        let window = self.window();
+    pub fn select_and_display_application(&self, desktop_entry_id: &DesktopEntryId) {
+        self.select_application_in_collections_list(desktop_entry_id);
 
         let application_entry = ApplicationEntry::new(desktop_entry_id, self.stores());
         self.show_detail(&application_entry);
+    }
 
+    fn select_application_in_collections_list(&self, desktop_entry_id: &DesktopEntryId) {
         // select this app in the list box. This is weirdly complex, perhaps there's a better way?
+        let window = self.window();
         let list_box = &window.imp().collections_list;
         let application_entries = self.collections_list_model();
         let count = application_entries.n_items();
+
         for i in 0..count {
             let application_entry = application_entries.item(i)
-                        .expect("Expected a valid row index")
-                        .downcast::<ApplicationEntry>()
+                        .and_downcast::<ApplicationEntry>()
                         .expect("ApplicationsModeController::collections_list_model() model should contain instances of ApplicationEntry only");
 
             if let Some(id) = application_entry.desktop_entry_id() {
@@ -102,16 +105,15 @@ impl ApplicationsModeController {
 
     fn select_all_or_none(&self, all: bool) {
         let app_controller = self.app_controller();
-        let application_entry = self.imp().current_selection.borrow().clone();
-        if let Some(application_entry) = application_entry {
+        if let Some(application_entry) = self.current_selection() {
             let desktop_entry_id = application_entry
                 .desktop_entry_id()
                 .expect("Expect ApplicationEntry to have a valid DesktopEntryId");
 
             let mime_types = application_entry.mime_type_assignments();
             for i in 0..mime_types.n_items() {
-                let mime_type_entry = mime_types.item(i).expect("Expected a valid row index")
-                        .downcast::<MimeTypeEntry>()
+                let mime_type_entry = mime_types.item(i)
+                        .and_downcast::<MimeTypeEntry>()
                         .expect("ApplicationEntry::mime_type_assignments should contain instances of MimeTypeEntry only");
 
                 if all {
@@ -163,8 +165,7 @@ impl ApplicationsModeController {
             clone!(@weak self as controller => move |_, row|{
                 let index = row.index();
                 let application_entry = controller.collections_list_model().item(index as u32)
-                    .expect("Expected valid item index")
-                    .downcast::<ApplicationEntry>()
+                    .and_downcast::<ApplicationEntry>()
                     .expect("ApplicationsModeController::application_entries should only contain ApplicationEntry");
                 controller.show_detail(&application_entry);
             }),
@@ -175,9 +176,9 @@ impl ApplicationsModeController {
         self.imp().signal_handlers.replace(signal_handler_ids);
 
         // If an item was previously selected, re-select it. Otherwise select the first item
-        let current_selection = self.imp().current_selection.borrow().clone();
-        if let Some(current_selection) = current_selection.and_then(|s| s.desktop_entry_id()) {
-            self.select_application(&current_selection);
+        if let Some(current_selection) = self.current_selection().and_then(|s| s.desktop_entry_id())
+        {
+            self.select_and_display_application(&current_selection);
         } else {
             let list_store = self.collections_list_model();
             if let Some(first_item) = list_store
@@ -185,7 +186,7 @@ impl ApplicationsModeController {
                 .and_downcast::<ApplicationEntry>()
                 .and_then(|a| a.desktop_entry_id())
             {
-                self.select_application(&first_item);
+                self.select_and_display_application(&first_item);
             }
         }
     }
@@ -213,6 +214,28 @@ impl ApplicationsModeController {
             .filter()
             .unwrap()
             .changed(FilterChange::Different);
+
+        match precision_change {
+            FilterPrecisionChange::None | FilterPrecisionChange::MorePrecise => {
+                // select the first element in the model
+                if let Some(first_element) = filtered_list_model
+                    .item(0)
+                    .and_downcast_ref::<ApplicationEntry>()
+                    .and_then(|e| e.desktop_entry_id())
+                {
+                    self.select_and_display_application(&first_element);
+                }
+            }
+            FilterPrecisionChange::LessPrecise => {
+                // re-select the current selection in the collections list; we need to do
+                // this since the selection state is lost (?) when filtering is updated.
+                if let Some(current_selection) =
+                    self.current_selection().and_then(|e| e.desktop_entry_id())
+                {
+                    self.select_application_in_collections_list(&current_selection);
+                }
+            }
+        }
     }
 
     fn filter_func(&self, application_entry: &ApplicationEntry) -> bool {
@@ -234,7 +257,7 @@ impl ApplicationsModeController {
 
     /// Builds the ListStore model which backs the applications listbox
     fn build_model(&self) {
-        if self.imp().collections_list_model.get().is_some() {
+        if self.imp().filter_model.get().is_some() {
             return;
         }
 
@@ -263,12 +286,14 @@ impl ApplicationsModeController {
             }),
         );
 
-        let filter_list_model = FilterListModel::new(Some(list_store.clone()), Some(filter));
+        let filter_model = FilterListModel::new(Some(list_store.clone()), Some(filter));
+        self.imp().filter_model.set(filter_model.clone()).unwrap();
 
-        self.imp()
-            .collections_list_model
-            .set(filter_list_model)
-            .unwrap();
+        let selection_model = SingleSelection::new(Some(filter_model.clone()));
+        selection_model.set_autoselect(true);
+        selection_model.set_can_unselect(false);
+        selection_model.select_item(0, true);
+        self.imp().selection_model.set(selection_model).unwrap();
     }
 
     fn show_detail(&self, application_entry: &ApplicationEntry) {
@@ -310,8 +335,7 @@ impl ApplicationsModeController {
     }
 
     fn update_select_all_and_none_buttons(&self) {
-        let application_entry = self.imp().current_selection.borrow().clone();
-        if let Some(application_entry) = application_entry {
+        if let Some(application_entry) = self.current_selection() {
             let mime_type_entries = application_entry.mime_type_assignments();
 
             let (can_select_all, can_select_none) = if mime_type_entries.n_items() > 1 {
@@ -325,8 +349,8 @@ impl ApplicationsModeController {
                 let mut num_assigned = 0;
 
                 for i in 0..n_items {
-                    let mime_type_entry = mime_type_entries.item(i).expect("Expected a valid row index")
-                            .downcast::<MimeTypeEntry>()
+                    let mime_type_entry = mime_type_entries.item(i)
+                            .and_downcast::<MimeTypeEntry>()
                             .expect("ApplicationsEntry::mime_type_assignments() model should contain instances of MimeTypeEntry only");
 
                     let is_assigned_application = mime_associations_store
@@ -475,6 +499,10 @@ impl ApplicationsModeController {
     }
 
     fn collections_list_model(&self) -> &FilterListModel {
-        self.imp().collections_list_model.get().unwrap()
+        self.imp().filter_model.get().unwrap()
+    }
+
+    fn current_selection(&self) -> Option<ApplicationEntry> {
+        self.imp().current_selection.borrow().clone()
     }
 }

@@ -77,8 +77,7 @@ impl MimeTypesModeController {
         let count = mime_type_entries.n_items();
         for i in 0..count {
             let mime_type_entry = mime_type_entries.item(i)
-                        .expect("Expected a valid row index")
-                        .downcast::<MimeTypeEntry>()
+                        .and_downcast::<MimeTypeEntry>()
                         .expect("MimeTypesModeController::collections_list_model() model should contain instances of MimeTypeEntry only");
             if &mime_type_entry.mime_type() == mime_type {
                 if let Some(row) = list_box.row_at_index(i as i32) {
@@ -120,8 +119,7 @@ impl MimeTypesModeController {
         let s_id = list_box.connect_row_activated(clone!(@weak self as controller => move |_, row|{
             let index = row.index();
             let mime_type_entry = controller.collections_list_model().item(index as u32)
-                .expect("Expected a valid row index")
-                .downcast::<MimeTypeEntry>()
+                .and_downcast::<MimeTypeEntry>()
                 .expect("MimeTypesModeController::collections_list_model() model should contain instances of MimeTypeEntry only");
             controller.show_detail(&mime_type_entry);
         }));

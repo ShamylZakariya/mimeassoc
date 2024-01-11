@@ -437,7 +437,7 @@ impl AppController {
             MainWindowCommand::ShowApplication(desktop_entry_id) => {
                 self.set_mode(Mode::ApplicationMode);
                 self.applications_mode_controller()
-                    .select_application(&desktop_entry_id);
+                    .select_and_display_application(&desktop_entry_id);
             }
             MainWindowCommand::ShowMimeType(mime_type) => {
                 self.set_mode(Mode::MimeTypeMode);
