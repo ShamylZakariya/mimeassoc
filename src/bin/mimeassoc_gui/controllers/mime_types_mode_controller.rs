@@ -58,7 +58,7 @@ impl MimeTypesModeController {
         instance
     }
 
-    pub fn reload(&self) {
+    pub fn reload_detail(&self) {
         if let Some(mime_type_entry) = self.current_selection() {
             self.show_detail(&mime_type_entry);
         }
@@ -73,6 +73,12 @@ impl MimeTypesModeController {
             self.collections_list_model(),
             |entry: MimeTypeEntry| &entry.mime_type() == mime_type,
         );
+
+        // TODO: Record the current selection here
+        // self.imp()
+        //     .current_selection
+        //     .borrow_mut()
+        //     .replace(mime_type_entry.clone());
 
         if display_detail {
             // Show the detail pane for this mime type
@@ -103,12 +109,14 @@ impl MimeTypesModeController {
         );
 
         // bind to selection events
-        let s_id = list_box.connect_row_activated(clone!(@weak self as controller => move |_, row|{
-            let index = row.index();
-            let mime_type_entry = controller.collections_list_model().item(index as u32)
-                .and_downcast::<MimeTypeEntry>()
-                .expect("MimeTypesModeController::collections_list_model() model should contain instances of MimeTypeEntry only");
-            controller.show_detail(&mime_type_entry);
+        let s_id = list_box.connect_row_selected(clone!(@weak self as controller => move |_, row|{
+            if let Some(row) = row {
+                let index = row.index();
+                let mime_type_entry = controller.collections_list_model().item(index as u32)
+                    .and_downcast::<MimeTypeEntry>()
+                    .expect("MimeTypesModeController::collections_list_model() model should contain instances of MimeTypeEntry only");
+                controller.show_detail(&mime_type_entry);
+            }
         }));
 
         self.imp().signal_handlers.replace(vec![s_id]);
@@ -143,10 +151,31 @@ impl MimeTypesModeController {
             .current_search_string
             .replace(new_search_string.map(str::to_string));
 
-        self.filter_model()
+        let filter_model = self.filter_model();
+        filter_model
             .filter()
             .unwrap()
             .changed(FilterChange::Different);
+
+        match precision_change {
+            FilterPrecisionChange::None | FilterPrecisionChange::MorePrecise => {
+                // select the first element in the model, but only if the search string is non-empty
+                if new_search_string.is_some() {
+                    if let Some(first_element) =
+                        filter_model.item(0).and_downcast_ref::<MimeTypeEntry>()
+                    {
+                        self.select_mime_type(&first_element.mime_type(), true);
+                    }
+                }
+            }
+            FilterPrecisionChange::LessPrecise => {
+                // re-select the current selection in the collections list; we need to do
+                // this since the selection state is lost (?) when filtering is updated.
+                if let Some(current_selection) = self.current_selection() {
+                    self.select_mime_type(&current_selection.mime_type(), false);
+                }
+            }
+        }
     }
 
     fn filter_func(&self, mime_type_entry: &MimeTypeEntry) -> bool {

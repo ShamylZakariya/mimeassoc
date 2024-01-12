@@ -58,7 +58,7 @@ impl ApplicationsModeController {
         instance
     }
 
-    pub fn reload(&self) {
+    pub fn reload_detail(&self) {
         if let Some(application_entry) = self.current_selection() {
             self.show_detail(&application_entry);
         }
@@ -71,8 +71,14 @@ impl ApplicationsModeController {
         crate::ui::select_listbox_row_and_scroll_to_visible(
             list_box.get(),
             self.collections_list_model(),
-            |entry: ApplicationEntry| entry.desktop_entry_id().as_ref() == Some(&desktop_entry_id),
+            |entry: ApplicationEntry| entry.desktop_entry_id().as_ref() == Some(desktop_entry_id),
         );
+
+        // TODO: Record current selection here
+        // self.imp()
+        //     .current_selection
+        //     .borrow_mut()
+        //     .replace(application_entry.clone());
 
         if display_detail {
             let application_entry = ApplicationEntry::new(desktop_entry_id, self.stores());
@@ -144,13 +150,15 @@ impl ApplicationsModeController {
         );
 
         // Listen for selection
-        let sid = list_box.connect_row_activated(
+        let sid = list_box.connect_row_selected(
             clone!(@weak self as controller => move |_, row|{
-                let index = row.index();
-                let application_entry = controller.collections_list_model().item(index as u32)
-                    .and_downcast::<ApplicationEntry>()
-                    .expect("ApplicationsModeController::application_entries should only contain ApplicationEntry");
-                controller.show_detail(&application_entry);
+                if let Some(row) = row {
+                    let index = row.index();
+                    let application_entry = controller.collections_list_model().item(index as u32)
+                        .and_downcast::<ApplicationEntry>()
+                        .expect("ApplicationsModeController::application_entries should only contain ApplicationEntry");
+                    controller.show_detail(&application_entry);
+                }
             }),
         );
 
@@ -191,21 +199,23 @@ impl ApplicationsModeController {
             .current_search_string
             .replace(new_search_string.map(str::to_string));
 
-        let filtered_model = self.filter_model();
-        filtered_model
+        let filter_model = self.filter_model();
+        filter_model
             .filter()
             .unwrap()
             .changed(FilterChange::Different);
 
         match precision_change {
             FilterPrecisionChange::None | FilterPrecisionChange::MorePrecise => {
-                // select the first element in the model
-                if let Some(first_element) = filtered_model
-                    .item(0)
-                    .and_downcast_ref::<ApplicationEntry>()
-                    .and_then(|e| e.desktop_entry_id())
-                {
-                    self.select_application(&first_element, true);
+                // select the first element in the model, but only if the search string is non-empty
+                if new_search_string.is_some() {
+                    if let Some(first_element) = filter_model
+                        .item(0)
+                        .and_downcast_ref::<ApplicationEntry>()
+                        .and_then(|e| e.desktop_entry_id())
+                    {
+                        self.select_application(&first_element, true);
+                    }
                 }
             }
             FilterPrecisionChange::LessPrecise => {

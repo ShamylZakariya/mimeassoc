@@ -46,12 +46,10 @@ impl FilterPrecisionChange {
             (Some(previous_text), Some(new_text)) => {
                 let previous_len = previous_text.len();
                 let new_len = new_text.len();
-                if new_len > previous_len {
-                    FilterPrecisionChange::MorePrecise
-                } else if previous_len > new_len {
-                    FilterPrecisionChange::LessPrecise
-                } else {
-                    FilterPrecisionChange::None
+                match new_len.cmp(&previous_len) {
+                    std::cmp::Ordering::Less => FilterPrecisionChange::LessPrecise,
+                    std::cmp::Ordering::Equal => FilterPrecisionChange::None,
+                    std::cmp::Ordering::Greater => FilterPrecisionChange::MorePrecise,
                 }
             }
             (Some(_), None) => FilterPrecisionChange::LessPrecise,
@@ -194,8 +192,8 @@ impl AppController {
 
     pub fn reload_active_mode(&self) {
         match self.mode() {
-            Mode::ApplicationMode => self.applications_mode_controller().reload(),
-            Mode::MimeTypeMode => self.mime_types_mode_controller().reload(),
+            Mode::ApplicationMode => self.applications_mode_controller().reload_detail(),
+            Mode::MimeTypeMode => self.mime_types_mode_controller().reload_detail(),
         }
     }
 

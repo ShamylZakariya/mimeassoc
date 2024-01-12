@@ -142,15 +142,15 @@ fn setup_shortcuts(app: &adw::Application) {
 fn build_ui(app: &adw::Application) {
     let window = ui::MainWindow::new(app);
 
-    let command = Some(controllers::MainWindowCommand::ShowMimeType(
-        mimeassoc::MimeType::parse("application/pdf").unwrap(),
-    ));
+    // let command = Some(controllers::MainWindowCommand::ShowMimeType(
+    //     mimeassoc::MimeType::parse("application/pdf").unwrap(),
+    // ));
 
     // let command = Some(controllers::MainWindowCommand::ShowApplication(
     //     mimeassoc::DesktopEntryId::parse("org.gnome.Nautilus.desktop").unwrap(),
     // ));
 
-    // let command: Option<controllers::MainWindowCommand> = None;
+    let command: Option<controllers::MainWindowCommand> = None;
 
     if let Some(command) = command {
         window.app_controller().perform_command(command);
