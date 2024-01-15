@@ -59,6 +59,18 @@ impl FilterPrecisionChange {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum DetailViewMode {
+    ShowDetail,
+    ShowNoResultsFound,
+}
+
+impl Default for DetailViewMode {
+    fn default() -> Self {
+        Self::ShowDetail
+    }
+}
+
 mod imp {
     use super::*;
     use std::cell::OnceCell;
@@ -73,6 +85,7 @@ mod imp {
         pub mime_types_mode_controller: OnceCell<MimeTypesModeController>,
         pub applications_mode_controller: OnceCell<ApplicationsModeController>,
         pub current_search_string: RefCell<Option<String>>,
+        pub current_detail_view_mode: RefCell<DetailViewMode>,
     }
 
     // The central trait for subclassing a GObject
@@ -120,6 +133,8 @@ impl AppController {
             .applications_mode_controller
             .set(ApplicationsModeController::new(window, weak_self))
             .unwrap();
+
+        instance.set_detail_view_mode(DetailViewMode::ShowDetail);
 
         instance
     }
@@ -556,5 +571,29 @@ impl AppController {
                 .mime_types_mode_controller()
                 .on_search_changed(self.current_search_string().as_deref(), change_type),
         }
+    }
+
+    pub fn set_detail_view_mode(&self, mode: DetailViewMode) {
+        self.imp().current_detail_view_mode.set(mode);
+
+        let window = self.window();
+        match mode {
+            DetailViewMode::ShowDetail => {
+                window
+                    .imp()
+                    .detail_view_stack
+                    .set_visible_child(&window.imp().detail_view.get());
+            }
+            DetailViewMode::ShowNoResultsFound => {
+                window
+                    .imp()
+                    .detail_view_stack
+                    .set_visible_child(&window.imp().no_results_found_status_page.get());
+            }
+        }
+    }
+
+    pub fn detail_view_mode(&self) -> DetailViewMode {
+        self.imp().current_detail_view_mode.borrow().clone()
     }
 }

@@ -10,7 +10,7 @@ use crate::model::*;
 use crate::resources::Strings;
 use crate::ui::MainWindow;
 
-use super::app_controller::FilterPrecisionChange;
+use super::app_controller::{DetailViewMode, FilterPrecisionChange};
 use super::AppController;
 
 mod imp {
@@ -65,6 +65,9 @@ impl MimeTypesModeController {
     }
 
     pub fn select_mime_type(&self, mime_type: &MimeType, display_detail: bool) {
+        self.app_controller()
+            .set_detail_view_mode(DetailViewMode::ShowDetail);
+
         let window = self.window();
         let list_box = &window.imp().collections_list;
 
@@ -165,6 +168,9 @@ impl MimeTypesModeController {
                         filter_model.item(0).and_downcast_ref::<MimeTypeEntry>()
                     {
                         self.select_mime_type(&first_element.mime_type(), true);
+                    } else {
+                        self.app_controller()
+                            .set_detail_view_mode(DetailViewMode::ShowNoResultsFound);
                     }
                 }
             }

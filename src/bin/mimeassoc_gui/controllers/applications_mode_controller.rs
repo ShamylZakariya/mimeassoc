@@ -10,7 +10,7 @@ use crate::model::*;
 use crate::resources::Strings;
 use crate::ui::MainWindow;
 
-use super::app_controller::FilterPrecisionChange;
+use super::app_controller::{DetailViewMode, FilterPrecisionChange};
 use super::AppController;
 
 mod imp {
@@ -68,6 +68,9 @@ impl ApplicationsModeController {
         let window = self.window();
         let list_box = &window.imp().collections_list;
 
+        self.app_controller()
+            .set_detail_view_mode(DetailViewMode::ShowDetail);
+
         crate::ui::select_listbox_row_and_scroll_to_visible(
             list_box.get(),
             self.collections_list_model(),
@@ -82,42 +85,6 @@ impl ApplicationsModeController {
 
         if display_detail {
             let application_entry = ApplicationEntry::new(desktop_entry_id, self.stores());
-            self.show_detail(&application_entry);
-        }
-    }
-
-    pub fn on_select_all(&self) {
-        self.select_all_or_none(true);
-    }
-
-    pub fn on_select_none(&self) {
-        self.select_all_or_none(false);
-    }
-
-    fn select_all_or_none(&self, all: bool) {
-        let app_controller = self.app_controller();
-        if let Some(application_entry) = self.current_selection() {
-            let desktop_entry_id = application_entry
-                .desktop_entry_id()
-                .expect("Expect ApplicationEntry to have a valid DesktopEntryId");
-
-            let mime_types = application_entry.mime_type_assignments();
-            for i in 0..mime_types.n_items() {
-                let mime_type_entry = mime_types.item(i)
-                        .and_downcast::<MimeTypeEntry>()
-                        .expect("ApplicationEntry::mime_type_assignments should contain instances of MimeTypeEntry only");
-
-                if all {
-                    app_controller.assign_application_to_mimetype(
-                        &mime_type_entry.mime_type(),
-                        Some(&desktop_entry_id),
-                    );
-                } else {
-                    app_controller
-                        .assign_application_to_mimetype(&mime_type_entry.mime_type(), None);
-                }
-            }
-
             self.show_detail(&application_entry);
         }
     }
@@ -215,6 +182,9 @@ impl ApplicationsModeController {
                         .and_then(|e| e.desktop_entry_id())
                     {
                         self.select_application(&first_element, true);
+                    } else {
+                        self.app_controller()
+                            .set_detail_view_mode(DetailViewMode::ShowNoResultsFound);
                     }
                 }
             }
@@ -244,6 +214,42 @@ impl ApplicationsModeController {
                 || id.contains(current_search_string.as_str())
         } else {
             true
+        }
+    }
+
+    pub fn on_select_all(&self) {
+        self.select_all_or_none(true);
+    }
+
+    pub fn on_select_none(&self) {
+        self.select_all_or_none(false);
+    }
+
+    fn select_all_or_none(&self, all: bool) {
+        let app_controller = self.app_controller();
+        if let Some(application_entry) = self.current_selection() {
+            let desktop_entry_id = application_entry
+                .desktop_entry_id()
+                .expect("Expect ApplicationEntry to have a valid DesktopEntryId");
+
+            let mime_types = application_entry.mime_type_assignments();
+            for i in 0..mime_types.n_items() {
+                let mime_type_entry = mime_types.item(i)
+                        .and_downcast::<MimeTypeEntry>()
+                        .expect("ApplicationEntry::mime_type_assignments should contain instances of MimeTypeEntry only");
+
+                if all {
+                    app_controller.assign_application_to_mimetype(
+                        &mime_type_entry.mime_type(),
+                        Some(&desktop_entry_id),
+                    );
+                } else {
+                    app_controller
+                        .assign_application_to_mimetype(&mime_type_entry.mime_type(), None);
+                }
+            }
+
+            self.show_detail(&application_entry);
         }
     }
 

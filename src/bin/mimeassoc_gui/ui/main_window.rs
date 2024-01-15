@@ -32,6 +32,9 @@ mod imp {
         pub commit_button: TemplateChild<Button>,
 
         #[template_child]
+        pub detail_view: TemplateChild<ScrolledWindow>,
+
+        #[template_child]
         pub detail_list: TemplateChild<ListBox>,
 
         #[template_child]
@@ -63,6 +66,12 @@ mod imp {
 
         #[template_child]
         pub search_entry: TemplateChild<SearchEntry>,
+
+        #[template_child]
+        pub detail_view_stack: TemplateChild<Stack>,
+
+        #[template_child]
+        pub no_results_found_status_page: TemplateChild<StatusPage>,
     }
 
     // The central trait for subclassing a GObject
