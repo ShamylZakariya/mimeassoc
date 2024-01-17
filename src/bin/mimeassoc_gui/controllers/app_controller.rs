@@ -577,18 +577,26 @@ impl AppController {
         self.imp().current_detail_view_mode.set(mode);
 
         let window = self.window();
+        let window = window.imp();
+
         match mode {
+            // show detail and the associated header/footer
             DetailViewMode::ShowDetail => {
                 window
-                    .imp()
                     .detail_view_stack
-                    .set_visible_child(&window.imp().detail_view.get());
+                    .set_visible_child(&window.detail_view.get());
+
+                window.detail_header_bar.set_show_title(true);
+                window.detail_footer_bar.set_revealed(true);
             }
+            // show no-results placeholder and hide the associated header/footer
             DetailViewMode::ShowNoResultsFound => {
                 window
-                    .imp()
                     .detail_view_stack
-                    .set_visible_child(&window.imp().no_results_found_status_page.get());
+                    .set_visible_child(&window.no_results_found_status_page.get());
+
+                window.detail_header_bar.set_show_title(false);
+                window.detail_footer_bar.set_revealed(false);
             }
         }
     }
