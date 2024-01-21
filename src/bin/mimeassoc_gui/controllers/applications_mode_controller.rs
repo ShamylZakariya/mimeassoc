@@ -64,7 +64,7 @@ impl ApplicationsModeController {
         }
     }
 
-    pub fn select_application(&self, desktop_entry_id: &DesktopEntryId, display_detail: bool) {
+    pub fn select_application(&self, desktop_entry_id: &DesktopEntryId) {
         let window = self.window();
         let list_box = &window.imp().collections_list;
 
@@ -78,10 +78,7 @@ impl ApplicationsModeController {
         );
 
         let application_entry = ApplicationEntry::new(desktop_entry_id, self.stores());
-
-        if display_detail {
-            self.show_detail(&application_entry);
-        }
+        self.show_detail(&application_entry);
 
         // Record current selection
         self.imp()
@@ -141,21 +138,7 @@ impl ApplicationsModeController {
         );
 
         if current_search_string.is_none() {
-            if let Some(current_selection) =
-                self.current_selection().and_then(|s| s.desktop_entry_id())
-            {
-                // If an item was previously selected, re-select it. Otherwise select the first item
-                self.select_application(&current_selection, true);
-            } else {
-                let list_store = self.collections_list_model();
-                if let Some(first_item) = list_store
-                    .item(0)
-                    .and_downcast::<ApplicationEntry>()
-                    .and_then(|a| a.desktop_entry_id())
-                {
-                    self.select_application(&first_item, true);
-                }
-            }
+            self.apply_current_selection();
         }
     }
 
@@ -192,7 +175,7 @@ impl ApplicationsModeController {
                         .and_downcast_ref::<ApplicationEntry>()
                         .and_then(|e| e.desktop_entry_id())
                     {
-                        self.select_application(&first_element, true);
+                        self.select_application(&first_element);
                     } else {
                         self.app_controller()
                             .set_detail_view_mode(DetailViewMode::ShowNoResultsFound);
@@ -200,13 +183,7 @@ impl ApplicationsModeController {
                 }
             }
             FilterPrecisionChange::LessPrecise => {
-                // re-select the current selection in the collections list; we need to do
-                // this since the selection state is lost (?) when filtering is updated.
-                if let Some(current_selection) =
-                    self.current_selection().and_then(|e| e.desktop_entry_id())
-                {
-                    self.select_application(&current_selection, false);
-                }
+                self.apply_current_selection();
             }
         }
     }
@@ -483,6 +460,24 @@ impl ApplicationsModeController {
         }));
 
         row
+    }
+
+    /// Cause the UI to select the current selection and show its detail
+    fn apply_current_selection(&self) {
+        if let Some(current_selection) = self.current_selection().and_then(|s| s.desktop_entry_id())
+        {
+            // If an item was previously selected, re-select it. Otherwise select the first item
+            self.select_application(&current_selection);
+        } else {
+            let list_store = self.collections_list_model();
+            if let Some(first_item) = list_store
+                .item(0)
+                .and_downcast::<ApplicationEntry>()
+                .and_then(|a| a.desktop_entry_id())
+            {
+                self.select_application(&first_item);
+            }
+        }
     }
 
     fn window(&self) -> MainWindow {

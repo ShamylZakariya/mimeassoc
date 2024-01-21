@@ -446,12 +446,12 @@ impl AppController {
             MainWindowCommand::ShowApplication(desktop_entry_id) => {
                 self.set_mode(Mode::ApplicationMode);
                 self.applications_mode_controller()
-                    .select_application(&desktop_entry_id, true);
+                    .select_application(&desktop_entry_id);
             }
             MainWindowCommand::ShowMimeType(mime_type) => {
                 self.set_mode(Mode::MimeTypeMode);
                 self.mime_types_mode_controller()
-                    .select_mime_type(&mime_type, true);
+                    .select_mime_type(&mime_type);
             }
         }
     }
@@ -598,6 +598,6 @@ impl AppController {
     }
 
     pub fn detail_view_mode(&self) -> DetailViewMode {
-        self.imp().current_detail_view_mode.borrow().clone()
+        *self.imp().current_detail_view_mode.borrow()
     }
 }

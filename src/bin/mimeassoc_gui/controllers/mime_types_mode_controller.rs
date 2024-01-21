@@ -64,7 +64,7 @@ impl MimeTypesModeController {
         }
     }
 
-    pub fn select_mime_type(&self, mime_type: &MimeType, display_detail: bool) {
+    pub fn select_mime_type(&self, mime_type: &MimeType) {
         self.app_controller()
             .set_detail_view_mode(DetailViewMode::ShowDetail);
 
@@ -79,10 +79,8 @@ impl MimeTypesModeController {
 
         let mime_type_entry = MimeTypeEntry::new(mime_type, self.stores());
 
-        if display_detail {
-            // Show the detail pane for this mime type
-            self.show_detail(&mime_type_entry);
-        }
+        // Show the detail pane for this mime type
+        self.show_detail(&mime_type_entry);
 
         // Record current selection
         self.imp()
@@ -133,15 +131,7 @@ impl MimeTypesModeController {
         );
 
         if current_search_string.is_none() {
-            if let Some(current_selection) = self.current_selection() {
-                // If an item was previously selected, re-select it. Otherwise select the first item
-                self.select_mime_type(&current_selection.mime_type(), true);
-            } else {
-                let list_store = self.collections_list_model();
-                if let Some(first_item) = list_store.item(0).and_downcast::<MimeTypeEntry>() {
-                    self.select_mime_type(&first_item.mime_type(), true);
-                }
-            }
+            self.apply_current_selection();
         }
     }
 
@@ -177,7 +167,7 @@ impl MimeTypesModeController {
                     if let Some(first_element) =
                         filter_model.item(0).and_downcast_ref::<MimeTypeEntry>()
                     {
-                        self.select_mime_type(&first_element.mime_type(), true);
+                        self.select_mime_type(&first_element.mime_type());
                     } else {
                         self.app_controller()
                             .set_detail_view_mode(DetailViewMode::ShowNoResultsFound);
@@ -187,9 +177,7 @@ impl MimeTypesModeController {
             FilterPrecisionChange::LessPrecise => {
                 // re-select the current selection in the collections list; we need to do
                 // this since the selection state is lost (?) when filtering is updated.
-                if let Some(current_selection) = self.current_selection() {
-                    self.select_mime_type(&current_selection.mime_type(), false);
-                }
+                self.apply_current_selection();
             }
         }
     }
@@ -541,6 +529,19 @@ impl MimeTypesModeController {
         let application_controller = self.app_controller();
         application_controller.assign_application_to_mimetype(mime_type, None);
         application_controller.reload_active_mode();
+    }
+
+    /// Cause the UI to select the current selection and show its detail
+    fn apply_current_selection(&self) {
+        if let Some(current_selection) = self.current_selection() {
+            // If an item was previously selected, re-select it. Otherwise select the first item
+            self.select_mime_type(&current_selection.mime_type());
+        } else {
+            let list_store = self.collections_list_model();
+            if let Some(first_item) = list_store.item(0).and_downcast::<MimeTypeEntry>() {
+                self.select_mime_type(&first_item.mime_type());
+            }
+        }
     }
 
     fn window(&self) -> MainWindow {
