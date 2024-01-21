@@ -188,12 +188,14 @@
                             <child>
                               <object class="GtkLabel" id="detail_title">
                                 <property name="name">detail_title</property>
+                                <property name="ellipsize">middle</property>
                               </object>
                             </child>
 
                             <child>
                               <object class="GtkLabel" id="detail_sub_title">
                                 <property name="name">detail_sub_title</property>
+                                <property name="ellipsize">middle</property>
                               </object>
                             </child>
                           </object>
