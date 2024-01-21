@@ -77,17 +77,18 @@ impl MimeTypesModeController {
             |entry: MimeTypeEntry| &entry.mime_type() == mime_type,
         );
 
-        // TODO: Record the current selection here
-        // self.imp()
-        //     .current_selection
-        //     .borrow_mut()
-        //     .replace(mime_type_entry.clone());
+        let mime_type_entry = MimeTypeEntry::new(mime_type, self.stores());
 
         if display_detail {
             // Show the detail pane for this mime type
-            let mime_type_entry = MimeTypeEntry::new(mime_type, self.stores());
             self.show_detail(&mime_type_entry);
         }
+
+        // Record current selection
+        self.imp()
+            .current_selection
+            .borrow_mut()
+            .replace(mime_type_entry);
     }
 
     /// Called by AppController to make this mode controller "active"; takes ownership of
@@ -124,13 +125,22 @@ impl MimeTypesModeController {
 
         self.imp().signal_handlers.replace(vec![s_id]);
 
-        // If an item was previously selected, re-select it. Otherwise select the first item
-        if let Some(current_selection) = self.current_selection() {
-            self.select_mime_type(&current_selection.mime_type(), true);
-        } else {
-            let list_store = self.collections_list_model();
-            if let Some(first_item) = list_store.item(0).and_downcast::<MimeTypeEntry>() {
-                self.select_mime_type(&first_item.mime_type(), true);
+        // Apply the current search string
+        let current_search_string = self.app_controller().current_search_string();
+        self.on_search_changed(
+            current_search_string.as_deref(),
+            FilterPrecisionChange::MorePrecise,
+        );
+
+        if current_search_string.is_none() {
+            if let Some(current_selection) = self.current_selection() {
+                // If an item was previously selected, re-select it. Otherwise select the first item
+                self.select_mime_type(&current_selection.mime_type(), true);
+            } else {
+                let list_store = self.collections_list_model();
+                if let Some(first_item) = list_store.item(0).and_downcast::<MimeTypeEntry>() {
+                    self.select_mime_type(&first_item.mime_type(), true);
+                }
             }
         }
     }

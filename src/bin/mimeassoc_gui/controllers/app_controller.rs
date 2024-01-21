@@ -152,6 +152,7 @@ impl AppController {
 
         log::debug!("set_mode({:?})", mode);
 
+        self.imp().mode.replace(Some(mode));
         let window = self.window();
         match mode {
             Mode::ApplicationMode => {
@@ -169,11 +170,6 @@ impl AppController {
                 window.imp().mode_selector_mime_types.set_active(true);
             }
         }
-
-        self.imp().mode.replace(Some(mode));
-
-        // notify the new mode of the current search string
-        self.on_search_changed(self.current_search_string());
     }
 
     pub fn mode(&self) -> Mode {
@@ -541,7 +537,7 @@ impl AppController {
         clipboard.set_text(format!("{}\n{}", message, error).as_str());
     }
 
-    fn current_search_string(&self) -> Option<String> {
+    pub fn current_search_string(&self) -> Option<String> {
         self.imp().current_search_string.borrow().clone()
     }
 

@@ -77,16 +77,17 @@ impl ApplicationsModeController {
             |entry: ApplicationEntry| entry.desktop_entry_id().as_ref() == Some(desktop_entry_id),
         );
 
-        // TODO: Record current selection here
-        // self.imp()
-        //     .current_selection
-        //     .borrow_mut()
-        //     .replace(application_entry.clone());
+        let application_entry = ApplicationEntry::new(desktop_entry_id, self.stores());
 
         if display_detail {
-            let application_entry = ApplicationEntry::new(desktop_entry_id, self.stores());
             self.show_detail(&application_entry);
         }
+
+        // Record current selection
+        self.imp()
+            .current_selection
+            .borrow_mut()
+            .replace(application_entry);
     }
 
     /// Called by AppController to make this mode controller "active"; takes ownership of
@@ -132,18 +133,28 @@ impl ApplicationsModeController {
         // record our signal handlers so we can clean up later
         self.imp().signal_handlers.replace(vec![sid]);
 
-        // If an item was previously selected, re-select it. Otherwise select the first item
-        if let Some(current_selection) = self.current_selection().and_then(|s| s.desktop_entry_id())
-        {
-            self.select_application(&current_selection, true);
-        } else {
-            let list_store = self.collections_list_model();
-            if let Some(first_item) = list_store
-                .item(0)
-                .and_downcast::<ApplicationEntry>()
-                .and_then(|a| a.desktop_entry_id())
+        let current_search_string = self.app_controller().current_search_string();
+        // apply the current search string
+        self.on_search_changed(
+            current_search_string.as_deref(),
+            FilterPrecisionChange::MorePrecise,
+        );
+
+        if current_search_string.is_none() {
+            if let Some(current_selection) =
+                self.current_selection().and_then(|s| s.desktop_entry_id())
             {
-                self.select_application(&first_item, true);
+                // If an item was previously selected, re-select it. Otherwise select the first item
+                self.select_application(&current_selection, true);
+            } else {
+                let list_store = self.collections_list_model();
+                if let Some(first_item) = list_store
+                    .item(0)
+                    .and_downcast::<ApplicationEntry>()
+                    .and_then(|a| a.desktop_entry_id())
+                {
+                    self.select_application(&first_item, true);
+                }
             }
         }
     }
