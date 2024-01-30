@@ -93,9 +93,10 @@
                         <property name="orientation">vertical</property>
                         <property name="spacing">6</property>
                         <property name="name">primary_column</property>
-                        <child>
 
-                          <!-- horizontal box holding mode selector -->
+
+                        <!-- horizontal box holding mode selector -->
+                        <child>
                           <object class="GtkBox">
                             <property name="orientation">horizontal</property>
                             <property name="halign">center</property>
@@ -126,19 +127,11 @@
                             </child>
 
                           </object>
-
                         </child>
 
-                        <!-- TODO: this will be a good place for the search field -->
-                        <child>
-                          <object class="GtkSearchEntry" id="search_entry">
-                            <property name="name">search_entry</property>
-                          </object>
-                        </child>
 
+                        <!-- collections list view / scrolled window  -->
                         <child>
-
-                          <!-- collections list view / scrolled window  -->
                           <object class="GtkScrolledWindow">
                             <property name="vexpand">true</property>
                             <property name="child">
@@ -152,9 +145,17 @@
 
                             </property>
                           </object>
-
-
                         </child>
+
+
+                        <!-- Search field -->
+                        <child>
+                          <object class="GtkSearchEntry" id="search_entry">
+                            <property name="name">search_entry</property>
+                            <property name="placeholder-text" translatable="true">Filter</property>
+                          </object>
+                        </child>
+
                       </object>
 
 
