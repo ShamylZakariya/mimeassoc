@@ -12,6 +12,10 @@
         <attribute name="action">win.show-mime-types</attribute>
       </item>
       <item>
+        <attribute name="label" translatable="yes">Filter</attribute>
+        <attribute name="action">win.search</attribute>
+      </item>
+      <item>
         <attribute name="label" translatable="yes">Undo</attribute>
         <attribute name="action">win.undo</attribute>
       </item>

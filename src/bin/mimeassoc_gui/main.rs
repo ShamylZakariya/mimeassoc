@@ -135,6 +135,7 @@ fn setup_shortcuts(app: &adw::Application) {
     app.set_accels_for_action("win.show-applications", &["<Ctrl>A"]);
     app.set_accels_for_action("win.undo", &["<Ctrl>Z"]);
     app.set_accels_for_action("win.log-history-stack", &["<Ctrl><Shift>H"]);
+    app.set_accels_for_action("win.search", &["<Ctrl>F"]);
     app.set_accels_for_action("window.close", &["<Ctrl>W"]);
     app.set_accels_for_action("app.quit", &["<Ctrl>Q"]);
 }

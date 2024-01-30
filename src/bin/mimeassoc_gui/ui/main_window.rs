@@ -252,5 +252,11 @@ impl MainWindow {
             stores.debug_log_history_stack();
         }));
         self.add_action(&log_history_action);
+
+        let search_action = gtk::gio::SimpleAction::new("search", None);
+        search_action.connect_activate(clone!(@weak self as window => move |_, _| {
+            window.imp().search_entry.grab_focus();
+        }));
+        self.add_action(&search_action);
     }
 }
